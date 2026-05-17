@@ -11,9 +11,10 @@
     <style>
         :root {
             --bg: #0A0F1A;
-            --surface: rgba(20, 28, 38, 0.95);
+            --surface: rgba(20, 28, 38, 0.98);
             --gold: #F59E0B;
             --gold-dark: #D97706;
+            --gold-light: rgba(245, 158, 11, 0.15);
             --text: #E5E7EB;
             --text-muted: #9CA3AF;
             --text-dim: #6B7280;
@@ -23,709 +24,156 @@
             --warning: #FBBF24;
             --danger: #EF4444;
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-        html, body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Layout responsive: 100% mobile, 33.3% desktop centrato */
-        .app-wrapper {
-            width: 100%;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            background: var(--bg);
-        }
-
-        .app-container {
-            width: 100%;
-            max-width: 100%;
-            min-height: 100vh;
-            position: relative;
-            background: var(--surface);
-            border-left: 1px solid var(--border);
-            border-right: 1px solid var(--border);
-            padding-bottom: 2rem;
-        }
-
-        @media (min-width: 1024px) {
-            .app-container { width: 33.333%; max-width: 420px; }
-        }
-
-        @media (min-width: 768px) and (max-width: 1023px) {
-            .app-container { width: 66.666%; max-width: 600px; }
-        }
-
-        /* ===== HEADER ===== */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.875rem 1rem;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: var(--surface);
-            backdrop-filter: blur(12px);
-            z-index: 50;
-        }
-
-        .logo {
-            font-size: 0.9375rem;
-            font-weight: 800;
-            letter-spacing: 0.05em;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-        }
-
-        .credits-pill {
-            display: none;
-            align-items: center;
-            gap: 0.375rem;
-            background: rgba(245, 158, 11, 0.12);
-            border: 1px solid rgba(245, 158, 11, 0.25);
-            border-radius: 999px;
-            padding: 0.25rem 0.625rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--gold);
-        }
-
+        html, body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+        .app-wrapper { width: 100%; min-height: 100vh; display: flex; justify-content: center; background: var(--bg); }
+        .app-container { width: 100%; max-width: 100%; min-height: 100vh; position: relative; background: var(--surface); border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding-bottom: 5rem; }
+        @media (min-width: 1024px) { .app-container { width: 33.333%; max-width: 420px; } }
+        @media (min-width: 768px) and (max-width: 1023px) { .app-container { width: 66.666%; max-width: 600px; } }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); backdrop-filter: blur(12px); z-index: 50; }
+        .logo-wrap { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; text-decoration: none; }
+        .logo-moon { font-size: 1.25rem; }
+        .logo-text { font-size: 0.875rem; font-weight: 800; letter-spacing: 0.05em; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header-right { display: flex; align-items: center; gap: 0.625rem; }
+        .lang-dropdown { position: relative; }
+        .lang-btn { display: flex; align-items: center; gap: 0.375rem; background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 0.8125rem; cursor: pointer; padding: 0.25rem 0.5rem; }
+        .lang-btn .flag { font-size: 1rem; }
+        .lang-btn .arrow { font-size: 0.625rem; transition: transform 0.2s; }
+        .lang-dropdown.open .lang-btn .arrow { transform: rotate(180deg); }
+        .lang-menu { display: none; position: absolute; top: 100%; right: 0; margin-top: 0.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.25rem; min-width: 120px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 60; }
+        .lang-dropdown.open .lang-menu { display: block; }
+        .lang-option { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.625rem; background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 0.8125rem; cursor: pointer; border-radius: 0.375rem; }
+        .lang-option:hover { background: var(--card-bg); color: var(--text); }
+        .lang-option.active { color: var(--gold); }
+        .cart-btn { display: none; align-items: center; gap: 0.25rem; background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 0.8125rem; cursor: pointer; position: relative; }
+        .cart-btn.active { display: flex; }
+        .cart-badge { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; background: var(--danger); color: #fff; font-size: 0.625rem; font-weight: 700; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .credits-pill { display: none; align-items: center; gap: 0.375rem; background: var(--gold-light); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 999px; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 600; color: var(--gold); }
         .credits-pill.active { display: flex; }
-
-        .credits-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--success);
-        }
+        .credits-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
         .credits-dot.warning { background: var(--warning); }
         .credits-dot.danger { background: var(--danger); }
-
-        .btn-header {
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text-muted);
-            font-family: inherit;
-            font-size: 0.75rem;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
+        .btn-header { padding: 0.375rem 0.875rem; border-radius: 0.5rem; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: inherit; font-size: 0.8125rem; font-weight: 500; cursor: pointer; }
         .btn-header:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
-
-        .user-avatar-sm {
-            display: none;
-            width: 1.75rem;
-            height: 1.75rem;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            align-items: center;
-            justify-content: center;
-            font-size: 0.6875rem;
-            font-weight: 700;
-            color: var(--bg);
-            cursor: pointer;
-        }
-
+        .user-avatar-sm { display: none; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 700; color: var(--bg); cursor: pointer; }
         .user-avatar-sm.active { display: flex; }
-
-        /* ===== BANNER CTA ===== */
-        .banner-cta {
-            margin: 0.75rem 1rem;
-            padding: 0.875rem 1rem;
-            border-radius: 0.75rem;
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08));
-            border: 1px solid rgba(245, 158, 11, 0.2);
-            text-align: center;
-        }
-
-        .banner-cta p {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            margin-bottom: 0.625rem;
-            line-height: 1.4;
-        }
-
+        .banner-cta { margin: 0.75rem 1rem; padding: 0.875rem 1rem; border-radius: 0.75rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08)); border: 1px solid rgba(245, 158, 11, 0.2); text-align: center; }
+        .banner-cta p { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.625rem; line-height: 1.4; }
         .banner-cta p strong { color: var(--gold); font-weight: 600; }
-
-        .btn-gold {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 0.625rem 1rem;
-            border-radius: 0.625rem;
-            border: none;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: var(--bg);
-            font-family: inherit;
-            font-size: 0.8125rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            cursor: pointer;
-            transition: opacity 0.2s, transform 0.1s;
-        }
-
+        .btn-gold { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 0.625rem 1rem; border-radius: 0.625rem; border: none; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: var(--bg); font-family: inherit; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; transition: opacity 0.2s, transform 0.1s; }
         .btn-gold:active { transform: scale(0.98); }
-
-        /* ===== TOGGLE CHAT/VOCE ===== */
-        .mode-toggle {
-            display: flex;
-            margin: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.04);
-            border-radius: 0.625rem;
-            padding: 0.25rem;
-            border: 1px solid var(--border);
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 0.5rem;
-            text-align: center;
-            border-radius: 0.5rem;
-            font-size: 0.8125rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-            background: transparent;
-            font-family: inherit;
-        }
-
-        .mode-btn.active {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--gold);
-            font-weight: 600;
-        }
-
-        /* ===== GRIGLIE ===== */
-        .section-title {
-            font-size: 0.6875rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-dim);
-            padding: 0 1rem;
-            margin: 1.25rem 0 0.625rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.625rem;
-            padding: 0 1rem;
-        }
-
-        .grid-2 { grid-template-columns: repeat(2, 1fr); }
-
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 0.875rem 0.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .card:hover {
-            border-color: rgba(245, 158, 11, 0.3);
-            background: rgba(245, 158, 11, 0.04);
-            transform: translateY(-1px);
-        }
-
+        .btn-gold-outline { background: transparent; border: 1px solid var(--gold); color: var(--gold); }
+        .btn-gold-outline:hover { background: var(--gold-light); }
+        .mode-toggle { display: flex; margin: 0.75rem 1rem; background: rgba(255, 255, 255, 0.04); border-radius: 0.625rem; padding: 0.25rem; border: 1px solid var(--border); }
+        .mode-btn { flex: 1; padding: 0.5rem; text-align: center; border-radius: 0.5rem; font-size: 0.8125rem; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all 0.2s; border: none; background: transparent; font-family: inherit; }
+        .mode-btn.active { background: var(--gold-light); color: var(--gold); font-weight: 600; }
+        .section-title { font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); padding: 0 1rem; margin: 1.25rem 0 0.625rem; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.625rem; padding: 0 1rem; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.875rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .card:hover { border-color: rgba(245, 158, 11, 0.3); background: rgba(245, 158, 11, 0.04); transform: translateY(-1px); }
         .card:active { transform: scale(0.97); }
-
-        .card-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.375rem;
-            line-height: 1;
-        }
-
-        .card-label {
-            font-size: 0.6875rem;
-            font-weight: 500;
-            color: var(--text-muted);
-        }
-
-        /* Categorie colorate */
-        .cat-love .card-icon { color: #F472B6; }
-        .cat-money .card-icon { color: #34D399; }
-        .cat-work .card-icon { color: #60A5FA; }
-        .cat-health .card-icon { color: #FBBF24; }
-        .cat-friends .card-icon { color: #A78BFA; }
-        .cat-family .card-icon { color: #F87171; }
-        .cat-travel .card-icon { color: #22D3EE; }
-        .cat-partner .card-icon { color: #FB923C; }
-        .cat-career .card-icon { color: #C084FC; }
-
-        /* ===== BANNER PARLA ===== */
-        .banner-talk {
-            margin: 0.75rem 1rem;
-            padding: 0.875rem 1rem;
-            border-radius: 0.75rem;
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.1));
-            border: 1px solid rgba(245, 158, 11, 0.25);
-            text-align: center;
-        }
-
-        .banner-talk p {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            margin-bottom: 0.625rem;
-        }
-
-        .banner-talk p strong { color: var(--gold); }
-
-        /* ===== FOOTER ===== */
-        .footer {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            text-align: center;
-            border-top: 1px solid var(--border);
-        }
-
-        .footer p {
-            font-size: 0.6875rem;
-            color: var(--text-dim);
-            line-height: 1.5;
-            margin-bottom: 0.5rem;
-        }
-
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 0.75rem;
-            font-size: 0.6875rem;
-        }
-
-        .footer-links a {
-            color: var(--text-muted);
-            text-decoration: none;
-        }
-
+        .card-icon { font-size: 1.5rem; margin-bottom: 0.375rem; line-height: 1; }
+        .card-label { font-size: 0.6875rem; font-weight: 500; color: var(--text-muted); }
+        .cat-love .card-icon { color: #F472B6; } .cat-money .card-icon { color: #34D399; } .cat-work .card-icon { color: #60A5FA; } .cat-health .card-icon { color: #FBBF24; } .cat-friends .card-icon { color: #A78BFA; } .cat-family .card-icon { color: #F87171; } .cat-travel .card-icon { color: #22D3EE; } .cat-partner .card-icon { color: #FB923C; } .cat-career .card-icon { color: #C084FC; }
+        .footer { margin-top: 1.5rem; padding: 1rem; text-align: center; border-top: 1px solid var(--border); }
+        .footer p { font-size: 0.6875rem; color: var(--text-dim); line-height: 1.5; margin-bottom: 0.5rem; }
+        .footer-links { display: flex; justify-content: center; gap: 0.75rem; font-size: 0.6875rem; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; }
         .footer-links a:hover { color: var(--gold); }
-
-        /* ===== MODAL AUTH ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(10, 15, 26, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 200;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10, 15, 26, 0.9); backdrop-filter: blur(8px); z-index: 200; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
         .modal-overlay.active { display: flex; }
-
-        .modal {
-            width: 100%;
-            max-width: 360px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            position: relative;
-            animation: modalIn 0.25s ease;
-        }
-
-        @keyframes modalIn {
-            from { opacity: 0; transform: translateY(12px) scale(0.96); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 0.75rem;
-            right: 0.75rem;
-            width: 2rem;
-            height: 2rem;
-            border-radius: 50%;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-title {
-            font-size: 1.125rem;
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-            text-align: center;
-        }
-
-        .modal-subtitle {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            text-align: center;
-            margin-bottom: 1.25rem;
-        }
-
-        .auth-tabs {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.75rem;
-        }
-
-        .auth-tab {
-            flex: 1;
-            padding: 0.5rem;
-            text-align: center;
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-family: inherit;
-            font-size: 0.875rem;
-            font-weight: 500;
-            cursor: pointer;
-            border-radius: 0.5rem;
-            transition: all 0.2s;
-        }
-
-        .auth-tab.active {
-            color: var(--gold);
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .form-group { margin-bottom: 0.875rem; }
-
-        .form-label {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            margin-bottom: 0.375rem;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 0.625rem 0.875rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            color: var(--text);
-            font-family: inherit;
-            font-size: 0.9375rem;
-            transition: border-color 0.2s;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--gold);
-        }
-
+        .modal { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem; position: relative; animation: modalIn 0.25s ease; margin: auto; }
+        @keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .modal-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 2rem; height: 2rem; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .modal-title { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.25rem; text-align: center; }
+        .modal-subtitle { font-size: 0.8125rem; color: var(--text-muted); text-align: center; margin-bottom: 1.25rem; }
+        .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; }
+        .auth-tab { flex: 1; padding: 0.5rem; text-align: center; background: none; border: none; color: var(--text-muted); font-family: inherit; font-size: 0.875rem; font-weight: 500; cursor: pointer; border-radius: 0.5rem; transition: all 0.2s; }
+        .auth-tab.active { color: var(--gold); background: var(--gold-light); }
+        .form-group { margin-bottom: 0.75rem; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.375rem; }
+        .form-input { width: 100%; padding: 0.625rem 0.875rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text); font-family: inherit; font-size: 0.9375rem; transition: border-color 0.2s; }
+        .form-input:focus { outline: none; border-color: var(--gold); }
         .form-input::placeholder { color: var(--text-dim); }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.625rem;
-        }
-
-        .btn-full {
-            width: 100%;
-            padding: 0.625rem;
-            margin-top: 0.25rem;
-        }
-
-        .alert {
-            padding: 0.625rem 0.875rem;
-            border-radius: 0.5rem;
-            font-size: 0.8125rem;
-            margin-bottom: 0.875rem;
-            display: none;
-        }
-
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+        .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; padding-right: 2rem; }
+        .btn-full { width: 100%; padding: 0.625rem; margin-top: 0.25rem; }
+        .alert { padding: 0.625rem 0.875rem; border-radius: 0.5rem; font-size: 0.8125rem; margin-bottom: 0.75rem; display: none; }
         .alert.active { display: block; }
         .alert-error { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
         .alert-success { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
         .alert-info { background: rgba(245, 158, 11, 0.1); color: var(--gold); border: 1px solid rgba(245, 158, 11, 0.2); }
-
-        .auth-divider {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin: 0.875rem 0;
-            color: var(--text-dim);
-            font-size: 0.75rem;
-        }
-
-        .auth-divider::before, .auth-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border);
-        }
-
-        /* ===== SEZIONE PROFILO (nascosta di default) ===== */
-        .page-section {
-            display: none;
-            padding: 0 1rem;
-            animation: fadeIn 0.3s ease;
-        }
-
+        .auth-divider { display: flex; align-items: center; gap: 0.75rem; margin: 0.75rem 0; color: var(--text-dim); font-size: 0.75rem; }
+        .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        .remember-wrap { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+        .remember-wrap input { width: 1rem; height: 1rem; accent-color: var(--gold); }
+        .remember-wrap label { font-size: 0.8125rem; color: var(--text-muted); }
+        .page-section { display: none; padding: 0 0 2rem; animation: fadeIn 0.3s ease; }
         .page-section.active { display: block; }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem 0 1.25rem;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 1.25rem;
-        }
-
-        .profile-avatar {
-            width: 3.5rem;
-            height: 3.5rem;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--bg);
-        }
-
-        .profile-name {
-            font-size: 1.0625rem;
-            font-weight: 600;
-        }
-
-        .profile-email {
-            font-size: 0.8125rem;
-            color: var(--text-muted);
-            margin-top: 0.125rem;
-        }
-
-        .section-heading {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--gold);
-            margin-bottom: 0.875rem;
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-        }
-
-        .natal-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .natal-card.empty { color: var(--text-muted); }
-        .natal-card.empty p { font-size: 0.875rem; margin-bottom: 0.5rem; }
-        .natal-card.empty .hint { font-size: 0.75rem; color: var(--text-dim); }
-
-        .btn-ghost {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-        }
-
-        .btn-ghost:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
-
-        .btn-danger {
-            background: transparent;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: var(--danger);
-        }
-
-        .btn-danger:hover { background: rgba(239, 68, 68, 0.08); }
-
-        .loading {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid rgba(255,255,255,0.1);
-            border-top-color: var(--gold);
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .hidden { display: none !important; }
-
-        /* ===== CHAT PAGE ===== */
-        .chat-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.75rem 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 0.75rem;
-        }
-
-        .chat-back {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 1.25rem;
-            cursor: pointer;
-            padding: 0.25rem;
-        }
-
-        .chat-title {
-            font-size: 1rem;
-            font-weight: 600;
-        }
-
-        .chat-messages {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            min-height: 300px;
-            max-height: calc(100vh - 280px);
-            overflow-y: auto;
-            padding: 0.5rem 0;
-        }
-
-        .msg {
-            max-width: 85%;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            font-size: 0.875rem;
-            line-height: 1.5;
-            animation: fadeIn 0.25s ease;
-        }
-
-        .msg-ai {
-            align-self: flex-start;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-bottom-left-radius: 0.25rem;
-            color: var(--text);
-        }
-
-        .msg-user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: var(--bg);
-            border-bottom-right-radius: 0.25rem;
-            font-weight: 500;
-        }
-
-        .msg-meta {
-            font-size: 0.625rem;
-            color: var(--text-dim);
-            margin-top: 0.375rem;
-            font-family: monospace;
-        }
-
-        .chat-input-wrap {
-            display: flex;
-            gap: 0.5rem;
-            padding: 0.75rem 0;
-            border-top: 1px solid var(--border);
-            margin-top: 0.5rem;
-        }
-
-        .chat-input {
-            flex: 1;
-            padding: 0.625rem 0.875rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border);
-            border-radius: 0.5rem;
-            color: var(--text);
-            font-family: inherit;
-            font-size: 0.9375rem;
-        }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .horoscope-header { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-bottom: 1px solid var(--border); }
+        .horoscope-back { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; padding: 0.25rem; }
+        .horoscope-sign { font-size: 2.5rem; }
+        .horoscope-info h2 { font-size: 1.125rem; font-weight: 700; }
+        .horoscope-info p { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.125rem; }
+        .tags-row { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0.75rem 1rem; }
+        .tag { padding: 0.25rem 0.625rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 999px; font-size: 0.6875rem; color: var(--text-muted); }
+        .horo-tabs { display: flex; gap: 0.25rem; padding: 0 1rem; margin-bottom: 0.75rem; overflow-x: auto; }
+        .horo-tab { flex-shrink: 0; padding: 0.5rem 0.875rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.8125rem; color: var(--text-muted); cursor: pointer; font-family: inherit; white-space: nowrap; }
+        .horo-tab.active { background: var(--gold-light); border-color: rgba(245, 158, 11, 0.3); color: var(--gold); font-weight: 600; }
+        .horo-content { padding: 0 1rem; margin-bottom: 1.5rem; }
+        .horo-text { font-size: 0.9375rem; line-height: 1.7; color: var(--text-muted); }
+        .horo-text strong { color: var(--gold); font-weight: 600; }
+        .personal-header { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border-bottom: 1px solid var(--border); }
+        .personal-back { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; }
+        .personal-sign { font-size: 2rem; }
+        .personal-info h2 { font-size: 1.0625rem; font-weight: 700; }
+        .personal-info p { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.125rem; }
+        .compat-row { display: flex; flex-wrap: wrap; gap: 0.375rem; padding: 0.75rem 1rem; align-items: center; }
+        .compat-label { font-size: 0.75rem; color: var(--text-dim); margin-right: 0.25rem; }
+        .compat-pill { display: flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.625rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 999px; font-size: 0.6875rem; color: var(--text-muted); cursor: pointer; }
+        .compat-pill:hover { border-color: var(--gold); color: var(--gold); }
+        .compat-pill .compat-icon { font-size: 0.875rem; }
+        .personalize-btn { margin: 0 1rem 1rem; }
+        .personalize-btn .btn-gold { width: auto; display: inline-flex; padding: 0.5rem 1rem; font-size: 0.8125rem; }
+        .accordion { margin: 0 1rem 0.5rem; }
+        .accordion-header { display: flex; align-items: center; justify-content: space-between; padding: 0.875rem 1rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.625rem; cursor: pointer; transition: all 0.2s; }
+        .accordion-header:hover { border-color: rgba(245, 158, 11, 0.2); }
+        .accordion-header.open { border-radius: 0.625rem 0.625rem 0 0; border-bottom-color: transparent; }
+        .accordion-title { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--text); }
+        .accordion-title .acc-icon { font-size: 1rem; }
+        .accordion-arrow { font-size: 0.75rem; color: var(--text-dim); transition: transform 0.2s; }
+        .accordion-header.open .accordion-arrow { transform: rotate(180deg); }
+        .accordion-body { display: none; background: var(--card-bg); border: 1px solid var(--border); border-top: none; border-radius: 0 0 0.625rem 0.625rem; padding: 1rem; font-size: 0.8125rem; color: var(--text-muted); line-height: 1.6; }
+        .accordion-body.open { display: block; }
+        .natal-wheel { display: flex; justify-content: center; padding: 1.5rem 0; }
+        .wheel-placeholder { width: 200px; height: 200px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-dim); }
+        .planet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+        .planet-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: rgba(255,255,255,0.02); border-radius: 0.375rem; }
+        .planet-symbol { font-size: 1rem; }
+        .planet-name { font-size: 0.75rem; color: var(--text-muted); }
+        .planet-pos { font-size: 0.6875rem; color: var(--text-dim); margin-left: auto; }
+        .chat-header { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
+        .chat-back { background: none; border: none; color: var(--text-muted); font-size: 1.25rem; cursor: pointer; padding: 0.25rem; }
+        .chat-title { font-size: 1rem; font-weight: 600; }
+        .chat-messages { display: flex; flex-direction: column; gap: 0.75rem; min-height: 300px; max-height: calc(100vh - 280px); overflow-y: auto; padding: 0 1rem; }
+        .msg { max-width: 85%; padding: 0.75rem 1rem; border-radius: 1rem; font-size: 0.875rem; line-height: 1.5; animation: fadeIn 0.25s ease; }
+        .msg-ai { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); border-bottom-left-radius: 0.25rem; color: var(--text); }
+        .msg-user { align-self: flex-end; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: var(--bg); border-bottom-right-radius: 0.25rem; font-weight: 500; }
+        .msg-meta { font-size: 0.625rem; color: var(--text-dim); margin-top: 0.375rem; font-family: monospace; }
+        .chat-input-wrap { display: flex; gap: 0.5rem; padding: 0.75rem 1rem; border-top: 1px solid var(--border); margin-top: 0.5rem; }
+        .chat-input { flex: 1; padding: 0.625rem 0.875rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); border-radius: 0.5rem; color: var(--text); font-family: inherit; font-size: 0.9375rem; }
         .chat-input:focus { outline: none; border-color: var(--gold); }
-
-        .chat-send {
-            padding: 0.625rem 1rem;
-            border-radius: 0.5rem;
-            border: none;
-            background: linear-gradient(135deg, var(--gold), var(--gold-dark));
-            color: var(--bg);
-            font-family: inherit;
-            font-weight: 600;
-            font-size: 0.8125rem;
-            cursor: pointer;
-        }
-
-        /* ===== BOTTOM NAV ===== */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--surface);
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-around;
-            padding: 0.375rem 0;
-            z-index: 100;
-        }
-
-        @media (min-width: 1024px) {
-            .bottom-nav {
-                position: relative;
-                border-top: none;
-                border-bottom: 1px solid var(--border);
-                margin-bottom: 0.75rem;
-            }
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.125rem;
-            padding: 0.25rem 0.625rem;
-            color: var(--text-muted);
-            font-size: 0.625rem;
-            cursor: pointer;
-            transition: color 0.2s;
-            border: none;
-            background: none;
-            font-family: inherit;
-        }
-
+        .chat-send { padding: 0.625rem 1rem; border-radius: 0.5rem; border: none; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: var(--bg); font-family: inherit; font-weight: 600; font-size: 0.8125rem; cursor: pointer; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 0.375rem 0; z-index: 100; }
+        @media (min-width: 1024px) { .bottom-nav { position: relative; border-top: none; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; } }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 0.125rem; padding: 0.25rem 0.625rem; color: var(--text-muted); font-size: 0.625rem; cursor: pointer; transition: color 0.2s; border: none; background: none; font-family: inherit; }
         .nav-item.active { color: var(--gold); }
         .nav-item:hover { color: var(--text); }
         .nav-icon { font-size: 1.125rem; }
-
-        /* Scrollbar */
+        .loading { display: inline-block; width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -735,321 +183,487 @@
 <body>
     <div class="app-wrapper">
         <div class="app-container">
-            <!-- ===== HEADER ===== -->
+            <!-- HEADER -->
             <header class="header">
-                <div class="logo">✦ LUNA ASTROLOGICA</div>
+                <a href="#" class="logo-wrap" onclick="goHome(); return false;">
+                    <span class="logo-moon">🌙</span>
+                    <span class="logo-text">LUNA ASTROLOGICA</span>
+                </a>
                 <div class="header-right">
-                    <div class="credits-pill" id="creditsPill">
-                        <div class="credits-dot" id="creditsDot"></div>
-                        <span id="creditsVal">10</span>
+                    <div class="lang-dropdown" id="langDropdown">
+                        <button class="lang-btn" onclick="toggleLang()">
+                            <span class="flag" id="currentFlag">🇮🇹</span>
+                            <span class="arrow">▼</span>
+                        </button>
+                        <div class="lang-menu">
+                            <button class="lang-option active" onclick="setLang('it')" data-lang="it"><span>🇮🇹</span> Italiano</button>
+                            <button class="lang-option" onclick="setLang('en')" data-lang="en"><span>🇬🇧</span> English</button>
+                            <button class="lang-option" onclick="setLang('fr')" data-lang="fr"><span>🇫🇷</span> Français</button>
+                            <button class="lang-option" onclick="setLang('de')" data-lang="de"><span>🇩🇪</span> Deutsch</button>
+                            <button class="lang-option" onclick="setLang('es')" data-lang="es"><span>🇪🇸</span> Español</button>
+                        </div>
                     </div>
-                    <div class="user-avatar-sm" id="userAvatar" onclick="showPage('profile')">?</div>
-                    <button class="btn-header" id="loginBtn" onclick="openAuthModal()">Accedi</button>
+                    <button class="cart-btn" id="cartBtn">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+                    <div class="credits-pill" id="creditsPill"><div class="credits-dot" id="creditsDot"></div><span id="creditsVal">10</span></div>
+                    <div class="user-avatar-sm" id="userAvatar" onclick="showPage('personalized')">?</div>
+                    <button class="btn-header" id="loginBtn" onclick="openAuthModal()">LOGIN</button>
                     <button class="btn-header hidden" id="logoutBtn" onclick="handleLogout()">Esci</button>
                 </div>
             </header>
 
-            <!-- ===== HOME ===== -->
+            <!-- HOME -->
             <div class="page-section active" id="page-home">
-                <!-- Banner 1 -->
                 <div class="banner-cta">
-                    <p><strong>Crea il tuo profilo</strong> per sbloccare tutte le funzionalità</p>
-                    <button class="btn-gold" onclick="requireAuth(() => showPage('profile'))">PERSONALIZZA</button>
+                    <button class="btn-gold" onclick="requireAuthOrModal()">PERSONALIZZA</button>
                 </div>
-
-                <!-- Toggle -->
                 <div class="mode-toggle">
-                    <button class="mode-btn active" id="mode-chat" onclick="switchMode('chat')">💬 Chat</button>
-                    <button class="mode-btn" id="mode-voice" onclick="switchMode('voice')">🎙️ Voce</button>
+                    <button class="mode-btn active" id="mode-chat" onclick="requireAuthOrModalForChat('chat')">💬 Chat</button>
+                    <button class="mode-btn" id="mode-voice" onclick="requireAuthOrModalForChat('voice')">🎙️ Voce</button>
                 </div>
-
-                <!-- Zodiac Grid -->
                 <div class="section-title">Segni Zodiacali</div>
                 <div class="grid">
-                    <div class="card" onclick="showHoroscope('Ariete')">
-                        <div class="card-icon">♈</div>
-                        <div class="card-label">Ariete</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Toro')">
-                        <div class="card-icon">♉</div>
-                        <div class="card-label">Toro</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Gemelli')">
-                        <div class="card-icon">♊</div>
-                        <div class="card-label">Gemelli</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Cancro')">
-                        <div class="card-icon">♋</div>
-                        <div class="card-label">Cancro</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Leone')">
-                        <div class="card-icon">♌</div>
-                        <div class="card-label">Leone</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Vergine')">
-                        <div class="card-icon">♍</div>
-                        <div class="card-label">Vergine</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Bilancia')">
-                        <div class="card-icon">♎</div>
-                        <div class="card-label">Bilancia</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Scorpione')">
-                        <div class="card-icon">♏</div>
-                        <div class="card-label">Scorpione</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Sagittario')">
-                        <div class="card-icon">♐</div>
-                        <div class="card-label">Sagittario</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Capricorno')">
-                        <div class="card-icon">♑</div>
-                        <div class="card-label">Capricorno</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Acquario')">
-                        <div class="card-icon">♒</div>
-                        <div class="card-label">Acquario</div>
-                    </div>
-                    <div class="card" onclick="showHoroscope('Pesci')">
-                        <div class="card-icon">♓</div>
-                        <div class="card-label">Pesci</div>
-                    </div>
+                    <div class="card" onclick="showHoroscopePage('Ariete','21 Mar - 19 Apr','Fuoco','Marte')"><div class="card-icon">♈</div><div class="card-label">Ariete</div></div>
+                    <div class="card" onclick="showHoroscopePage('Toro','20 Apr - 20 Mag','Terra','Venere')"><div class="card-icon">♉</div><div class="card-label">Toro</div></div>
+                    <div class="card" onclick="showHoroscopePage('Gemelli','21 Mag - 20 Giu','Aria','Mercurio')"><div class="card-icon">♊</div><div class="card-label">Gemelli</div></div>
+                    <div class="card" onclick="showHoroscopePage('Cancro','21 Giu - 22 Lug','Acqua','Luna')"><div class="card-icon">♋</div><div class="card-label">Cancro</div></div>
+                    <div class="card" onclick="showHoroscopePage('Leone','23 Lug - 22 Ago','Fuoco','Sole')"><div class="card-icon">♌</div><div class="card-label">Leone</div></div>
+                    <div class="card" onclick="showHoroscopePage('Vergine','23 Ago - 22 Set','Terra','Mercurio')"><div class="card-icon">♍</div><div class="card-label">Vergine</div></div>
+                    <div class="card" onclick="showHoroscopePage('Bilancia','23 Set - 22 Ott','Aria','Venere')"><div class="card-icon">♎</div><div class="card-label">Bilancia</div></div>
+                    <div class="card" onclick="showHoroscopePage('Scorpione','23 Ott - 21 Nov','Acqua','Plutone')"><div class="card-icon">♏</div><div class="card-label">Scorpione</div></div>
+                    <div class="card" onclick="showHoroscopePage('Sagittario','22 Nov - 21 Dic','Fuoco','Giove')"><div class="card-icon">♐</div><div class="card-label">Sagittario</div></div>
+                    <div class="card" onclick="showHoroscopePage('Capricorno','22 Dic - 19 Gen','Terra','Saturno')"><div class="card-icon">♑</div><div class="card-label">Capricorno</div></div>
+                    <div class="card" onclick="showHoroscopePage('Acquario','20 Gen - 18 Feb','Aria','Urano')"><div class="card-icon">♒</div><div class="card-label">Acquario</div></div>
+                    <div class="card" onclick="showHoroscopePage('Pesci','19 Feb - 20 Mar','Acqua','Nettuno')"><div class="card-icon">♓</div><div class="card-label">Pesci</div></div>
                 </div>
-
-                <!-- Banner 2 -->
                 <div class="banner-cta">
-                    <p><strong>Crea il tuo profilo</strong> per sbloccare tutte le funzionalità</p>
-                    <button class="btn-gold" onclick="requireAuth(() => showPage('profile'))">PERSONALIZZA</button>
+                    <button class="btn-gold" onclick="requireAuthOrModal()">PERSONALIZZA</button>
                 </div>
-
-                <!-- Categories -->
                 <div class="section-title">Categorie</div>
                 <div class="grid">
-                    <div class="card cat-love" onclick="startChat('amore')">
-                        <div class="card-icon">❤️</div>
-                        <div class="card-label">Amore</div>
-                    </div>
-                    <div class="card cat-money" onclick="startChat('denaro')">
-                        <div class="card-icon">💰</div>
-                        <div class="card-label">Denaro</div>
-                    </div>
-                    <div class="card cat-work" onclick="startChat('lavoro')">
-                        <div class="card-icon">💼</div>
-                        <div class="card-label">Lavoro</div>
-                    </div>
-                    <div class="card cat-health" onclick="startChat('salute')">
-                        <div class="card-icon">🍎</div>
-                        <div class="card-label">Salute</div>
-                    </div>
-                    <div class="card cat-friends" onclick="startChat('amici')">
-                        <div class="card-icon">👥</div>
-                        <div class="card-label">Amici</div>
-                    </div>
-                    <div class="card cat-family" onclick="startChat('famiglia')">
-                        <div class="card-icon">🏠</div>
-                        <div class="card-label">Famiglia</div>
-                    </div>
-                    <div class="card cat-travel" onclick="startChat('viaggi')">
-                        <div class="card-icon">✈️</div>
-                        <div class="card-label">Viaggi</div>
-                    </div>
-                    <div class="card cat-partner" onclick="startChat('partner')">
-                        <div class="card-icon">💑</div>
-                        <div class="card-label">Partner</div>
-                    </div>
-                    <div class="card cat-career" onclick="startChat('carriera')">
-                        <div class="card-icon">📈</div>
-                        <div class="card-label">Carriera</div>
-                    </div>
+                    <div class="card cat-love" onclick="requireAuthOrModal()"><div class="card-icon">❤️</div><div class="card-label">Amore</div></div>
+                    <div class="card cat-money" onclick="requireAuthOrModal()"><div class="card-icon">💰</div><div class="card-label">Denaro</div></div>
+                    <div class="card cat-work" onclick="requireAuthOrModal()"><div class="card-icon">💼</div><div class="card-label">Lavoro</div></div>
+                    <div class="card cat-health" onclick="requireAuthOrModal()"><div class="card-icon">🍎</div><div class="card-label">Salute</div></div>
+                    <div class="card cat-friends" onclick="requireAuthOrModal()"><div class="card-icon">👥</div><div class="card-label">Amici</div></div>
+                    <div class="card cat-family" onclick="requireAuthOrModal()"><div class="card-icon">🏠</div><div class="card-label">Famiglia</div></div>
+                    <div class="card cat-travel" onclick="requireAuthOrModal()"><div class="card-icon">✈️</div><div class="card-label">Viaggi</div></div>
+                    <div class="card cat-partner" onclick="requireAuthOrModal()"><div class="card-icon">💑</div><div class="card-label">Partner</div></div>
+                    <div class="card cat-career" onclick="requireAuthOrModal()"><div class="card-icon">📈</div><div class="card-label">Carriera</div></div>
                 </div>
-
-                <!-- Banner 3 -->
-                <div class="banner-talk">
-                    <p><strong>Parla con le tue stelle</strong> — consulta l'astrologo AI</p>
-                    <button class="btn-gold" onclick="requireAuth(() => showPage('chat'))">PARLA CON LE TUE STELLE</button>
+                <div class="banner-cta">
+                    <button class="btn-gold" onclick="requireAuthOrModal()">PARLA CON LE TUE STELLE</button>
                 </div>
-
-                <!-- Footer -->
                 <footer class="footer">
-                    <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali. Le previsioni astrologiche sono basate su interpretazioni simboliche e non costituiscono verità scientifiche.</p>
+                    <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
                     <p>Utilizzando il servizio accetti i Termini di Servizio e la Privacy Policy.</p>
-                    <div class="footer-links">
-                        <a href="#">Termini</a>
-                        <a href="#">Privacy</a>
-                        <a href="#">Contatti</a>
-                    </div>
+                    <div class="footer-links"><a href="#">Termini</a><a href="#">Privacy</a><a href="#">Contatti</a></div>
                     <p style="margin-top:0.75rem; font-size:0.625rem;">© 2024 Luna Astrologica</p>
                 </footer>
             </div>
 
-            <!-- ===== CHAT ===== -->
-            <div class="page-section" id="page-chat">
-                <div class="chat-header">
-                    <button class="chat-back" onclick="showPage('home')">←</button>
-                    <div class="chat-title">Parla con le Stelle</div>
-                </div>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="msg msg-ai">
-                        <p>Ciao, sono Luna ✦ Il tuo astrologo personale.</p>
-                        <p style="margin-top:0.5rem;">Dimmi cosa ti porta qui oggi. Amore, lavoro, un transito che senti? Sono qui per ascoltare il tuo cielo.</p>
-                        <div class="msg-meta">Luna • ora</div>
+            <!-- HOROSCOPE GENERIC PAGE -->
+            <div class="page-section" id="page-horoscope">
+                <div class="horoscope-header">
+                    <button class="horoscope-back" onclick="showPage('home')">←</button>
+                    <div class="horoscope-sign" id="horoSignIcon">♈</div>
+                    <div class="horoscope-info">
+                        <h2 id="horoSignName">Ariete</h2>
+                        <p id="horoSignDetails">21 Mar - 19 Apr • Fuoco • Marte</p>
                     </div>
                 </div>
-                <div class="chat-input-wrap">
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Scrivi la tua domanda astrologica..." onkeypress="if(event.key==='Enter')sendMessage()">
-                    <button class="chat-send" onclick="sendMessage()">Invia</button>
+                <div class="tags-row" id="horoTags">
+                    <span class="tag">Coraggioso</span>
+                    <span class="tag">Determinato</span>
+                    <span class="tag">Impulsivo</span>
+                    <span class="tag">Leader</span>
                 </div>
+                <div class="horo-tabs">
+                    <button class="horo-tab active" onclick="switchHoroTab('day')" id="tab-day">📅 Giorno</button>
+                    <button class="horo-tab" onclick="switchHoroTab('week')" id="tab-week">📆 Settimana</button>
+                    <button class="horo-tab" onclick="switchHoroTab('month')" id="tab-month">🗓️ Mese</button>
+                    <button class="horo-tab" onclick="switchHoroTab('year')" id="tab-year">📊 Anno</button>
+                </div>
+                <div class="horo-content">
+                    <div class="horo-text" id="horoTextDay">
+                        <p><strong>✨ Oroscopo di oggi</strong></p>
+                        <p style="margin-top:0.75rem;">Oggi il tuo pianeta governatore ti infonde un'energia straordinaria che non puoi ignorare. È il momento perfetto per affrontare quei progetti che hai rimandato troppo a lungo, perché la tua naturale audacia è al massimo splendore.</p>
+                        <p style="margin-top:0.75rem;">Nel lavoro, la tua iniziativa non passerà inosservata: un superiore o un collega potrebbe notare il tuo impegno e proporti una sfida stimolante che ti farà crescere professionalmente. Accetta senza indugi, ma ricorda di pianificare i passaggi con la stessa determinazione con cui affronti gli ostacoli.</p>
+                        <p style="margin-top:0.75rem;">In amore, Venere sorride ai cuori solitari: se sei in coppia, un gesto spontaneo e sincero riscalderà la relazione e riaccenderà la passione. Se cerchi l'amore, guarda dove meno te l'aspetti, perché gli incontri improvvisi di oggi potrebbero nascondere sorprese piacevoli.</p>
+                        <p style="margin-top:0.75rem;">Sul fronte economico, è un ottimo momento per investimenti a breve termine, ma evita le spese impulsive: quel desiderio improvviso può aspettare, mentre la stabilità finanziaria richiede pazienza. La salute è buona, ma non esagerare con lo stress fisico.</p>
+                    </div>
+                    <div class="horo-text hidden" id="horoTextWeek">
+                        <p><strong>✨ Oroscopo settimanale</strong></p>
+                        <p style="margin-top:0.75rem;">Questa settimana porta un'energia di trasformazione significativa. I primi giorni saranno dedicati alla riflessione e alla pianificazione, mentre verso metà settimana sentirai un'accelerazione che ti spingerà ad agire con decisione.</p>
+                        <p style="margin-top:0.75rem;">In ambito professionale, potrebbe emergere un'opportunità inaspettata. Non lasciarti intimidire dalla novità: la tua capacità di adattamento è il tuo punto di forza. Valuta con attenzione, ma non rimandare troppo la decisione.</p>
+                        <p style="margin-top:0.75rem;">Nelle relazioni, la comunicazione sarà la chiave. Se c'è un dialogo rimasto in sospeso, questa è la settimana giusta per affrontarlo. Sii onesto ma gentile, e vedrai che le cose si sistemeranno meglio del previsto.</p>
+                    </div>
+                    <div class="horo-text hidden" id="horoTextMonth">
+                        <p><strong>✨ Oroscopo mensile</strong></p>
+                        <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività e dell'espressione personale. È il periodo ideale per dare vita a progetti artistici o per riscoprire passioni accantonate.</p>
+                        <p style="margin-top:0.75rem;">A livello lavorativo, Giove favorisce le collaborazioni: cerca di costruire alleanze solide e non temere di chiedere aiuto quando ne hai bisogno. La tua rete di contatti si espanderà in modo naturale.</p>
+                        <p style="margin-top:0.75rem;">In amore, la Luna piena di metà mese porta chiarimenti. Se ci sono stati malintesi, ora è il momento di scioglierli. Per i single, un incontro casuale potrebbe trasformarsi in qualcosa di più serio.</p>
+                    </div>
+                    <div class="horo-text hidden" id="horoTextYear">
+                        <p><strong>✨ Oroscopo annuale</strong></p>
+                        <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Saturno ti invita a costruire fondamenta solide, mentre Giove apre porte che credevi chiuse per sempre. L'equilibrio tra disciplina e ottimismo sarà la tua bussola.</p>
+                        <p style="margin-top:0.75rem;">Nel lavoro, aspettati una svolta importante tra la primavera e l'estate. Potrebbe trattarsi di una promozione, di un nuovo progetto o di una riconfigurazione del tuo ruolo. Qualunque sia la forma, accoglila con fiducia.</p>
+                        <p style="margin-top:0.75rem;">Sul piano sentimentale, l'anno favorisce le relazioni mature e autentiche. Se sei in coppia, potrebbe essere il momento di fare progetti condivisi più ambiziosi. Se sei single, l'autunno porta incontri significativi.</p>
+                        <p style="margin-top:0.75rem;">La salute richiede attenzione costante: non trascurare i segnali del corpo e dedicati regolarmente al movimento e alla meditazione. La tua energia mentale è alta, ma deve essere canalizzata in modo costruttivo.</p>
+                    </div>
+                </div>
+                <!-- Footer della home -->
+                <div style="padding: 0 1rem;">
+                    <div class="banner-cta" style="margin: 0 0 0.75rem;">
+                        <button class="btn-gold" onclick="requireAuthOrModal()">PERSONALIZZA</button>
+                    </div>
+                    <div class="mode-toggle" style="margin: 0 0 0.75rem;">
+                        <button class="mode-btn active" onclick="requireAuthOrModalForChat('chat')">💬 Chat</button>
+                        <button class="mode-btn" onclick="requireAuthOrModalForChat('voice')">🎙️ Voce</button>
+                    </div>
+                    <div class="grid" style="padding: 0;">
+                        <div class="card cat-love" onclick="requireAuthOrModal()"><div class="card-icon">❤️</div><div class="card-label">Amore</div></div>
+                        <div class="card cat-money" onclick="requireAuthOrModal()"><div class="card-icon">💰</div><div class="card-label">Denaro</div></div>
+                        <div class="card cat-work" onclick="requireAuthOrModal()"><div class="card-icon">💼</div><div class="card-label">Lavoro</div></div>
+                        <div class="card cat-health" onclick="requireAuthOrModal()"><div class="card-icon">🍎</div><div class="card-label">Salute</div></div>
+                        <div class="card cat-friends" onclick="requireAuthOrModal()"><div class="card-icon">👥</div><div class="card-label">Amici</div></div>
+                        <div class="card cat-family" onclick="requireAuthOrModal()"><div class="card-icon">🏠</div><div class="card-label">Famiglia</div></div>
+                        <div class="card cat-travel" onclick="requireAuthOrModal()"><div class="card-icon">✈️</div><div class="card-label">Viaggi</div></div>
+                        <div class="card cat-partner" onclick="requireAuthOrModal()"><div class="card-icon">💑</div><div class="card-label">Partner</div></div>
+                        <div class="card cat-career" onclick="requireAuthOrModal()"><div class="card-icon">📈</div><div class="card-label">Carriera</div></div>
+                    </div>
+                    <div class="banner-cta" style="margin: 0.75rem 0 0;">
+                        <button class="btn-gold" onclick="requireAuthOrModal()">PARLA CON LE TUE STELLE</button>
+                    </div>
+                </div>
+                <footer class="footer">
+                    <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento.</p>
+                    <p>Utilizzando il servizio accetti i Termini di Servizio e la Privacy Policy.</p>
+                    <div class="footer-links"><a href="#">Termini</a><a href="#">Privacy</a><a href="#">Contatti</a></div>
+                    <p style="margin-top:0.75rem; font-size:0.625rem;">© 2024 Luna Astrologica</p>
+                </footer>
             </div>
 
-            <!-- ===== PROFILE ===== -->
-            <div class="page-section" id="page-profile">
-                <div class="profile-header">
-                    <div class="profile-avatar" id="profileAvatarBig">?</div>
-                    <div>
-                        <div class="profile-name" id="profileName">Profilo</div>
-                        <div class="profile-email" id="profileEmail">—</div>
+            <!-- PERSONALIZED PAGE -->
+            <div class="page-section" id="page-personalized">
+                <div class="personal-header">
+                    <button class="personal-back" onclick="showPage('home')">←</button>
+                    <div class="personal-sign" id="personalSignIcon">♏</div>
+                    <div class="personal-info">
+                        <h2 id="personalName">Benvenuto, Marco</h2>
+                        <p id="personalDetails">Nato il 15 Novembre 1986 • 14:30 • Roma, IT</p>
                     </div>
                 </div>
-
-                <div class="alert alert-error" id="profileAlert"></div>
-
-                <div class="section-heading">📍 Dati di nascita</div>
-                <form id="profileForm" onsubmit="handleProfileUpdate(event)">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Data di nascita</label>
-                            <input type="date" class="form-input" id="profileBirthDate">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Ora di nascita</label>
-                            <input type="time" class="form-input" id="profileBirthTime">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Luogo di nascita</label>
-                        <input type="text" class="form-input" id="profileBirthPlace" placeholder="Es. Roma, Italia">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Latitudine / Longitudine (opzionale)</label>
-                        <div class="form-row">
-                            <input type="text" class="form-input" id="profileLat" placeholder="41.9028">
-                            <input type="text" class="form-input" id="profileLng" placeholder="12.4964">
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-gold btn-full" id="profileSaveBtn">
-                        <span>Salva dati e calcola tema natale</span>
+                <div class="compat-row">
+                    <span class="compat-label">⭐ Compatibilità:</span>
+                    <button class="compat-pill" onclick="showCompat('Leone')"><span class="compat-icon">♌</span> Leone</button>
+                    <button class="compat-pill" onclick="showCompat('Toro')"><span class="compat-icon">♉</span> Toro</button>
+                    <button class="compat-pill" onclick="showCompat('Acquario')"><span class="compat-icon">♒</span> Acquario</button>
+                    <button class="compat-pill" onclick="openCompatModal()"><span style="font-size:0.75rem;">➕</span> Altro</button>
+                </div>
+                <div class="personalize-btn">
+                    <button class="btn-gold btn-gold-outline" onclick="openProfileEdit()">
+                        <span style="font-size:0.875rem; margin-right:0.25rem;">➕</span> Personalizza
                     </button>
-                </form>
+                </div>
 
-                <div style="margin-top:1.5rem;">
-                    <div class="section-heading">🌟 Il tuo tema natale</div>
-                    <div class="natal-card empty" id="natalCard">
-                        <p>Completa i dati di nascita per generare la tua mappa astrale personale.</p>
-                        <p class="hint">I calcoli utilizzano le effemeridi svizzere (Swiss Ephemeris) per garantire precisione astronomica.</p>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this,'acc-wheel')">
+                        <div class="accordion-title"><span class="acc-icon">☸️</span> RUOTA DEL TEMA NATALE</div>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-body" id="acc-wheel">
+                        <div class="natal-wheel"><div class="wheel-placeholder" id="natalWheel">♏</div></div>
+                        <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem;">Tema natale calcolato con effemeridi svizzere</p>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this,'acc-planets')">
+                        <div class="accordion-title"><span class="acc-icon">📍</span> POSIZIONE DEI PIANETI</div>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-body" id="acc-planets">
+                        <div class="planet-grid">
+                            <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos">Scorpione 22°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos">Leone 8°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos">Sagittario 5°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos">Scorpione 14°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos">Capricorno 3°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos">Pesci 28°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos">Acquario 15°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos">Toro 17°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos">Pesci 24°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos">Capricorno 28°</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this,'acc-houses')">
+                        <div class="accordion-title"><span class="acc-icon">🏠</span> CASE ASTROLOGICHE</div>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-body" id="acc-houses">
+                        <div class="planet-grid">
+                            <div class="planet-item"><span class="planet-symbol">1</span><span class="planet-name">Casa I</span><span class="planet-pos">Acquario 5°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">2</span><span class="planet-name">Casa II</span><span class="planet-pos">Pesci 18°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">3</span><span class="planet-name">Casa III</span><span class="planet-pos">Ariete 25°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">4</span><span class="planet-name">Casa IV</span><span class="planet-pos">Toro 20°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">5</span><span class="planet-name">Casa V</span><span class="planet-pos">Gemelli 12°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">6</span><span class="planet-name">Casa VI</span><span class="planet-pos">Cancro 8°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">7</span><span class="planet-name">Casa VII</span><span class="planet-pos">Leone 5°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">8</span><span class="planet-name">Casa VIII</span><span class="planet-pos">Vergine 18°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">9</span><span class="planet-name">Casa IX</span><span class="planet-pos">Bilancia 25°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">10</span><span class="planet-name">Casa X (MC)</span><span class="planet-pos">Scorpione 20°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">11</span><span class="planet-name">Casa XI</span><span class="planet-pos">Sagittario 12°</span></div>
+                            <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos">Capricorno 8°</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this,'acc-aspects')">
+                        <div class="accordion-title"><span class="acc-icon">⚡</span> ASPETTI PLANETARI</div>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-body" id="acc-aspects">
+                        <div style="font-size:0.8125rem; line-height:1.7;">
+                            <p><strong style="color:var(--gold);">Sole congiunta Venere</strong> — Scorpione 22°/14° • Intensità emotiva e magnetismo personale elevato. Attrazione verso relazioni profonde e trasformative.</p>
+                            <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Luna quadrata Sole</strong> — Leone/Scorpione • Tensione tra espressione emotiva e identità. Necessità di integrare cuore e mente.</p>
+                            <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Marte trigono Giove</strong> — Capricorno/Pesci • Energia costruttiva e ambizione canalizzata verso obiettivi spirituali o creativi.</p>
+                            <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno opposizione Urano</strong> — Acquario/Toro • Scontro tra tradizione e innovazione. Momenti di crisi che portano a nuove strutture.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this,'acc-transits')">
+                        <div class="accordion-title"><span class="acc-icon">🌙</span> TRANSITI PLANETARI — <span id="transitDate">16 Maggio 2026</span></div>
+                        <span class="accordion-arrow">▼</span>
+                    </div>
+                    <div class="accordion-body" id="acc-transits">
+                        <div style="font-size:0.8125rem; line-height:1.7;">
+                            <p><strong style="color:var(--gold);">Giove in Gemelli</strong> transita nella tua Casa VII — Periodo favorevole per nuove partnership, sia professionali che sentimentali. Le opportunità arrivano attraverso la comunicazione.</p>
+                            <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno in Pesci</strong> transita nella tua Casa II — Ristrutturazione delle finanze. È il momento di pianificare a lungo termine e ridurre i debiti.</p>
+                            <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Urano in Gemelli</strong> transita nella tua Casa VI — Cambiamenti improvvisi nella routine quotidiana e nel lavoro. Sii flessibile.</p>
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border);">
-                    <button class="btn-gold btn-full btn-danger" onclick="handleLogout()">🚪 Disconnetti account</button>
+                <!-- Chat/Voce + Categorie -->
+                <div style="padding: 0 1rem; margin-top:1.5rem;">
+                    <div class="mode-toggle" style="margin: 0 0 0.75rem;">
+                        <button class="mode-btn active" onclick="showPage('chat')">💬 Chat</button>
+                        <button class="mode-btn" onclick="showPage('chat')">🎙️ Voce</button>
+                    </div>
+                    <div class="grid" style="padding: 0;">
+                        <div class="card cat-love" onclick="startCategoryChat('amore')"><div class="card-icon">❤️</div><div class="card-label">Amore</div></div>
+                        <div class="card cat-money" onclick="startCategoryChat('denaro')"><div class="card-icon">💰</div><div class="card-label">Denaro</div></div>
+                        <div class="card cat-work" onclick="startCategoryChat('lavoro')"><div class="card-icon">💼</div><div class="card-label">Lavoro</div></div>
+                        <div class="card cat-health" onclick="startCategoryChat('salute')"><div class="card-icon">🍎</div><div class="card-label">Salute</div></div>
+                        <div class="card cat-friends" onclick="startCategoryChat('amici')"><div class="card-icon">👥</div><div class="card-label">Amici</div></div>
+                        <div class="card cat-family" onclick="startCategoryChat('famiglia')"><div class="card-icon">🏠</div><div class="card-label">Famiglia</div></div>
+                        <div class="card cat-travel" onclick="startCategoryChat('viaggi')"><div class="card-icon">✈️</div><div class="card-label">Viaggi</div></div>
+                        <div class="card cat-partner" onclick="startCategoryChat('partner')"><div class="card-icon">💑</div><div class="card-label">Partner</div></div>
+                        <div class="card cat-career" onclick="startCategoryChat('carriera')"><div class="card-icon">📈</div><div class="card-label">Carriera</div></div>
+                    </div>
+                </div>
+                <div style="padding: 0 1rem; margin-top:1rem;">
+                    <button class="btn-gold" style="width:100%;" onclick="showPage('chat')">PARLA CON LE TUE STELLE</button>
+                </div>
+                <div style="padding: 1rem; margin-top:1.5rem; border-top:1px solid var(--border);">
+                    <button class="btn-gold btn-gold-outline" style="width:100%; color:var(--danger); border-color:rgba(239,68,68,0.3);" onclick="handleLogout()">🚪 Disconnetti account</button>
                 </div>
             </div>
+else { openAuthModal(); }
+        }
 
-            <!-- ===== BOTTOM NAV ===== -->
-            <nav class="bottom-nav">
-                <button class="nav-item active" onclick="showPage('home')" id="nav-home">
-                    <span class="nav-icon">🏠</span>
-                    <span>Home</span>
-                </button>
-                <button class="nav-item" onclick="showPage('chat')" id="nav-chat">
-                    <span class="nav-icon">💬</span>
-                    <span>Chat</span>
-                </button>
-                <button class="nav-item" onclick="showPage('profile')" id="nav-profile">
-                    <span class="nav-icon">👤</span>
-                    <span>Profilo</span>
-                </button>
-            </nav>
-        </div>
-    </div>
+        function openAuthModal() {
+            document.getElementById('authModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
 
-    <!-- ===== MODAL AUTH ===== -->
-    <div class="modal-overlay" id="authModal" onclick="if(event.target===this)closeAuthModal()">
-        <div class="modal">
-            <button class="modal-close" onclick="closeAuthModal()">×</button>
-            <div class="modal-title">Benvenuto nel tuo cielo</div>
-            <div class="modal-subtitle">Accedi per sbloccare la tua mappa astrale</div>
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.body.style.overflow = '';
+            hideAlerts();
+        }
 
-            <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthTab('login')" id="tab-login">Accedi</button>
-                <button class="auth-tab" onclick="switchAuthTab('register')" id="tab-register">Registrati</button>
-            </div>
+        function switchAuthTab(tab) {
+            document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+            document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+            document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+            document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+            hideAlerts();
+        }
 
-            <div class="alert alert-error" id="authError"></div>
-            <div class="alert alert-success" id="authSuccess"></div>
+        function switchMode(mode) {
+            chatMode = mode;
+            document.getElementById('mode-chat').classList.toggle('active', mode === 'chat');
+            document.getElementById('mode-voice').classList.toggle('active', mode === 'voice');
+        }
 
-            <form id="loginForm" onsubmit="handleLogin(event)">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="loginEmail" placeholder="tua@email.com" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required minlength="6">
-                </div>
-                <button type="submit" class="btn-gold btn-full" id="loginSubmitBtn">
-                    <span>Accedi</span>
-                </button>
-            </form>
+        // HOROSCOPE PAGE
+        function showHoroscopePage(sign, period, element, ruler) {
+            currentHoroscopeSign = sign;
+            document.getElementById('horoSignIcon').textContent = getSignSymbol(sign);
+            document.getElementById('horoSignName').textContent = sign;
+            document.getElementById('horoSignDetails').textContent = period + ' • ' + element + ' • ' + ruler;
 
-            <form id="registerForm" class="hidden" onsubmit="handleRegister(event)">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" class="form-input" id="regEmail" placeholder="tua@email.com" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="regPassword" placeholder="Minimo 6 caratteri" required minlength="6">
-                </div>
-                <div class="auth-divider">Dati di nascita</div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Data</label>
-                        <input type="date" class="form-input" id="regBirthDate" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Ora</label>
-                        <input type="time" class="form-input" id="regBirthTime" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Luogo di nascita</label>
-                    <input type="text" class="form-input" id="regBirthPlace" placeholder="Es. Roma, Italia" required>
-                </div>
-                <button type="submit" class="btn-gold btn-full" id="regSubmitBtn">
-                    <span>Crea account</span>
-                </button>
-            </form>
-        </div>
-    </div>
+            const tags = {
+                'Ariete': ['Coraggioso','Determinato','Impulsivo','Leader'],
+                'Toro': ['Paziente','Leale','Testardo','Sensuale'],
+                'Gemelli': ['Versatile','Curioso','Inquieto','Comunicativo'],
+                'Cancro': ['Sensibile','Protettivo','Moody','Intuitivo'],
+                'Leone': ['Generoso','Carismatico','Orgoglioso','Creativo'],
+                'Vergine': ['Analitico','Pratico','Perfezionista','Umile'],
+                'Bilancia': ['Diplomatico','Esteta','Indeciso','Socievole'],
+                'Scorpione': ['Intenso','Passionale','Misterioso','Trasformativo'],
+                'Sagittario': ['Ottimista','Avventuroso','Impulsivo','Filosofico'],
+                'Capricorno': ['Ambizioso','Disciplinato','Riservato','Pragmatico'],
+                'Acquario': ['Originale','Indipendente','Eccentrico','Umanitario'],
+                'Pesci': ['Empatico','Creativo','Sognatore','Compassionevole']
+            };
+            const tagRow = document.getElementById('horoTags');
+            tagRow.innerHTML = '';
+            (tags[sign] || []).forEach(t => {
+                const span = document.createElement('span');
+                span.className = 'tag';
+                span.textContent = t;
+                tagRow.appendChild(span);
+            });
+            showPage('horoscope');
+        }
 
+        function switchHoroTab(tab) {
+            ['day','week','month','year'].forEach(t => {
+                document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+                document.getElementById('horoText' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+            });
+        }
+
+        // PERSONALIZED PAGE
+        function toggleAccordion(header, bodyId) {
+            const body = document.getElementById(bodyId);
+            const isOpen = body.classList.contains('open');
+            body.classList.toggle('open', !isOpen);
+            header.classList.toggle('open', !isOpen);
+        }
+
+        function openProfileEdit() {
+            // Per ora apre il modal con i dati esistenti
+            // In futuro: pagina dedicata di modifica profilo
+            alert('Modifica profilo - funzionalità in arrivo');
+        }
+
+        function showCompat(sign) {
+            alert('Compatibilità con ' + sign + ' - calcolo in arrivo');
+        }
+
+        function openCompatModal() {
+            document.getElementById('compatModal').classList.add('active');
+        }
+
+        function closeCompatModal() {
+            document.getElementById('compatModal').classList.remove('active');
+        }
+
+        function handleCompatSubmit(e) {
+            e.preventDefault();
+            closeCompatModal();
+            alert('Compatibilità calcolata! (funzionalità in arrivo)');
+        }
+
+        // LANGUAGE
+        function toggleLang() {
+            document.getElementById('langDropdown').classList.toggle('open');
+        }
+
+        function setLang(lang) {
+            const flags = {it:'🇮🇹',en:'🇬🇧',fr:'🇫🇷',de:'🇩🇪',es:'🇪🇸'};
+            document.getElementById('currentFlag').textContent = flags[lang] || '🇮🇹';
+            document.querySelectorAll('.lang-option').forEach(o => {
+                o.classList.toggle('active', o.dataset.lang === lang);
+            });
+            document.getElementById('langDropdown').classList.remove('open');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.lang-dropdown')) {
+                document.getElementById('langDropdown').classList.remove('open');
+            }
+        });
+
+        // CHAT
+        function startCategoryChat(topic) {
+            showPage('chat');
+            const labels = {amore:'Amore',denaro:'Denaro',lavoro:'Lavoro',salute:'Salute',amici:'Amici',famiglia:'Famiglia',viaggi:'Viaggi',partner:'Partner',carriera:'Carriera'};
+            addMsg('user', 'Vorrei parlare di ' + labels[topic]);
+            setTimeout(() => addMsg('ai', 'Capisco il tuo interesse per ' + labels[topic] + '. Prima di entrare nel vivo, vorrei ricordarti che l' + "'" + 'astrologia è uno strumento di consapevolezza, non una sentenza.\n\nQuando sei pronto, raccontami la tua situazione specifica: cosa ti porta a cercare orientamento in questo ambito oggi?'), 600);
+        }
+
+        function goBackFromChat() {
+            showPage(lastPage === 'chat' ? 'home' : lastPage);
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            if (!currentUser) { openAuthModal(); return; }
+            if (credits <= 0) { addMsg('ai', '⚡ I tuoi crediti sono esauriti. Ricarica per continuare.'); return; }
+            addMsg('user', text);
+            input.value = '';
+            setTimeout(() => {
+                const replies = [
+                    'Capisco che questa situazione ti faccia sentire bloccato. Non è un caso: con il tuo Sole in ' + (currentProfile?.sun_sign || '---') + ' e la Luna che transita in questi giorni, c' + "'" + 'è un' + "'" + 'energia di ristrutturazione in atto.\n\nCosa ti spinge di più a cercare una risposta proprio oggi?',
+                    'Interessante domanda. Dal punto di vista astrologico, stiamo attraversando un periodo dove Mercurio favorisce la riflessione profonda.\n\nVuoi che esploriamo insieme come questo transito si collega alla tua situazione personale?',
+                    'Sento la profondità della tua domanda. L' + "'" + 'astrologia non dà risposte scontate, ma ti aiuta a vedere i pattern.\n\nRaccontami di più: c' + "'" + 'è un evento specifico che ha scatenato questa riflessione?'
+                ];
+                addMsg('ai', replies[Math.floor(Math.random()*replies.length)]);
+                credits = Math.max(0, credits - 1);
+                updateUI();
+            }, 1200);
+        }
+
+        function addMsg(sender, text) {
+            const box = document.getElementById('chatMessages');
+            const div = document.createElement('div');
+            div.className = 'msg msg-' + sender;
+            const pText = text.replace(/\\n/g, '</p><p>');
+            div.innerHTML = '<p>' + pText + '</p><div class="msg-meta">' + (sender==='ai'?'Luna':'Tu') + ' • ' + new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + '</div>';
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // UTILS
+        function showAlert(ctx, type, msg) {
+            if (ctx === 'auth') {
+                const el = type==='error'?document.getElementById('authError'):document.getElementById('authSuccess');
+                el.textContent = msg; el.classList.add('active');
+                return;
+            }
+        }
+
+        function hideAlerts() {
+            document.querySelectorAll('.alert').forEach(a => a.classList.remove('active'));
+        }
+    </script>
+</body>
+</html>
     <script>
-        // ============================================
-        // CONFIGURAZIONE SUPABASE — MODIFICA QUI
-        // ============================================
+        // CONFIGURAZIONE SUPABASE - MODIFICA QUI
         const SUPABASE_URL = 'https://yyserqquzqoywtqrqvlk.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5c2VycXF1enFveXd0cXJxdmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODgzMzAsImV4cCI6MjA5NDQ2NDMzMH0.FJWeBOUKX69Fk4BvFh0RSU92LiKj2e7ZoFczbkbw1dY';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5c2VycXF1enFveXd0cXJxdmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODgzMzAsImV4cCI6MjA5NDQ2NDMzMH0.FJWeBOUKX69Fk4BvFh0RSU92LiKj2e7ZoFczbkbw1dY
+';
 
         let supabase = null;
         let currentUser = null;
         let currentProfile = null;
         let credits = 0;
         let chatMode = 'chat';
-        let pendingAction = null;
+        let lastPage = 'home';
+        let currentHoroscopeSign = null;
 
-        // Inizializzazione
         document.addEventListener('DOMContentLoaded', async () => {
             if (SUPABASE_URL.includes('YOUR_PROJECT_ID')) {
-                console.warn('⚠️ Configura SUPABASE_URL e SUPABASE_ANON_KEY nello script');
+                console.warn('Configura SUPABASE_URL e SUPABASE_ANON_KEY nello script');
                 return;
             }
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1067,9 +681,7 @@
             else { updateUI(); }
         });
 
-        // ============================================
         // AUTH
-        // ============================================
         async function handleRegister(e) {
             e.preventDefault();
             const btn = document.getElementById('regSubmitBtn');
@@ -1078,31 +690,37 @@
             btn.disabled = true;
             hideAlerts();
             try {
+                const name = document.getElementById('regName').value.trim();
                 const email = document.getElementById('regEmail').value.trim();
                 const password = document.getElementById('regPassword').value;
+                const gender = document.getElementById('regGender').value;
+                const country = document.getElementById('regCountry').value;
                 const birthDate = document.getElementById('regBirthDate').value;
                 const birthTime = document.getElementById('regBirthTime').value;
                 const birthPlace = document.getElementById('regBirthPlace').value.trim();
 
                 const { data: authData, error: authErr } = await supabase.auth.signUp({
                     email, password,
-                    options: { data: { full_name: email.split('@')[0] } }
+                    options: { data: { full_name: name } }
                 });
                 if (authErr) throw authErr;
 
                 await supabase.from('profiles').insert([{
                     id: authData.user.id,
-                    email, birth_date: birthDate || null,
+                    email, full_name: name,
+                    gender: gender || null,
+                    country: country || null,
+                    birth_date: birthDate || null,
                     birth_time: birthTime || null,
                     birth_place: birthPlace || null,
                     credits: 10
                 }]);
 
-                showAlert('auth', 'success', '✅ Account creato! Controlla la tua email per confermare, poi accedi.');
+                showAlert('auth', 'success', 'Account creato! Controlla la tua email per confermare, poi accedi.');
                 document.getElementById('registerForm').reset();
                 setTimeout(() => switchAuthTab('login'), 1500);
             } catch (err) {
-                showAlert('auth', 'error', '❌ ' + (err.message || 'Errore registrazione'));
+                showAlert('auth', 'error', (err.message || 'Errore registrazione'));
             } finally { btn.innerHTML = orig; btn.disabled = false; }
         }
 
@@ -1121,9 +739,9 @@
                 currentUser = data.user;
                 await loadUserData();
                 closeAuthModal();
-                if (pendingAction) { pendingAction(); pendingAction = null; }
+                showPage('personalized');
             } catch (err) {
-                showAlert('auth', 'error', '❌ ' + (err.message || 'Credenziali non valide'));
+                showAlert('auth', 'error', (err.message || 'Credenziali non valide'));
             } finally { btn.innerHTML = orig; btn.disabled = false; }
         }
 
@@ -1134,9 +752,7 @@
             showPage('home');
         }
 
-        // ============================================
         // DATI UTENTE
-        // ============================================
         async function loadUserData() {
             if (!currentUser) return;
             const { data: profile, error } = await supabase
@@ -1145,7 +761,7 @@
             currentProfile = profile || { id: currentUser.id, email: currentUser.email, credits: 0 };
             credits = currentProfile.credits || 0;
             updateUI();
-            populateProfileForm();
+            updatePersonalizedPage();
         }
 
         function updateUI() {
@@ -1154,13 +770,11 @@
             document.getElementById('logoutBtn').classList.toggle('hidden', !isLoggedIn);
             document.getElementById('userAvatar').classList.toggle('active', isLoggedIn);
             document.getElementById('creditsPill').classList.toggle('active', isLoggedIn);
+            document.getElementById('cartBtn').classList.toggle('active', isLoggedIn);
 
             if (isLoggedIn && currentUser) {
-                const initial = currentUser.email.charAt(0).toUpperCase();
+                const initial = (currentProfile?.full_name || currentUser.email).charAt(0).toUpperCase();
                 document.getElementById('userAvatar').textContent = initial;
-                document.getElementById('profileAvatarBig').textContent = initial;
-                document.getElementById('profileName').textContent = currentUser.email.split('@')[0];
-                document.getElementById('profileEmail').textContent = currentUser.email;
                 document.getElementById('creditsVal').textContent = credits;
                 const dot = document.getElementById('creditsDot');
                 dot.className = 'credits-dot';
@@ -1169,59 +783,49 @@
             }
         }
 
-        function populateProfileForm() {
+        function updatePersonalizedPage() {
             if (!currentProfile) return;
-            if (currentProfile.birth_date) document.getElementById('profileBirthDate').value = currentProfile.birth_date;
-            if (currentProfile.birth_time) document.getElementById('profileBirthTime').value = currentProfile.birth_time;
-            if (currentProfile.birth_place) document.getElementById('profileBirthPlace').value = currentProfile.birth_place;
-            if (currentProfile.birth_lat) document.getElementById('profileLat').value = currentProfile.birth_lat;
-            if (currentProfile.birth_lng) document.getElementById('profileLng').value = currentProfile.birth_lng;
+            const name = currentProfile.full_name || (currentUser ? currentUser.email.split('@')[0] : 'Utente');
+            document.getElementById('personalName').textContent = 'Benvenuto, ' + name;
 
-            if (currentProfile.natal_chart_calculated) {
-                document.getElementById('natalCard').innerHTML = `
-                    <div style="font-size:2rem; margin-bottom:0.5rem;">✦</div>
-                    <p style="font-weight:600; color:var(--text);">Tema natale calcolato</p>
-                    <p style="font-size:0.875rem; color:var(--text-muted); margin-top:0.5rem;">
-                        ${currentProfile.sun_sign || 'Sole'} in ${currentProfile.sun_house || 'casa'} • Ascendente ${currentProfile.ascendant || '--'}
-                    </p>
-                    <p style="font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">
-                        Calcolato: ${new Date(currentProfile.natal_chart_calculated).toLocaleDateString('it-IT')}
-                    </p>
-                `;
-                document.getElementById('natalCard').classList.remove('empty');
-            }
+            const bd = currentProfile.birth_date ? new Date(currentProfile.birth_date).toLocaleDateString('it-IT', {day:'numeric', month:'long', year:'numeric'}) : '--';
+            const bt = currentProfile.birth_time || '--';
+            const bp = currentProfile.birth_place || '--';
+            const country = currentProfile.country || '';
+            document.getElementById('personalDetails').textContent = 'Nato il ' + bd + ' • ' + bt + ' • ' + bp + (country ? ', ' + country : '');
+
+            const sign = getSunSign(currentProfile.birth_date);
+            document.getElementById('personalSignIcon').textContent = getSignSymbol(sign);
+            document.getElementById('natalWheel').textContent = getSignSymbol(sign);
         }
 
-        async function handleProfileUpdate(e) {
-            e.preventDefault();
-            if (!currentUser) { showAlert('profile', 'error', 'Devi essere autenticato.'); return; }
-            const btn = document.getElementById('profileSaveBtn');
-            const orig = btn.innerHTML;
-            btn.innerHTML = '<span class="loading"></span> Salvataggio...';
-            btn.disabled = true;
-            hideAlerts();
-            try {
-                const updates = {
-                    birth_date: document.getElementById('profileBirthDate').value || null,
-                    birth_time: document.getElementById('profileBirthTime').value || null,
-                    birth_place: document.getElementById('profileBirthPlace').value.trim() || null,
-                    birth_lat: document.getElementById('profileLat').value.trim() || null,
-                    birth_lng: document.getElementById('profileLng').value.trim() || null,
-                    updated_at: new Date().toISOString()
-                };
-                const { error } = await supabase.from('profiles').update(updates).eq('id', currentUser.id);
-                if (error) throw error;
-                currentProfile = { ...currentProfile, ...updates };
-                showAlert('profile', 'success', '✅ Dati salvati! Il tema natale verrà calcolato automaticamente nel prossimo step.');
-            } catch (err) {
-                showAlert('profile', 'error', '❌ ' + (err.message || 'Errore salvataggio'));
-            } finally { btn.innerHTML = orig; btn.disabled = false; }
+        function getSunSign(dateStr) {
+            if (!dateStr) return 'Scorpione';
+            const d = new Date(dateStr);
+            const day = d.getDate();
+            const month = d.getMonth() + 1;
+            if ((month===3&&day>=21)||(month===4&&day<=19)) return 'Ariete';
+            if ((month===4&&day>=20)||(month===5&&day<=20)) return 'Toro';
+            if ((month===5&&day>=21)||(month===6&&day<=20)) return 'Gemelli';
+            if ((month===6&&day>=21)||(month===7&&day<=22)) return 'Cancro';
+            if ((month===7&&day>=23)||(month===8&&day<=22)) return 'Leone';
+            if ((month===8&&day>=23)||(month===9&&day<=22)) return 'Vergine';
+            if ((month===9&&day>=23)||(month===10&&day<=22)) return 'Bilancia';
+            if ((month===10&&day>=23)||(month===11&&day<=21)) return 'Scorpione';
+            if ((month===11&&day>=22)||(month===12&&day<=21)) return 'Sagittario';
+            if ((month===12&&day>=22)||(month===1&&day<=19)) return 'Capricorno';
+            if ((month===1&&day>=20)||(month===2&&day<=18)) return 'Acquario';
+            return 'Pesci';
         }
 
-        // ============================================
+        function getSignSymbol(sign) {
+            const map = {Ariete:'♈',Toro:'♉',Gemelli:'♊',Cancro:'♋',Leone:'♌',Vergine:'♍',Bilancia:'♎',Scorpione:'♏',Sagittario:'♐',Capricorno:'♑',Acquario:'♒',Pesci:'♓'};
+            return map[sign] || '✦';
+        }
+
         // NAVIGAZIONE
-        // ============================================
         function showPage(page) {
+            if (page !== 'chat') lastPage = page;
             document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             const target = document.getElementById('page-' + page);
@@ -1231,9 +835,17 @@
             window.scrollTo(0, 0);
         }
 
-        function requireAuth(callback) {
-            if (currentUser) { callback(); }
-            else { pendingAction = callback; openAuthModal(); }
+        function goHome() { showPage('home'); }
+
+        function requireAuthOrModal() {
+            if (currentUser) { showPage('personalized'); }
+            else { openAuthModal(); }
+        }
+
+        function requireAuthOrModalForChat(mode) {
+            chatMode = mode;
+            if (currentUser) { showPage('chat'); }
+            else { openAuthModal(); }
         }
 
         function openAuthModal() {
@@ -1244,7 +856,6 @@
         function closeAuthModal() {
             document.getElementById('authModal').classList.remove('active');
             document.body.style.overflow = '';
-            pendingAction = null;
             hideAlerts();
         }
 
@@ -1262,24 +873,107 @@
             document.getElementById('mode-voice').classList.toggle('active', mode === 'voice');
         }
 
-        // ============================================
-        // CHAT MOCK
-        // ============================================
-        function startChat(topic) {
-            requireAuth(() => {
-                showPage('chat');
-                const labels = { amore:'Amore', denaro:'Denaro', lavoro:'Lavoro', salute:'Salute', amici:'Amici', famiglia:'Famiglia', viaggi:'Viaggi', partner:'Partner', carriera:'Carriera' };
-                addMsg('user', `Vorrei parlare di ${labels[topic]}`);
-                setTimeout(() => addMsg('ai', `Capisco il tuo interesse per ${labels[topic]}. Prima di entrare nel vivo, vorrei ricordarti che l'astrologia è uno strumento di consapevolezza, non una sentenza.\n\nQuando sei pronto, raccontami la tua situazione specifica: cosa ti porta a cercare orientamento in questo ambito oggi?`), 600);
+        // HOROSCOPE PAGE
+        function showHoroscopePage(sign, period, element, ruler) {
+            currentHoroscopeSign = sign;
+            document.getElementById('horoSignIcon').textContent = getSignSymbol(sign);
+            document.getElementById('horoSignName').textContent = sign;
+            document.getElementById('horoSignDetails').textContent = period + ' • ' + element + ' • ' + ruler;
+
+            const tags = {
+                'Ariete': ['Coraggioso','Determinato','Impulsivo','Leader'],
+                'Toro': ['Paziente','Leale','Testardo','Sensuale'],
+                'Gemelli': ['Versatile','Curioso','Inquieto','Comunicativo'],
+                'Cancro': ['Sensibile','Protettivo','Moody','Intuitivo'],
+                'Leone': ['Generoso','Carismatico','Orgoglioso','Creativo'],
+                'Vergine': ['Analitico','Pratico','Perfezionista','Umile'],
+                'Bilancia': ['Diplomatico','Esteta','Indeciso','Socievole'],
+                'Scorpione': ['Intenso','Passionale','Misterioso','Trasformativo'],
+                'Sagittario': ['Ottimista','Avventuroso','Impulsivo','Filosofico'],
+                'Capricorno': ['Ambizioso','Disciplinato','Riservato','Pragmatico'],
+                'Acquario': ['Originale','Indipendente','Eccentrico','Umanitario'],
+                'Pesci': ['Empatico','Creativo','Sognatore','Compassionevole']
+            };
+            const tagRow = document.getElementById('horoTags');
+            tagRow.innerHTML = '';
+            (tags[sign] || []).forEach(t => {
+                const span = document.createElement('span');
+                span.className = 'tag';
+                span.textContent = t;
+                tagRow.appendChild(span);
+            });
+            showPage('horoscope');
+        }
+
+        function switchHoroTab(tab) {
+            ['day','week','month','year'].forEach(t => {
+                document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+                document.getElementById('horoText' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
             });
         }
 
-        function showHoroscope(sign) {
-            requireAuth(() => {
-                showPage('chat');
-                addMsg('user', `Cosa dicono le stelle per ${sign} oggi?`);
-                setTimeout(() => addMsg('ai', `Per ${sign}, oggi è un giorno di transizione. Il Sole forma un aspetto armonico che favorisce la comunicazione e la chiarezza mentale.\n\nC'è però un dettaglio personale che vorrei esplorare con te: il tuo tema natale mostra una sensibilità particolare in questo periodo. Vuoi che approfondiamo?`), 800);
+        // PERSONALIZED PAGE
+        function toggleAccordion(header, bodyId) {
+            const body = document.getElementById(bodyId);
+            const isOpen = body.classList.contains('open');
+            body.classList.toggle('open', !isOpen);
+            header.classList.toggle('open', !isOpen);
+        }
+
+        function openProfileEdit() {
+            alert('Modifica profilo - funzionalità in arrivo');
+        }
+
+        function showCompat(sign) {
+            alert('Compatibilità con ' + sign + ' - calcolo in arrivo');
+        }
+
+        function openCompatModal() {
+            document.getElementById('compatModal').classList.add('active');
+        }
+
+        function closeCompatModal() {
+            document.getElementById('compatModal').classList.remove('active');
+        }
+
+        function handleCompatSubmit(e) {
+            e.preventDefault();
+            closeCompatModal();
+            alert('Compatibilità calcolata! (funzionalità in arrivo)');
+        }
+
+        // LANGUAGE
+        function toggleLang() {
+            document.getElementById('langDropdown').classList.toggle('open');
+        }
+
+        function setLang(lang) {
+            const flags = {it:'἞E἟9',en:'἞C἞7',fr:'἞B἟7',de:'἞9἞A',es:'἞A἟8'};
+            document.getElementById('currentFlag').textContent = flags[lang] || '἞E἟9';
+            document.querySelectorAll('.lang-option').forEach(o => {
+                o.classList.toggle('active', o.dataset.lang === lang);
             });
+            document.getElementById('langDropdown').classList.remove('open');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.lang-dropdown')) {
+                document.getElementById('langDropdown').classList.remove('open');
+            }
+        });
+
+        // CHAT
+        function startCategoryChat(topic) {
+            showPage('chat');
+            const labels = {amore:'Amore',denaro:'Denaro',lavoro:'Lavoro',salute:'Salute',amici:'Amici',famiglia:'Famiglia',viaggi:'Viaggi',partner:'Partner',carriera:'Carriera'};
+            addMsg('user', 'Vorrei parlare di ' + labels[topic]);
+            setTimeout(() => addMsg('ai', 'Capisco il tuo interesse per ' + labels[topic] + '. Prima di entrare nel vivo, vorrei ricordarti che l'astrologia è uno strumento di consapevolezza, non una sentenza.
+
+Quando sei pronto, raccontami la tua situazione specifica: cosa ti porta a cercare orientamento in questo ambito oggi?'), 600);
+        }
+
+        function goBackFromChat() {
+            showPage(lastPage === 'chat' ? 'home' : lastPage);
         }
 
         function sendMessage() {
@@ -1292,9 +986,15 @@
             input.value = '';
             setTimeout(() => {
                 const replies = [
-                    `Capisco che questa situazione ti faccia sentire bloccato. Non è un caso: con il tuo Sole in ${currentProfile?.sun_sign || '---'} e la Luna che transita in questi giorni, c'è un'energia di ristrutturazione in atto.\n\nCosa ti spinge di più a cercare una risposta proprio oggi?`,
-                    `Interessante domanda. Dal punto di vista astrologico, stiamo attraversando un periodo dove Mercurio favorisce la riflessione profonda.\n\nVuoi che esploriamo insieme come questo transito si collega alla tua situazione personale?`,
-                    `Sento la profondità della tua domanda. L'astrologia non dà risposte scontate, ma ti aiuta a vedere i pattern.\n\nRaccontami di più: c'è un evento specifico che ha scatenato questa riflessione?`
+                    'Capisco che questa situazione ti faccia sentire bloccato. Non è un caso: con il tuo Sole in ' + (currentProfile?.sun_sign || '---') + ' e la Luna che transita in questi giorni, c'è un'energia di ristrutturazione in atto.
+
+Cosa ti spinge di più a cercare una risposta proprio oggi?',
+                    'Interessante domanda. Dal punto di vista astrologico, stiamo attraversando un periodo dove Mercurio favorisce la riflessione profonda.
+
+Vuoi che esploriamo insieme come questo transito si collega alla tua situazione personale?',
+                    'Sento la profondità della tua domanda. L'astrologia non dà risposte scontate, ma ti aiuta a vedere i pattern.
+
+Raccontami di più: c'è un evento specifico che ha scatenato questa riflessione?'
                 ];
                 addMsg('ai', replies[Math.floor(Math.random()*replies.length)]);
                 credits = Math.max(0, credits - 1);
@@ -1305,32 +1005,24 @@
         function addMsg(sender, text) {
             const box = document.getElementById('chatMessages');
             const div = document.createElement('div');
-            div.className = `msg msg-${sender}`;
-            div.innerHTML = `<p>${esc(text).replace(/\\n/g,'</p><p>')}</p><div class="msg-meta">${sender==='ai'?'Luna':'Tu'} • ${new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'})}</div>`;
+            div.className = 'msg msg-' + sender;
+            const pText = text.replace(/\n/g, '</p><p>');
+            div.innerHTML = '<p>' + pText + '</p><div class="msg-meta">' + (sender==='ai'?'Luna':'Tu') + ' • ' + new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + '</div>';
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
         }
 
-        // ============================================
         // UTILS
-        // ============================================
         function showAlert(ctx, type, msg) {
             if (ctx === 'auth') {
                 const el = type==='error'?document.getElementById('authError'):document.getElementById('authSuccess');
                 el.textContent = msg; el.classList.add('active');
                 return;
             }
-            const el = document.getElementById('profileAlert');
-            el.textContent = msg; el.className = `alert alert-${type} active`;
         }
 
         function hideAlerts() {
             document.querySelectorAll('.alert').forEach(a => a.classList.remove('active'));
-        }
-
-        function esc(t) {
-            const d = document.createElement('div');
-            d.textContent = t; return d.innerHTML;
         }
     </script>
 </body>
