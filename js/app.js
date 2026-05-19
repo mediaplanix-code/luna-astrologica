@@ -1,7 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
 // Utente loggato atterra SEMPRE su Pagina Personalizzata
-// Visitatore atterra su Home
 // FIX: non forzare redirect a personalized quando cambiano crediti
 // ============================================================
 
@@ -23,7 +22,8 @@ import {
     showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import {
-    setChatMode, startCategoryChat, sendMessage, goBackFromChat
+    setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
+    sendMessage, goBackFromChat
 } from './chat.js';
 
 let state = {
@@ -165,6 +165,14 @@ function handleStartCategoryChat(topic) {
     startCategoryChat(topic);
 }
 
+function handleStartChatAbout(topic) {
+    startChatAbout(topic);
+}
+
+function handleStartVoiceAbout(topic) {
+    startVoiceAbout(topic);
+}
+
 function handleGoBackFromChat() {
     goBackFromChat(state.lastPage);
 }
@@ -219,6 +227,8 @@ window.app = {
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
+    startChatAbout: handleStartChatAbout,
+    startVoiceAbout: handleStartVoiceAbout,
     goBackFromChat: handleGoBackFromChat,
     showPaymentsPage,
     toggleLang,

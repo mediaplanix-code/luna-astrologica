@@ -30,7 +30,6 @@ export function renderHeader(isLoggedIn, userData) {
                     <button class="lang-option" onclick="window.app.setLang('es')" data-lang="es"><span>🇪🇸</span> Español</button>
                 </div>
             </div>
-            <button class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn">🛒<<span class="cart-badge" id="cartBadge" style="display:none;">0</span></button>
             <div class="credits-pill ${isLoggedIn ? 'active' : ''}" id="creditsPill" onclick="window.app.showPaymentsPage()" style="cursor:pointer;">
                 <div class="credits-dot" id="creditsDot"></div>
                 <span id="creditsVal">${userData?.credits || 0}</span>
@@ -192,7 +191,7 @@ export function renderHoroscopePage(signName) {
     setHTML("page-horoscope", html);
 }
 
-// ===== RENDER CHAT PAGE =====
+// ===== RENDER CHAT PAGE (UNA SOLA DOMANDA/RISPOSTA, NO STORICO) =====
 export function renderChatPage() {
     const html = `
         <div class="chat-header">
@@ -200,7 +199,7 @@ export function renderChatPage() {
             <div class="chat-title">💬 Luna Astrologica</div>
         </div>
         <div class="chat-messages" id="chatMessages">
-            <div class="msg msg-ai">
+            <div class="msg msg-ai" id="currentExchange">
                 <p>Ciao! Sono Luna, la tua astrologa personale. Come posso aiutarti oggi?</p>
                 <div class="msg-meta">Luna • ora</div>
             </div>
@@ -421,6 +420,10 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-wheel">
                 <div class="natal-wheel"><div class="wheel-placeholder" id="natalWheel">${symbol}</div></div>
+                <div style="text-align:center; margin-top:0.5rem;">
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('ruota')">💬 Chiedi a Luna</button>
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('ruota')">🎙️ Spiegami</button>
+                </div>
                 <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem;">Tema natale calcolato con effemeridi svizzere</p>
             </div>
         </div>
@@ -443,6 +446,10 @@ export function renderPersonalizedPage(profile, user) {
                     <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos">Pesci 24°</span></div>
                     <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos">Capricorno 28°</span></div>
                 </div>
+                <div style="text-align:center; margin-top:0.75rem;">
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('pianeti')">💬 Chiedi a Luna</button>
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('pianeti')">🎙️ Spiegami</button>
+                </div>
             </div>
         </div>
 
@@ -461,6 +468,10 @@ export function renderPersonalizedPage(profile, user) {
                         </div>
                     `).join("")}
                 </div>
+                <div style="text-align:center; margin-top:0.75rem;">
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('case')">💬 Chiedi a Luna</button>
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('case')">🎙️ Spiegami</button>
+                </div>
             </div>
         </div>
 
@@ -475,6 +486,10 @@ export function renderPersonalizedPage(profile, user) {
                     <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Luna quadrata Sole</strong> — Leone/Scorpione • Tensione tra espressione emotiva e identità.</p>
                     <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Marte trigono Giove</strong> — Capricorno/Pesci • Energia costruttiva e ambizione.</p>
                 </div>
+                <div style="text-align:center; margin-top:0.75rem;">
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('aspetti')">💬 Chiedi a Luna</button>
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('aspetti')">🎙️ Spiegami</button>
+                </div>
             </div>
         </div>
 
@@ -487,6 +502,10 @@ export function renderPersonalizedPage(profile, user) {
                 <div style="font-size:0.8125rem; line-height:1.7;">
                     <p><strong style="color:var(--gold);">Giove in Gemelli</strong> transita nella tua Casa VII — Periodo favorevole per nuove partnership.</p>
                     <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno in Pesci</strong> transita nella tua Casa II — Ristrutturazione delle finanze.</p>
+                </div>
+                <div style="text-align:center; margin-top:0.75rem;">
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('transiti')">💬 Chiedi a Luna</button>
+                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('transiti')">🎙️ Spiegami</button>
                 </div>
             </div>
         </div>
