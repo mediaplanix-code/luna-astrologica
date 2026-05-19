@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     updateUI();
 
-    // Se loggato + profilo esiste → Personalized. Altrimenti Home.
     const user = getCurrentUser();
     const profile = getCurrentProfile();
     if (user && profile?.id) {
@@ -57,7 +56,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
-    // Quando l'utente si logga (anche dopo verifica email), va su Personalized
     if (authState.isLoggedIn && authState.profile?.id) {
         renderPersonalizedPage(authState.profile, authState.user);
         showPage("personalized");

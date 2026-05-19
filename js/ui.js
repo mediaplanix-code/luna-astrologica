@@ -30,7 +30,7 @@ export function renderHeader(isLoggedIn, userData) {
                     <button class="lang-option" onclick="window.app.setLang('es')" data-lang="es"><span>🇪🇸</span> Español</button>
                 </div>
             </div>
-            <button class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn">🛒<span class="cart-badge" id="cartBadge">0</span></button>
+            <button class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn">🛒<<span class="cart-badge" id="cartBadge">0</span></button>
             <div class="credits-pill ${isLoggedIn ? 'active' : ''}" id="creditsPill">
                 <div class="credits-dot" id="creditsDot"></div>
                 <span id="creditsVal">${userData?.credits || 0}</span>
@@ -213,7 +213,7 @@ export function renderChatPage() {
     setHTML("page-chat", html);
 }
 
-// ===== RENDER AUTH MODAL (FORM COMPLETO) =====
+// ===== RENDER AUTH MODAL =====
 export function renderAuthModal() {
     const html = `
         <div class="modal">
@@ -493,10 +493,10 @@ export function showPage(pageId, lastPageRef) {
     document.querySelectorAll(".page-section").forEach(s => s.classList.remove("active"));
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 
-    const target = $("page-" + pageId);
+    const target = document.getElementById("page-" + pageId);
     if (target) target.classList.add("active");
 
-    const nav = $("nav-" + pageId);
+    const nav = document.getElementById("nav-" + pageId);
     if (nav) nav.classList.add("active");
 
     window.scrollTo(0, 0);
