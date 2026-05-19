@@ -1,4 +1,4 @@
-// // ============================================================
+// ============================================================
 // CHAT.JS — Motore conversazionale
 // UNA SOLA DOMANDA E UNA SOLA RISPOSTA — NO STORICO
 // ============================================================
@@ -23,7 +23,6 @@ export function startCategoryChat(topic) {
     if (window.app) window.app.showPage("chat");
     const label = CATEGORY_LABELS[topic] || topic;
     
-    // Reset messaggio iniziale con contesto
     const box = document.getElementById("chatMessages");
     if (box) {
         box.innerHTML = `
@@ -101,11 +100,11 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
 
     // Verifica crediti
     if (credits <= 0) {
-        showSingleExchange("⚡ I tuoi crediti sono esauriti. Ricarica per continuare.");
+        showExchange("⚡ I tuoi crediti sono esauriti. Ricarica per continuare.");
         return;
     }
 
-    // Sostituisci il contenuto con DOMANDA + RISPOSTA (una sola volta)
+    // Genera risposta
     const sunSign = currentProfile?.sun_sign || getSunSign(currentProfile?.birth_date) || "---";
 
     const replies = [
@@ -126,8 +125,8 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
 
     const reply = replies[Math.floor(Math.random() * replies.length)];
 
-    // SOSTITUISCI il contenuto, non aggiungere
-    showSingleExchange(reply, text);
+    // SOSTITUISCI con domanda + risposta
+    showExchange(reply, text);
 
     // Consuma credito
     if (onCreditUsed) onCreditUsed();
@@ -137,7 +136,7 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
 }
 
 // ===== MOSTRA UNICA DOMANDA/RISPOSTA =====
-function showSingleExchange(aiReply, userText) {
+function showExchange(aiReply, userText) {
     const box = document.getElementById("chatMessages");
     if (!box) return;
 
@@ -145,7 +144,6 @@ function showSingleExchange(aiReply, userText) {
         hour: "2-digit", minute: "2-digit"
     });
 
-    // SOSTITUISCI tutto con una sola conversazione
     box.innerHTML = `
         <div class="msg msg-user">
             <p>${userText || "..."}</p>
@@ -161,7 +159,7 @@ function showSingleExchange(aiReply, userText) {
 }
 
 // ===== MOSTRA SOLO MESSAGGIO AI (per errori) =====
-function showSingleExchange(aiReply) {
+function showExchange(aiReply) {
     const box = document.getElementById("chatMessages");
     if (!box) return;
 
