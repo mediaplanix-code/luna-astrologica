@@ -30,8 +30,8 @@ export function renderHeader(isLoggedIn, userData) {
                     <button class="lang-option" onclick="window.app.setLang('es')" data-lang="es"><span>🇪🇸</span> Español</button>
                 </div>
             </div>
-            <button class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn">🛒<<span class="cart-badge" id="cartBadge">0</span></button>
-            <div class="credits-pill ${isLoggedIn ? 'active' : ''}" id="creditsPill">
+            <button class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn">🛒<<span class="cart-badge" id="cartBadge" style="display:none;">0</span></button>
+            <div class="credits-pill ${isLoggedIn ? 'active' : ''}" id="creditsPill" onclick="window.app.showPaymentsPage()" style="cursor:pointer;">
                 <div class="credits-dot" id="creditsDot"></div>
                 <span id="creditsVal">${userData?.credits || 0}</span>
             </div>
@@ -379,12 +379,39 @@ export function renderPersonalizedPage(profile, user) {
             <button class="compat-pill" onclick="window.app.showCompat('Leone')"><span class="compat-icon">♌</span> Leone</button>
             <button class="compat-pill" onclick="window.app.showCompat('Toro')"><span class="compat-icon">♉</span> Toro</button>
             <button class="compat-pill" onclick="window.app.showCompat('Acquario')"><span class="compat-icon">♒</span> Acquario</button>
-            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">➕</span> Altro</button>
+            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">💞</span> Affinità</button>
         </div>
-        <div class="personalize-btn">
-            <button class="btn-gold btn-gold-outline" onclick="window.app.openProfileEdit()">
-                <span style="font-size:0.875rem; margin-right:0.25rem;">➕</span> Personalizza
-            </button>
+
+        <div style="padding: 0 1rem; margin-top:1rem;">
+            <div class="section-title" style="margin-top:0;">📅 IL TUO OROSCOPO PERSONALIZZATO</div>
+            <div class="horo-tabs" style="margin-bottom:0.75rem;">
+                <button class="horo-tab active" onclick="window.app.switchPersonalHoroTab('day')" id="ph-tab-day">📅 Giorno</button>
+                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('week')" id="ph-tab-week">📆 Settimana</button>
+                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('month')" id="ph-tab-month">🗓️ Mese</button>
+                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('year')" id="ph-tab-year">📊 Anno</button>
+            </div>
+            <div class="horo-content" style="margin-bottom:1.5rem;">
+                <div class="horo-text" id="ph-text-day">
+                    <p><strong style="color:var(--gold);">✨ Il tuo oroscopo di oggi, ${name}</strong></p>
+                    <p style="margin-top:0.75rem;">Con il tuo Sole in ${sign} e la Luna che transita oggi in una posizione favorevole, è un giorno ideale per prendere decisioni legate al lavoro. La tua energia comunicativa è al massimo.</p>
+                    <p style="margin-top:0.75rem;">In amore, Venere sorride al tuo segno. Se sei in coppia, un gesto spontaneo riscalderà la relazione. Se sei single, un incontro casuale potrebbe sorprenderti.</p>
+                </div>
+                <div class="horo-text hidden" id="ph-text-week">
+                    <p><strong style="color:var(--gold);">✨ La tua settimana</strong></p>
+                    <p style="margin-top:0.75rem;">Questa settimana Giove transita in una posizione favorevole rispetto al tuo segno solare. Le opportunità professionali si moltiplicano.</p>
+                    <p style="margin-top:0.75rem;">Attenzione alla Luna piena di mercoledì: potrebbe portare chiarimenti in una relazione importante.</p>
+                </div>
+                <div class="horo-text hidden" id="ph-text-month">
+                    <p><strong style="color:var(--gold);">✨ Il tuo mese</strong></p>
+                    <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività. È il momento di lanciare progetti rimandati.</p>
+                    <p style="margin-top:0.75rem;">Saturno ti invita alla prudenza finanziaria nei primi 10 giorni. Poi Giove apre una finestra fortunata.</p>
+                </div>
+                <div class="horo-text hidden" id="ph-text-year">
+                    <p><strong style="color:var(--gold);">✨ Il tuo anno</strong></p>
+                    <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Con il tuo segno, sarai chiamato a riscoprire la tua autenticità.</p>
+                    <p style="margin-top:0.75rem;">Nel lavoro, aspettati una svolta importante tra la primavera e l'estate. Le collaborazioni internazionali sono favorite.</p>
+                </div>
+            </div>
         </div>
 
         <div class="accordion">
@@ -465,25 +492,17 @@ export function renderPersonalizedPage(profile, user) {
         </div>
 
         <div style="padding: 0 1rem; margin-top:1.5rem;">
-            <div class="mode-toggle" style="margin: 0 0 0.75rem;">
-                <button class="mode-btn active" onclick="window.app.showPage('chat')">💬 Chat</button>
-                <button class="mode-btn" onclick="window.app.showPage('chat')">🎙️ Voce</button>
-            </div>
-            <div class="grid" style="padding: 0;">
-                ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.startCategoryChat('${key}')">
-                        <div class="card-icon">${getCategoryIcon(key)}</div>
-                        <div class="card-label">${label}</div>
-                    </div>
-                `).join("")}
+            <div class="banner-cta" style="margin: 0 0 0.75rem;">
+                <button class="btn-gold" onclick="window.app.showPage('chat')">💬 PARLA CON LE TUE STELLE</button>
             </div>
         </div>
-        <div style="padding: 0 1rem; margin-top:1rem;">
-            <button class="btn-gold" style="width:100%;" onclick="window.app.showPage('chat')">PARLA CON LE TUE STELLE</button>
-        </div>
-        <div style="padding: 1rem; margin-top:1.5rem; border-top:1px solid var(--border);">
-            <button class="btn-gold btn-gold-outline" style="width:100%; color:var(--danger); border-color:rgba(239,68,68,0.3);" onclick="window.app.handleLogout()">🚪 Disconnetti account</button>
-        </div>
+
+        <footer class="footer">
+            <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
+            <p>Utilizzando il servizio accetti i Termini di Servizio e la Privacy Policy.</p>
+            <div class="footer-links"><a href="#">Termini</a><a href="#">Privacy</a><a href="#">Contatti</a></div>
+            <p style="margin-top:0.75rem; font-size:0.625rem;">© 2024 Luna Astrologica</p>
+        </footer>
     `;
     setHTML("page-personalized", html);
 }

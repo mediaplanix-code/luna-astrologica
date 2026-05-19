@@ -2,6 +2,7 @@
 // APP.JS — Orchestratore principale
 // Utente loggato atterra SEMPRE su Pagina Personalizzata
 // Visitatore atterra su Home
+// FIX: non forzare redirect a personalized quando cambiano crediti
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -31,6 +32,8 @@ let state = {
     chatMode: "chat",
 };
 
+let isFirstAuthCheck = true;
+
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
     renderCompatModal();
@@ -56,7 +59,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
-    if (authState.isLoggedIn && authState.profile?.id) {
+    if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
+        isFirstAuthCheck = false;
         renderPersonalizedPage(authState.profile, authState.user);
         showPage("personalized");
     }
@@ -165,6 +169,10 @@ function handleGoBackFromChat() {
     goBackFromChat(state.lastPage);
 }
 
+function showPaymentsPage() {
+    alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
+}
+
 function toggleLang() {
     const dropdown = $("langDropdown");
     if (dropdown) dropdown.classList.toggle("open");
@@ -212,6 +220,16 @@ window.app = {
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
     goBackFromChat: handleGoBackFromChat,
+    showPaymentsPage,
     toggleLang,
     setLang,
+    switchPersonalHoroTab: (tab) => {
+        const tabs = ["day", "week", "month", "year"];
+        tabs.forEach(t => {
+            const tabBtn = document.getElementById("ph-tab-" + t);
+            const textEl = document.getElementById("ph-text-" + t);
+            if (tabBtn) tabBtn.classList.toggle("active", t === tab);
+            if (textEl) textEl.classList.toggle("hidden", t !== tab);
+        });
+    },
 };
