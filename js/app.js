@@ -4,6 +4,7 @@
 // FIX: non forzare redirect a personalized quando cambiano crediti
 // ============================================================
 
+import { startStripeCheckout, showPaymentsModal, closePaymentsModal } from './payments.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -230,7 +231,8 @@ window.app = {
     startChatAbout: handleStartChatAbout,
     startVoiceAbout: handleStartVoiceAbout,
     goBackFromChat: handleGoBackFromChat,
-    showPaymentsPage,
+    showPaymentsPage: showPaymentsModal,
+    closePaymentsModal,
     toggleLang,
     setLang,
     switchPersonalHoroTab: (tab) => {

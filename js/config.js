@@ -1,12 +1,11 @@
 // ============================================================
 // CONFIG.JS — Unico punto di configurazione
-// Modifica SOLO qui le chiavi e i parametri
 // ============================================================
 
 export const CONFIG = {
     // Supabase
     SUPABASE_URL: "https://yyserqquzqoywtqrqvlk.supabase.co",
-    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5c2VycXF1enFveXd0cXJxdmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODgzMzAsImV4cCI6MjA5NDQ2NDMzMH0.FJWeBOUKX69Fk4BvFh0RSU92LiKj2e7ZoFczbkbw1dY", // <-- INSERISCI QUI
+    SUPABASE_ANON_KEY: "YOUR_ANON_KEY", // <-- INSERISCI QUI
 
     // App
     APP_NAME: "Luna Astrologica",
@@ -17,11 +16,18 @@ export const CONFIG = {
     CHAT_MAX_HISTORY: 50,
     CREDITS_PER_MESSAGE: 1,
 
+    // Stripe (placeholder per futuro)
+    STRIPE_PUBLISHABLE_KEY: "pk_test_YOUR_KEY", // <-- INSERISCI QUI per produzione
+    STRIPE_PRICE_ID: "price_YOUR_PRICE_ID",     // <-- INSERISCI QUI per produzione
+
+    // Worker API
+    WORKER_URL: "https://luna-astrologica-api.mediaplanix.workers.dev",
+
     // Feature flags
     FEATURES: {
         REAL_NATAL_CHART: false,
         AI_CHAT: false,
-        STRIPE_PAYMENTS: false,
+        STRIPE_PAYMENTS: false,  // <-- metti true quando hai Stripe
         TELEGRAM_BOT: false,
         VOICE_MODE: false,
     }
@@ -74,16 +80,14 @@ export const LANGUAGE_FLAGS = {
     it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸"
 };
 
-// ============================================================
-// STRUTTURA TABELLA PROFILES (per riferimento)
-// ============================================================
+// Schema tabella profiles per riferimento
 export const PROFILE_SCHEMA = {
     id:                      { type: "uuid", nullable: false },
     email:                   { type: "text", nullable: true },
     full_name:               { type: "text", nullable: true },
     birth_date:              { type: "date", nullable: false },
     birth_time:              { type: "time with time zone", nullable: true },
-    birth_city:              { type: "text", nullable: false },  // <-- USA QUESTO, non birth_place
+    birth_city:              { type: "text", nullable: false },
     birth_country:           { type: "text", nullable: false },
     birth_latitude:          { type: "numeric", nullable: true },
     birth_longitude:         { type: "numeric", nullable: true },
@@ -101,8 +105,8 @@ export const PROFILE_SCHEMA = {
     event_alerts_enabled:    { type: "boolean", nullable: true, default: true },
     created_at:              { type: "timestamp with time zone", nullable: true, default: "now()" },
     updated_at:              { type: "timestamp with time zone", nullable: true, default: "now()" },
-    birth_place:             { type: "text", nullable: true },  // legacy, usa birth_city
+    birth_place:             { type: "text", nullable: true },
     gender:                  { type: "text", nullable: true },
-    country:                 { type: "text", nullable: true },  // legacy, usa birth_country
+    country:                 { type: "text", nullable: true },
     credits:                 { type: "integer", nullable: true, default: 10 },
 };
