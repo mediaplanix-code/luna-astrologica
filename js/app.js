@@ -1,11 +1,11 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// Collega tutti i moduli, gestisce stato globale e navigazione
-// È l'unico file che tocca window.app
+// Utente loggato atterra SEMPRE su Pagina Personalizzata
+// Visitatore atterra su Home
 // ============================================================
 
 import { CONFIG } from './config.js';
-import { $, hideAlerts, scrollToTop } from './utils.js';
+import { $, hideAlerts } from './utils.js';
 import {
     renderHeader, renderNav, renderHomePage, renderHoroscopePage,
     renderChatPage, renderAuthModal, renderCompatModal,
@@ -22,47 +22,48 @@ import {
     showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import {
-    setChatMode, startCategoryChat, sendMessage, goBackFromChat, getChatMode
+    setChatMode, startCategoryChat, sendMessage, goBackFromChat
 } from './chat.js';
 
-// ===== STATO GLOBALE =====
 let state = {
     currentPage: "home",
     lastPage: "home",
     chatMode: "chat",
 };
 
-// ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
-    // 1. Render componenti statici
     renderAuthModal();
     renderCompatModal();
     renderHomePage();
     renderChatPage();
 
-    // 2. Inizializza auth (carica sessione se esiste)
     await initAuth(onAuthStateChange);
 
-    // 3. Render header e nav iniziali
     updateUI();
 
-    // 4. Mostra home
-    showPage("home");
+    // Se loggato + profilo esiste → Personalized. Altrimenti Home.
+    const user = getCurrentUser();
+    const profile = getCurrentProfile();
+    if (user && profile?.id) {
+        renderPersonalizedPage(profile, user);
+        showPage("personalized");
+    } else {
+        showPage("home");
+    }
 
     console.log("✅ Luna Astrologica avviata");
 });
 
-// ===== CALLBACK CAMBIO AUTH =====
 function onAuthStateChange(authState) {
     updateUI(authState);
 
-    // Se l'utente si è appena loggato, renderizza il profilo
-    if (authState.isLoggedIn && authState.profile) {
+    // Quando l'utente si logga (anche dopo verifica email), va su Personalized
+    if (authState.isLoggedIn && authState.profile?.id) {
         renderPersonalizedPage(authState.profile, authState.user);
+        showPage("personalized");
     }
 }
 
-// ===== AGGIORNA UI =====
 function updateUI(authState) {
     const isLoggedIn = authState?.isLoggedIn || false;
     const profile = authState?.profile || null;
@@ -72,7 +73,6 @@ function updateUI(authState) {
     renderHeader(isLoggedIn, profile || user);
     renderNav(state.currentPage);
 
-    // Aggiorna crediti
     const creditsVal = $("creditsVal");
     if (creditsVal) creditsVal.textContent = credits;
 
@@ -84,7 +84,6 @@ function updateUI(authState) {
     }
 }
 
-// ===== NAVIGAZIONE =====
 function showPage(pageId) {
     if (pageId !== "chat") state.lastPage = pageId;
     state.currentPage = pageId;
@@ -96,7 +95,6 @@ function goHome() {
     showPage("home");
 }
 
-// ===== AUTH WRAPPERS =====
 function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
@@ -119,7 +117,6 @@ function requireAuthOrModalForChat(mode) {
     }
 }
 
-// ===== MODAL AUTH =====
 function openAuthModal() {
     const modal = $("authModal");
     if (modal) {
@@ -151,14 +148,12 @@ function switchAuthTab(tab) {
     hideAlerts();
 }
 
-// ===== CHAT WRAPPERS =====
 function handleSendMessage() {
     sendMessage(
         getCurrentUser(),
         getCurrentProfile(),
         getCredits(),
         async () => {
-            // Callback: credito consumato
             await updateCredits(-CONFIG.CREDITS_PER_MESSAGE);
         }
     );
@@ -172,7 +167,6 @@ function handleGoBackFromChat() {
     goBackFromChat(state.lastPage);
 }
 
-// ===== LINGUA =====
 function toggleLang() {
     const dropdown = $("langDropdown");
     if (dropdown) dropdown.classList.toggle("open");
@@ -191,7 +185,6 @@ function setLang(lang) {
     if (dropdown) dropdown.classList.remove("open");
 }
 
-// Chiudi dropdown cliccando fuori
 document.addEventListener("click", (e) => {
     if (!e.target.closest(".lang-dropdown")) {
         const dropdown = $("langDropdown");
@@ -199,41 +192,28 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// ===== ESPORTA SU WINDOW =====
-// Tutte le funzioni chiamate da onclick nell'HTML devono essere su window.app
 window.app = {
-    // Navigazione
     showPage,
     goHome,
     requireAuthOrModal,
     requireAuthOrModalForChat,
-
-    // Auth
     openAuthModal,
     closeAuthModal,
     switchAuthTab,
     handleRegister,
     handleLogin,
     handleLogout,
-
-    // Oroscopo
     showHoroscopePage,
     switchHoroTab,
-
-    // Profilo
     openProfileEdit,
     showCompat,
     openCompatModal,
     closeCompatModal,
     handleCompatSubmit,
     toggleAccordion,
-
-    // Chat
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
     goBackFromChat: handleGoBackFromChat,
-
-    // Lingua
     toggleLang,
     setLang,
 };

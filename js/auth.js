@@ -1,5 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
+// Il profilo viene creato AUTOMATICAMENTE dal trigger su Supabase
+// Nessun insert manuale nel frontend
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -68,34 +70,25 @@ export async function handleRegister(e) {
         const birthCity = document.getElementById("regBirthCity").value.trim();
         const birthCountry = document.getElementById("regBirthCountry").value;
 
-        // 1. Crea utente in Auth
+        // Crea utente in Auth — tutti i dati extra vanno in user_metadata
+        // Il trigger su Supabase copierà automaticamente in profiles (bypassa RLS)
         const { data: authData, error: authErr } = await supabase.auth.signUp({
             email, password,
-            options: { data: { full_name: name } }
+            options: { 
+                data: { 
+                    full_name: name,
+                    gender: gender || null,
+                    birth_date: birthDate || null,
+                    birth_time: birthTime || null,
+                    birth_city: birthCity || null,
+                    birth_country: birthCountry || null
+                } 
+            }
         });
         if (authErr) throw authErr;
 
-        // 2. Crea profilo con campi corretti della tabella
-        const { error: profileErr } = await supabase.from("profiles").insert([{
-            id: authData.user.id,
-            email,
-            full_name: name,
-            gender: gender || null,
-            birth_date: birthDate || null,
-            birth_time: birthTime || null,
-            birth_city: birthCity || null,
-            birth_country: birthCountry || null,
-            birth_place: birthCity || null,  // legacy per compatibilità
-            country: birthCountry || null,   // legacy per compatibilità
-            credits: CONFIG.WELCOME_CREDITS,
-            language: "it",
-            notification_enabled: true,
-            daily_horoscope_enabled: true,
-            event_alerts_enabled: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        }]);
-        if (profileErr) throw profileErr;
+        // NOTA: l'insert su profiles è gestito automaticamente dal trigger su Supabase
+        // NON inserire manualmente — evita errore RLS "violates row-level security policy"
 
         showAlert("auth", "success",
             "Account creato! Controlla la tua email per confermare, poi accedi.");
