@@ -100,7 +100,7 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
 
     // Verifica crediti
     if (credits <= 0) {
-        showExchange("⚡ I tuoi crediti sono esauriti. Ricarica per continuare.");
+        showExchange("⚠️ I tuoi crediti sono esauriti. Ricarica per continuare.", null);
         return;
     }
 
@@ -135,7 +135,7 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
     input.value = "";
 }
 
-// ===== MOSTRA UNICA DOMANDA/RISPOSTA =====
+// ===== MOSTRA UNICA DOMANDA/RISPOSTA (o solo AI se userText è null) =====
 function showExchange(aiReply, userText) {
     const box = document.getElementById("chatMessages");
     if (!box) return;
@@ -144,35 +144,27 @@ function showExchange(aiReply, userText) {
         hour: "2-digit", minute: "2-digit"
     });
 
-    box.innerHTML = `
-        <div class="msg msg-user">
-            <p>${userText || "..."}</p>
-            <div class="msg-meta">Tu • ${time}</div>
-        </div>
-        <div class="msg msg-ai">
-            <p>${aiReply}</p>
-            <div class="msg-meta">Luna • ${time}</div>
-        </div>
-    `;
+    if (userText) {
+        box.innerHTML = `
+            <div class="msg msg-user">
+                <p>${userText}</p>
+                <div class="msg-meta">Tu • ${time}</div>
+            </div>
+            <div class="msg msg-ai">
+                <p>${aiReply}</p>
+                <div class="msg-meta">Luna • ${time}</div>
+            </div>
+        `;
+    } else {
+        box.innerHTML = `
+            <div class="msg msg-ai">
+                <p>${aiReply}</p>
+                <div class="msg-meta">Luna • ${time}</div>
+            </div>
+        `;
+    }
     
     box.scrollTop = box.scrollHeight;
-}
-
-// ===== MOSTRA SOLO MESSAGGIO AI (per errori) =====
-function showExchange(aiReply) {
-    const box = document.getElementById("chatMessages");
-    if (!box) return;
-
-    const time = new Date().toLocaleTimeString("it-IT", {
-        hour: "2-digit", minute: "2-digit"
-    });
-
-    box.innerHTML = `
-        <div class="msg msg-ai">
-            <p>${aiReply}</p>
-            <div class="msg-meta">Luna • ${time}</div>
-        </div>
-    `;
 }
 
 // ===== TORNA INDIETRO =====
