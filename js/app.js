@@ -57,13 +57,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function onAuthStateChange(authState) {
-    updateUI(authState);
+  updateUI(authState);
 
-    if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
-        isFirstAuthCheck = false;
-        renderPersonalizedPage(authState.profile, authState.user);
-        showPage("personalized");
-    }
+  if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
+    isFirstAuthCheck = false;
+    renderPersonalizedPage(authState.profile, authState.user);
+    showPage("personalized");
+    
+    // Step B1: avvia geocoding e calcolo tema natale in background
+    setTimeout(async () => {
+      await geocodeProfileIfNeeded();
+      await loadNatalChart();
+    }, 500);
+  }
 }
 
 function updateUI(authState) {
