@@ -2,6 +2,7 @@
 // APP.JS — Orchestratore principale
 // ============================================================
 
+import { geocodeProfileIfNeeded, loadNatalChart } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
