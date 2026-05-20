@@ -78,7 +78,7 @@ export function renderHomePage() {
         { key: "partner", icon: "💑", cls: "cat-partner" },
         { key: "carriera", icon: "📈", cls: "cat-career" },
     ].map(c => `
-        <div class="card ${c.cls}" onclick="window.app.requireAuthOrModal()">
+        <div class="card ${c.cls}" onclick="window.app.showServiceChoice('${c.key}')">
             <div class="card-icon">${c.icon}</div>
             <div class="card-label">${CATEGORY_LABELS[c.key]}</div>
         </div>
@@ -100,7 +100,7 @@ export function renderHomePage() {
         <div class="section-title">Categorie</div>
         <div class="grid">${categories}</div>
         <div class="banner-cta">
-            <button class="btn-gold" onclick="window.app.requireAuthOrModal()">PARLA CON LE TUE STELLE</button>
+            <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">PARLA CON LE TUE STELLE</button>
         </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
@@ -135,26 +135,26 @@ export function renderHoroscopePage(signName) {
         </div>
         <div class="horo-content">
             <div class="horo-text" id="horoTextDay">
-                <p><strong>✨ Oroscopo di oggi</strong></p>
+                <p><strong>✨ Oroscopo di oggi — ${signName}</strong></p>
                 <p style="margin-top:0.75rem;">Oggi il tuo pianeta governatore ti infonde un'energia straordinaria. È il momento perfetto per affrontare quei progetti che hai rimandato troppo a lungo.</p>
                 <p style="margin-top:0.75rem;">Nel lavoro, la tua iniziativa non passerà inosservata: un superiore potrebbe notare il tuo impegno e proporti una sfida stimolante.</p>
                 <p style="margin-top:0.75rem;">In amore, Venere sorride ai cuori solitari. Se sei in coppia, un gesto spontaneo riscalderà la relazione.</p>
                 <p style="margin-top:0.75rem;">Sul fronte economico, è un ottimo momento per investimenti a breve termine, ma evita le spese impulsive.</p>
             </div>
             <div class="horo-text hidden" id="horoTextWeek">
-                <p><strong>✨ Oroscopo settimanale</strong></p>
+                <p><strong>✨ Oroscopo settimanale — ${signName}</strong></p>
                 <p style="margin-top:0.75rem;">Questa settimana porta un'energia di trasformazione significativa. I primi giorni saranno dedicati alla riflessione.</p>
                 <p style="margin-top:0.75rem;">In ambito professionale, potrebbe emergere un'opportunità inaspettata. Non lasciarti intimidire dalla novità.</p>
                 <p style="margin-top:0.75rem;">Nelle relazioni, la comunicazione sarà la chiave. Sii onesto ma gentile.</p>
             </div>
             <div class="horo-text hidden" id="horoTextMonth">
-                <p><strong>✨ Oroscopo mensile</strong></p>
+                <p><strong>✨ Oroscopo mensile — ${signName}</strong></p>
                 <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività.</p>
                 <p style="margin-top:0.75rem;">A livello lavorativo, Giove favorisce le collaborazioni.</p>
                 <p style="margin-top:0.75rem;">In amore, la Luna piena di metà mese porta chiarimenti.</p>
             </div>
             <div class="horo-text hidden" id="horoTextYear">
-                <p><strong>✨ Oroscopo annuale</strong></p>
+                <p><strong>✨ Oroscopo annuale — ${signName}</strong></p>
                 <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore.</p>
                 <p style="margin-top:0.75rem;">Nel lavoro, aspettati una svolta importante tra la primavera e l'estate.</p>
                 <p style="margin-top:0.75rem;">Sul piano sentimentale, l'anno favorisce le relazioni mature e autentiche.</p>
@@ -171,14 +171,14 @@ export function renderHoroscopePage(signName) {
             </div>
             <div class="grid" style="padding: 0;">
                 ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.requireAuthOrModal()">
+                    <div class="card cat-${key}" onclick="window.app.showServiceChoice('${key}')">
                         <div class="card-icon">${getCategoryIcon(key)}</div>
                         <div class="card-label">${label}</div>
                     </div>
                 `).join("")}
             </div>
             <div class="banner-cta" style="margin: 0.75rem 0 0;">
-                <button class="btn-gold" onclick="window.app.requireAuthOrModal()">PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">PARLA CON LE TUE STELLE</button>
             </div>
         </div>
         <footer class="footer">
@@ -191,7 +191,7 @@ export function renderHoroscopePage(signName) {
     setHTML("page-horoscope", html);
 }
 
-// ===== RENDER CHAT PAGE (UNA SOLA DOMANDA/RISPOSTA, NO STORICO) =====
+// ===== RENDER CHAT PAGE =====
 export function renderChatPage() {
     const html = `
         <div class="chat-header">
@@ -512,7 +512,16 @@ export function renderPersonalizedPage(profile, user) {
 
         <div style="padding: 0 1rem; margin-top:1.5rem;">
             <div class="banner-cta" style="margin: 0 0 0.75rem;">
-                <button class="btn-gold" onclick="window.app.showPage('chat')">💬 PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">💬 PARLA CON LE TUE STELLE</button>
+            </div>
+            <div class="section-title">Categorie</div>
+            <div class="grid">
+                ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
+                    <div class="card cat-${key}" onclick="window.app.showServiceChoice('${key}')">
+                        <div class="card-icon">${getCategoryIcon(key)}</div>
+                        <div class="card-label">${label}</div>
+                    </div>
+                `).join("")}
             </div>
         </div>
 
@@ -524,6 +533,49 @@ export function renderPersonalizedPage(profile, user) {
         </footer>
     `;
     setHTML("page-personalized", html);
+}
+
+// ===== SERVICE CHOICE MODAL =====
+let serviceChoiceCategory = null;
+
+export function showServiceChoice(category) {
+    serviceChoiceCategory = category;
+    const label = CATEGORY_LABELS[category] || category;
+    
+    let modal = document.getElementById("serviceChoiceModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "serviceChoiceModal";
+        modal.className = "modal-overlay";
+        modal.style.zIndex = "250";
+        modal.innerHTML = `
+            <div class="modal" style="max-width:320px;">
+                <button class="modal-close" onclick="window.app.closeServiceChoice()">✕</button>
+                <div class="modal-title">Scegli come consultare Luna</div>
+                <div class="modal-subtitle" id="scSubtitle">Argomento</div>
+                <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
+                    <button class="btn-gold btn-full" onclick="window.app.chooseService('chat')">💬 Chat Testuale</button>
+                    <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.chooseService('voice')">🎙️ Modalità Voce</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    const sub = document.getElementById("scSubtitle");
+    if (sub) sub.textContent = `Argomento: ${label}`;
+    modal.classList.add("active");
+    document.body.style.overflow = "hidden";
+}
+
+export function closeServiceChoice() {
+    const modal = document.getElementById("serviceChoiceModal");
+    if (modal) modal.classList.remove("active");
+    document.body.style.overflow = "";
+}
+
+export function getServiceChoiceCategory() {
+    return serviceChoiceCategory;
 }
 
 // ===== NAVIGAZIONE PAGINE =====
