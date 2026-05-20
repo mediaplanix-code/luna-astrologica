@@ -4,7 +4,6 @@
 // FIX: non forzare redirect a personalized quando cambiano crediti
 // ============================================================
 
-import { startStripeCheckout, showPaymentsModal, closePaymentsModal } from './payments.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -54,7 +53,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         showPage("home");
     }
 
-    console.log("✅ Luna Astrologica avviata");
+    console.log("🌙 Luna Astrologica avviata");
 });
 
 function onAuthStateChange(authState) {
@@ -231,8 +230,7 @@ window.app = {
     startChatAbout: handleStartChatAbout,
     startVoiceAbout: handleStartVoiceAbout,
     goBackFromChat: handleGoBackFromChat,
-    showPaymentsPage: showPaymentsModal,
-    closePaymentsModal,
+    showPaymentsPage,
     toggleLang,
     setLang,
     switchPersonalHoroTab: (tab) => {
