@@ -70,25 +70,20 @@ export async function handleRegister(e) {
         const birthCity = document.getElementById("regBirthCity").value.trim();
         const birthCountry = document.getElementById("regBirthCountry").value;
 
-        // Crea utente in Auth — tutti i dati extra vanno in user_metadata
-        // Il trigger su Supabase copierà automaticamente in profiles (bypassa RLS)
         const { data: authData, error: authErr } = await supabase.auth.signUp({
             email, password,
-            options: { 
-                data: { 
+            options: {
+                data: {
                     full_name: name,
                     gender: gender || null,
                     birth_date: birthDate || null,
                     birth_time: birthTime || null,
                     birth_city: birthCity || null,
                     birth_country: birthCountry || null
-                } 
+                }
             }
         });
         if (authErr) throw authErr;
-
-        // NOTA: l'insert su profiles è gestito automaticamente dal trigger su Supabase
-        // NON inserire manualmente — evita errore RLS "violates row-level security policy"
 
         showAlert("auth", "success",
             "Account creato! Controlla la tua email per confermare, poi accedi.");
@@ -208,33 +203,34 @@ function notifyChange() {
             credits: credits
         });
     }
-    // ===== GEOCODING PROFILO =====
-export async function geocodeProfileIfNeeded() {
-  if (!currentUser || !currentProfile) return false;
-  if (currentProfile.birth_latitude) return true;
-  if (!currentProfile.birth_city || !currentProfile.birth_country) return false;
-
-  try {
-    const url = `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Geocoding failed');
-    const data = await res.json();
-
-    if (data.lat != null && data.lng != null) {
-      const { error } = await supabase.from('profiles').update({
-        birth_latitude: data.lat,
-        birth_longitude: data.lng,
-        birth_timezone: data.timezone,
-        updated_at: new Date().toISOString(),
-      }).eq('id', currentUser.id);
-
-      if (error) throw error;
-      await loadUserData();
-      return true;
-    }
-  } catch (err) {
-    console.error('Geocoding error:', err);
-  }
-  return false;
 }
+
+// ===== GEOCODING PROFILO =====
+export async function geocodeProfileIfNeeded() {
+    if (!currentUser || !currentProfile) return false;
+    if (currentProfile.birth_latitude) return true;
+    if (!currentProfile.birth_city || !currentProfile.birth_country) return false;
+
+    try {
+        const url = `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Geocoding failed');
+        const data = await res.json();
+
+        if (data.lat != null && data.lng != null) {
+            const { error } = await supabase.from('profiles').update({
+                birth_latitude: data.lat,
+                birth_longitude: data.lng,
+                birth_timezone: data.timezone,
+                updated_at: new Date().toISOString(),
+            }).eq('id', currentUser.id);
+
+            if (error) throw error;
+            await loadUserData();
+            return true;
+        }
+    } catch (err) {
+        console.error('Geocoding error:', err);
+    }
+    return false;
 }
