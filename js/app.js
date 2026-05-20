@@ -1,7 +1,5 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// Utente loggato atterra SEMPRE su Pagina Personalizzata
-// FIX: non forzare redirect a personalized quando cambiano crediti
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -9,14 +7,15 @@ import { $, hideAlerts } from './utils.js';
 import {
     renderHeader, renderNav, renderHomePage, renderHoroscopePage,
     renderChatPage, renderAuthModal, renderCompatModal,
-    renderPersonalizedPage, showPage as uiShowPage
+    renderPersonalizedPage, showPage as uiShowPage,
+    showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
 import {
     initAuth, handleRegister, handleLogin, handleLogout,
     loadUserData, getCurrentUser, getCurrentProfile, getCredits,
     updateCredits
 } from './auth.js';
-import { showHoroscopePage, switchHoroTab } from './horoscope.js';
+import { switchHoroTab } from './horoscope.js';
 import {
     openCompatModal, closeCompatModal, handleCompatSubmit,
     showCompat, openProfileEdit, toggleAccordion
@@ -150,6 +149,34 @@ function switchAuthTab(tab) {
     hideAlerts();
 }
 
+function handleShowHoroscopePage(signName) {
+    renderHoroscopePage(signName);
+    showPage("horoscope");
+}
+
+function handleShowServiceChoice(category) {
+    const user = getCurrentUser();
+    if (!user) {
+        openAuthModal();
+        return;
+    }
+    showServiceChoice(category);
+}
+
+function handleChooseService(mode) {
+    const category = getServiceChoiceCategory();
+    closeServiceChoice();
+    if (!category) return;
+    
+    if (mode === 'chat') {
+        setChatMode("chat");
+        startCategoryChat(category);
+    } else {
+        setChatMode("voice");
+        startCategoryChat(category);
+    }
+}
+
 function handleSendMessage() {
     sendMessage(
         getCurrentUser(),
@@ -217,7 +244,7 @@ window.app = {
     handleRegister,
     handleLogin,
     handleLogout,
-    showHoroscopePage,
+    showHoroscopePage: handleShowHoroscopePage,
     switchHoroTab,
     openProfileEdit,
     showCompat,
@@ -242,4 +269,7 @@ window.app = {
             if (textEl) textEl.classList.toggle("hidden", t !== tab);
         });
     },
+    showServiceChoice: handleShowServiceChoice,
+    closeServiceChoice,
+    chooseService: handleChooseService,
 };
