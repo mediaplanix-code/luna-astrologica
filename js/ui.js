@@ -52,7 +52,7 @@ export function renderNav(activePage) {
             <span class="nav-icon">💬</span><span>Chat</span>
         </button>
         <button class="nav-item ${activePage === 'personalized' ? 'active' : ''}" id="nav-personalized" onclick="window.app.requireAuthOrModal()">
-            <span class="nav-icon">⭐</span><span>Profilo</span>
+            <span class="nav-icon">👤</span><span>Profilo</span>
         </button>
     `;
     setHTML("app-nav", html);
@@ -68,12 +68,12 @@ export function renderHomePage() {
     `).join("");
 
     const categories = [
-        { key: "amore", icon: "❤️", cls: "cat-love" },
+        { key: "amore", icon: "💖", cls: "cat-love" },
         { key: "denaro", icon: "💰", cls: "cat-money" },
         { key: "lavoro", icon: "💼", cls: "cat-work" },
-        { key: "salute", icon: "🍎", cls: "cat-health" },
+        { key: "salute", icon: "🏥", cls: "cat-health" },
         { key: "amici", icon: "👥", cls: "cat-friends" },
-        { key: "famiglia", icon: "🏠", cls: "cat-family" },
+        { key: "famiglia", icon: "👨‍👩‍👧‍👦", cls: "cat-family" },
         { key: "viaggi", icon: "✈️", cls: "cat-travel" },
         { key: "partner", icon: "💑", cls: "cat-partner" },
         { key: "carriera", icon: "📈", cls: "cat-career" },
@@ -119,7 +119,7 @@ export function renderHoroscopePage(signName) {
 
     const html = `
         <div class="horoscope-header">
-            <button class="horoscope-back" onclick="window.app.showPage('home')">←</button>
+            <button class="horoscope-back" onclick="window.app.showPage('home')">🔙</button>
             <div class="horoscope-sign" id="horoSignIcon">${data.symbol}</div>
             <div class="horoscope-info">
                 <h2 id="horoSignName">${signName}</h2>
@@ -129,8 +129,8 @@ export function renderHoroscopePage(signName) {
         <div class="tags-row" id="horoTags">${tags}</div>
         <div class="horo-tabs">
             <button class="horo-tab active" onclick="window.app.switchHoroTab('day')" id="tab-day">📅 Giorno</button>
-            <button class="horo-tab" onclick="window.app.switchHoroTab('week')" id="tab-week">📆 Settimana</button>
-            <button class="horo-tab" onclick="window.app.switchHoroTab('month')" id="tab-month">🗓️ Mese</button>
+            <button class="horo-tab" onclick="window.app.switchHoroTab('week')" id="tab-week">🗓️ Settimana</button>
+            <button class="horo-tab" onclick="window.app.switchHoroTab('month')" id="tab-month">📆 Mese</button>
             <button class="horo-tab" onclick="window.app.switchHoroTab('year')" id="tab-year">📊 Anno</button>
         </div>
         <div class="horo-content">
@@ -195,7 +195,7 @@ export function renderHoroscopePage(signName) {
 export function renderChatPage() {
     const html = `
         <div class="chat-header">
-            <button class="chat-back" onclick="window.app.goBackFromChat()">←</button>
+            <button class="chat-back" onclick="window.app.goBackFromChat()">🔙</button>
             <div class="chat-title">💬 Luna Astrologica</div>
         </div>
         <div class="chat-messages" id="chatMessages">
@@ -216,7 +216,7 @@ export function renderChatPage() {
 export function renderAuthModal() {
     const html = `
         <div class="modal">
-            <button class="modal-close" onclick="window.app.closeAuthModal()">×</button>
+            <button class="modal-close" onclick="window.app.closeAuthModal()">✕</button>
             <div class="modal-title" id="authModalTitle">Accedi</div>
             <div class="modal-subtitle">Entra nel tuo universo personale</div>
 
@@ -235,7 +235,7 @@ export function renderAuthModal() {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password</label>
-                    <input type="password" class="form-input" id="loginPassword" placeholder="••••••" required>
+                    <input type="password" class="form-input" id="loginPassword" placeholder="••••••••" required>
                 </div>
                 <div class="remember-wrap">
                     <input type="checkbox" id="rememberMe">
@@ -255,7 +255,7 @@ export function renderAuthModal() {
                 </div>
                 <div class="form-group">
                     <label class="form-label">Password * (min 6 caratteri)</label>
-                    <input type="password" class="form-input" id="regPassword" placeholder="••••••" required minlength="6">
+                    <input type="password" class="form-input" id="regPassword" placeholder="••••••••" required minlength="6">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -312,7 +312,7 @@ export function renderAuthModal() {
 export function renderCompatModal() {
     const html = `
         <div class="modal">
-            <button class="modal-close" onclick="window.app.closeCompatModal()">×</button>
+            <button class="modal-close" onclick="window.app.closeCompatModal()">✕</button>
             <div class="modal-title">Compatibilità</div>
             <div class="modal-subtitle">Inserisci i dati della persona da confrontare</div>
             <form onsubmit="window.app.handleCompatSubmit(event)">
@@ -366,7 +366,7 @@ export function renderPersonalizedPage(profile, user) {
 
     const html = `
         <div class="personal-header">
-            <button class="personal-back" onclick="window.app.showPage('home')">←</button>
+            <button class="personal-back" onclick="window.app.showPage('home')">🔙</button>
             <div class="personal-sign" id="personalSignIcon">${symbol}</div>
             <div class="personal-info">
                 <h2 id="personalName">Benvenuto, ${name}</h2>
@@ -374,19 +374,19 @@ export function renderPersonalizedPage(profile, user) {
             </div>
         </div>
         <div class="compat-row">
-            <span class="compat-label">⭐ Compatibilità:</span>
+            <span class="compat-label">👤 Compatibilità:</span>
             <button class="compat-pill" onclick="window.app.showCompat('Leone')"><span class="compat-icon">♌</span> Leone</button>
             <button class="compat-pill" onclick="window.app.showCompat('Toro')"><span class="compat-icon">♉</span> Toro</button>
             <button class="compat-pill" onclick="window.app.showCompat('Acquario')"><span class="compat-icon">♒</span> Acquario</button>
-            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">💞</span> Affinità</button>
+            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">🔮</span> Affinità</button>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
-            <div class="section-title" style="margin-top:0;">📅 IL TUO OROSCOPO PERSONALIZZATO</div>
+            <div class="section-title" style="margin-top:0;">✨ IL TUO OROSCOPO PERSONALIZZATO</div>
             <div class="horo-tabs" style="margin-bottom:0.75rem;">
                 <button class="horo-tab active" onclick="window.app.switchPersonalHoroTab('day')" id="ph-tab-day">📅 Giorno</button>
-                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('week')" id="ph-tab-week">📆 Settimana</button>
-                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('month')" id="ph-tab-month">🗓️ Mese</button>
+                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('week')" id="ph-tab-week">🗓️ Settimana</button>
+                <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('month')" id="ph-tab-month">📆 Mese</button>
                 <button class="horo-tab" onclick="window.app.switchPersonalHoroTab('year')" id="ph-tab-year">📊 Anno</button>
             </div>
             <div class="horo-content" style="margin-bottom:1.5rem;">
@@ -415,7 +415,7 @@ export function renderPersonalizedPage(profile, user) {
 
         <div class="accordion">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
-                <div class="accordion-title"><span class="acc-icon">☸️</span> RUOTA DEL TEMA NATALE</div>
+                <div class="accordion-title"><span class="acc-icon">🎯</span> RUOTA DEL TEMA NATALE</div>
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-wheel">
@@ -430,7 +430,7 @@ export function renderPersonalizedPage(profile, user) {
 
         <div class="accordion">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-planets')">
-                <div class="accordion-title"><span class="acc-icon">📍</span> POSIZIONE DEI PIANETI</div>
+                <div class="accordion-title"><span class="acc-icon">🪐</span> POSIZIONE DEI PIANETI</div>
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-planets">
@@ -543,6 +543,6 @@ export function showPage(pageId, lastPageRef) {
 
 // ===== HELPER: icona categoria =====
 function getCategoryIcon(key) {
-    const icons = { amore: "❤️", denaro: "💰", lavoro: "💼", salute: "🍎", amici: "👥", famiglia: "🏠", viaggi: "✈️", partner: "💑", carriera: "📈" };
+    const icons = { amore: "💖", denaro: "💰", lavoro: "💼", salute: "🏥", amici: "👥", famiglia: "👨‍👩‍👧‍👦", viaggi: "✈️", partner: "💑", carriera: "📈" };
     return icons[key] || "✨";
 }
