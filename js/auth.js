@@ -208,4 +208,33 @@ function notifyChange() {
             credits: credits
         });
     }
+    // ===== GEOCODING PROFILO =====
+export async function geocodeProfileIfNeeded() {
+  if (!currentUser || !currentProfile) return false;
+  if (currentProfile.birth_latitude) return true;
+  if (!currentProfile.birth_city || !currentProfile.birth_country) return false;
+
+  try {
+    const url = `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country)}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Geocoding failed');
+    const data = await res.json();
+
+    if (data.lat != null && data.lng != null) {
+      const { error } = await supabase.from('profiles').update({
+        birth_latitude: data.lat,
+        birth_longitude: data.lng,
+        birth_timezone: data.timezone,
+        updated_at: new Date().toISOString(),
+      }).eq('id', currentUser.id);
+
+      if (error) throw error;
+      await loadUserData();
+      return true;
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err);
+  }
+  return false;
+}
 }
