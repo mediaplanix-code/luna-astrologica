@@ -25,9 +25,13 @@ export function startCategoryChat(topic) {
     
     const box = document.getElementById("chatMessages");
     if (box) {
+        let msg = `Parliamo di <strong>${label}</strong>. Cosa vorresti sapere?`;
+        if (chatMode === "voice") {
+            msg = `🎙️ <strong>Modalità Voce</strong><br><br>Stiamo preparando un'esperienza di dialogo vocale con l'astrologa.<br><br>Nel frattempo puoi scrivermi la tua domanda su <strong>${label}</strong> e ti risponderò subito.`;
+        }
         box.innerHTML = `
             <div class="msg msg-ai" id="currentExchange">
-                <p>Parliamo di <strong>${label}</strong>. Cosa vorresti sapere?</p>
+                <p>${msg}</p>
                 <div class="msg-meta">Luna • ora</div>
             </div>
         `;
@@ -135,7 +139,7 @@ export function sendMessage(currentUser, currentProfile, credits, onCreditUsed) 
     input.value = "";
 }
 
-// ===== MOSTRA UNICA DOMANDA/RISPOSTA (o solo AI se userText è null) =====
+// ===== MOSTRA UNICA DOMANDA/RISPOSTA =====
 function showExchange(aiReply, userText) {
     const box = document.getElementById("chatMessages");
     if (!box) return;
