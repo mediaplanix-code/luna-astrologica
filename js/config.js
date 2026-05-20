@@ -5,7 +5,7 @@
 export const CONFIG = {
     // Supabase
     SUPABASE_URL: "https://yyserqquzqoywtqrqvlk.supabase.co",
-    SUPABASE_ANON_KEY: "YOUR_ANON_KEY", // <-- INSERISCI QUI
+    SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5c2VycXF1enFveXd0cXJxdmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODgzMzAsImV4cCI6MjA5NDQ2NDMzMH0.FJWeBOUKX69Fk4BvFh0RSU92LiKj2e7ZoFczbkbw1dY",
 
     // App
     APP_NAME: "Luna Astrologica",
@@ -17,8 +17,8 @@ export const CONFIG = {
     CREDITS_PER_MESSAGE: 1,
 
     // Stripe (placeholder per futuro)
-    STRIPE_PUBLISHABLE_KEY: "pk_test_YOUR_KEY", // <-- INSERISCI QUI per produzione
-    STRIPE_PRICE_ID: "price_YOUR_PRICE_ID",     // <-- INSERISCI QUI per produzione
+    STRIPE_PUBLISHABLE_KEY: "pk_test_YOUR_KEY",
+    STRIPE_PRICE_ID: "price_YOUR_PRICE_ID",
 
     // Worker API
     WORKER_URL: "https://luna-astrologica-api.mediaplanix.workers.dev",
@@ -27,7 +27,7 @@ export const CONFIG = {
     FEATURES: {
         REAL_NATAL_CHART: false,
         AI_CHAT: false,
-        STRIPE_PAYMENTS: false,  // <-- metti true quando hai Stripe
+        STRIPE_PAYMENTS: false,
         TELEGRAM_BOT: false,
         VOICE_MODE: false,
     }
