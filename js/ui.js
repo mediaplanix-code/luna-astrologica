@@ -436,15 +436,15 @@ export function renderPersonalizedPage(profile, user) {
             <div class="accordion-body" id="acc-planets">
                 <div class="planet-grid">
     <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos" id="pos-sun">Scorpione 22°</span></div>
-<div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">Leone 8°</span></div>
-<div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">Sagittario 5°</span></div>
-<div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">Scorpione 14°</span></div>
-<div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">Capricorno 3°</span></div>
-<div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">Pesci 28°</span></div>
-<div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">Acquario 15°</span></div>
-<div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">Toro 17°</span></div>
-<div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">Pesci 24°</span></div>
-<div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">Capricorno 28°</span></div>
+    <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">Leone 8°</span></div>
+    <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">Sagittario 5°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">Scorpione 14°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">Capricorno 3°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">Pesci 28°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">Acquario 15°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">Toro 17°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">Pesci 24°</span></div>
+    <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">Capricorno 28°</span></div>
 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('pianeti')">💬 Chiedi a Luna</button>
