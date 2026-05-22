@@ -58,6 +58,7 @@ export async function loadNatalChart() {
         lat: profile.birth_latitude,
         lng: profile.birth_longitude,
         country: profile.birth_country,
+        timezone: profile.birth_timezone,
       }),
     });
     if (!res.ok) throw new Error('Chart failed');
