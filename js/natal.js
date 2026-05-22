@@ -3,7 +3,7 @@
 // Chiama Render server con Swiss Ephemeris (precisione professionale)
 // ============================================================
 
-import { getCurrentUser, getCurrentProfile, loadUserData } from './auth.js';
+import { getCurrentUser, getCurrentProfile, getSupabase, loadUserData } from './auth.js';
 
 let cachedChart = null;
 
