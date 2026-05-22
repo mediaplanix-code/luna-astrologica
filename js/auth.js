@@ -38,15 +38,21 @@ export async function initAuth(callback) {
         });
 
         const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
+        if (session && session.user) {
             currentUser = session.user;
             await loadUserData();
         } else {
+            currentUser = null;
+            currentProfile = null;
+            credits = 0;
             notifyChange();
         }
         return true;
     } catch (err) {
         console.error("Errore init Supabase:", err);
+        currentUser = null;
+        currentProfile = null;
+        credits = 0;
         notifyChange();
         return false;
     }
@@ -134,7 +140,11 @@ export async function handleLogin(e) {
 
 export async function handleLogout() {
     if (!supabase) return;
-    await supabase.auth.signOut();
+    try {
+        await supabase.auth.signOut();
+    } catch (e) {
+        console.error("Logout error:", e);
+    }
     currentUser = null;
     currentProfile = null;
     credits = 0;
@@ -151,13 +161,20 @@ export async function loadUserData() {
         .eq("id", currentUser.id)
         .single();
 
-    if (error && error.code !== "PGRST116") {
+    if (error) {
         console.error("Errore caricamento profilo:", error);
+        // Se profilo non trovato o token scaduto, fai logout automatico
+        if (error.code === "PGRST116" || error.code === "406" || error.status === 401 || error.status === 403) {
+            console.warn("Profilo non trovato o sessione scaduta — logout automatico");
+            await handleLogout();
+            return;
+        }
     }
 
     currentProfile = profile || {
         id: currentUser.id,
         email: currentUser.email,
+        full_name: currentUser.user_metadata?.full_name || currentUser.email.split("@")[0],
         credits: 0
     };
 
