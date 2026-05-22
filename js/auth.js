@@ -91,13 +91,17 @@ export async function handleRegister(e) {
         });
         if (authErr) throw authErr;
 
+        // ✅ FIX: Mostra messaggio, nascondi form, NON switchare a login
         showAlert("auth", "success",
-            "Account creato! Controlla la tua email per confermare, poi accedi.");
-        document.getElementById("registerForm").reset();
+            "🌙 Account creato! Controlla la tua email e clicca il link di conferma per attivare il tuo account.");
 
-        setTimeout(() => {
-            if (window.app) window.app.switchAuthTab("login");
-        }, 1500);
+        // Nascondi il form di registrazione
+        const regForm = document.getElementById("registerForm");
+        if (regForm) regForm.classList.add("hidden");
+
+        // Nascondi anche i tab (login/registrazione)
+        const authTabs = document.querySelector(".auth-tabs");
+        if (authTabs) authTabs.style.display = "none";
 
     } catch (err) {
         showAlert("auth", "error", err.message || "Errore registrazione");
@@ -163,7 +167,6 @@ export async function loadUserData() {
 
     if (error) {
         console.error("Errore caricamento profilo:", error);
-        // Se profilo non trovato o token scaduto, fai logout automatico
         if (error.code === "PGRST116" || error.code === "406" || error.status === 401 || error.status === 403) {
             console.warn("Profilo non trovato o sessione scaduta — logout automatico");
             await handleLogout();
