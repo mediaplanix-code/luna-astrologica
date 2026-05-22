@@ -42,8 +42,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     await initAuth(onAuthStateChange);
 
-    updateUI();
-
     const user = getCurrentUser();
     const profile = getCurrentProfile();
     if (user && profile?.id) {
@@ -63,7 +61,7 @@ function onAuthStateChange(authState) {
     isFirstAuthCheck = false;
     renderPersonalizedPage(authState.profile, authState.user);
     showPage("personalized");
-    
+
     // Step B1: avvia geocoding e calcolo tema natale in background
     setTimeout(async () => {
       await geocodeProfileIfNeeded();
@@ -97,6 +95,16 @@ function showPage(pageId) {
     state.currentPage = pageId;
     uiShowPage(pageId, state.lastPage);
     renderNav(pageId);
+
+    // Forza aggiornamento header quando cambi pagina
+    const user = getCurrentUser();
+    const profile = getCurrentProfile();
+    updateUI({
+        isLoggedIn: !!user,
+        user: user,
+        profile: profile,
+        credits: getCredits()
+    });
 }
 
 function goHome() {
@@ -174,7 +182,7 @@ function handleChooseService(mode) {
     const category = getServiceChoiceCategory();
     closeServiceChoice();
     if (!category) return;
-    
+
     if (mode === 'chat') {
         setChatMode("chat");
         startCategoryChat(category);
