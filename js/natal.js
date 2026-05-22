@@ -9,7 +9,7 @@ let cachedChart = null;
 
 const API_URL = 'https://luna-astrologica-api-render.onrender.com';
 
-// ===== GEOCODING (resta sul Worker Cloudflare) =====
+// ===== GEOCODING =====
 export async function geocodeProfileIfNeeded() {
   const profile = getCurrentProfile();
   const user = getCurrentUser();
@@ -43,7 +43,7 @@ export async function geocodeProfileIfNeeded() {
   return false;
 }
 
-// ===== CARICA TEMA NATALE (Render + Swiss Ephemeris) =====
+// ===== CARICA TEMA NATALE =====
 export async function loadNatalChart() {
   const profile = getCurrentProfile();
   if (!profile?.birth_latitude || !profile.birth_date) return null;
@@ -74,7 +74,7 @@ export async function loadNatalChart() {
   }
 }
 
-// ===== AGGIORNA UI CON DATI REALI =====
+// ===== AGGIORNA UI =====
 export function updateNatalChartUI(chart) {
   if (!chart) return;
 
