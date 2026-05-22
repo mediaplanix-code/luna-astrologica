@@ -1,12 +1,13 @@
 // ============================================================
 // NATAL.JS — Calcolo e visualizzazione Tema Natale Reale
-// Chiama Supabase Edge Function (precisione professionale)
+// Chiama Render server con Swiss Ephemeris (precisione professionale)
 // ============================================================
 
-import { CONFIG } from './config.js';
-import { getSupabase, getCurrentUser, getCurrentProfile, loadUserData } from './auth.js';
+import { getCurrentUser, getCurrentProfile, loadUserData } from './auth.js';
 
 let cachedChart = null;
+
+const API_URL = 'https://luna-astrologica-api-render.onrender.com';
 
 // ===== GEOCODING (resta sul Worker Cloudflare) =====
 export async function geocodeProfileIfNeeded() {
@@ -17,7 +18,7 @@ export async function geocodeProfileIfNeeded() {
   if (!profile.birth_city || !profile.birth_country) return false;
 
   try {
-    const url = `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(profile.birth_city)}&country=${encodeURIComponent(profile.birth_country)}`;
+    const url = `${API_URL}/api/geocode?city=${encodeURIComponent(profile.birth_city)}&country=${encodeURIComponent(profile.birth_country)}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Geocoding failed');
     const data = await res.json();
@@ -42,19 +43,18 @@ export async function geocodeProfileIfNeeded() {
   return false;
 }
 
-// ===== CARICA TEMA NATALE (Supabase Edge Function) =====
+// ===== CARICA TEMA NATALE (Render + Swiss Ephemeris) =====
 export async function loadNatalChart() {
   const profile = getCurrentProfile();
   if (!profile?.birth_latitude || !profile.birth_date) return null;
   if (cachedChart) return cachedChart;
 
   try {
-    const url = `${CONFIG.SUPABASE_URL}/functions/v1/natal-chart`;
+    const url = `${API_URL}/api/natal-chart`;
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({
         birthDate: profile.birth_date,
