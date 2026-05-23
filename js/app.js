@@ -64,9 +64,35 @@ function onAuthStateChange(authState) {
 
     // Step B1: avvia geocoding e calcolo tema natale in background
     setTimeout(async () => {
-      await geocodeProfileIfNeeded();
-      await loadNatalChart();
+      await ensureGeocodingAndChart();
     }, 500);
+  }
+}
+
+// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale
+async function ensureGeocodingAndChart() {
+  const profile = getCurrentProfile();
+  if (!profile) return;
+
+  // Se mancano le coordinate, fai geocoding
+  if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
+    console.log('🌍 Geocoding necessario per:', profile.birth_city);
+    const geoOk = await geocodeProfileIfNeeded();
+    if (geoOk) {
+      console.log('✅ Geocoding completato');
+    } else {
+      console.warn('❌ Geocoding fallito');
+      return;
+    }
+  }
+
+  // Ora calcola il tema natale
+  console.log('🔮 Avvio calcolo tema natale...');
+  const chart = await loadNatalChart();
+  if (chart) {
+    console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
+  } else {
+    console.warn('❌ Tema natale non calcolato');
   }
 }
 
@@ -287,4 +313,9 @@ window.app = {
   showServiceChoice: handleShowServiceChoice,
   closeServiceChoice,
   chooseService: handleChooseService,
+  // Espone funzioni utili per debug
+  getCurrentProfile,
+  getCurrentUser,
+  loadNatalChart,
+  geocodeProfileIfNeeded,
 };
