@@ -3,45 +3,11 @@
 // Chiama Render server con Swiss Ephemeris (precisione professionale)
 // ============================================================
 
-import { getCurrentUser, getCurrentProfile, getSupabase, loadUserData } from './auth.js';
+import { getCurrentUser, getCurrentProfile } from './auth.js';
 
 let cachedChart = null;
 
 const API_URL = 'https://luna-astrologica-api-render.onrender.com';
-
-// ===== GEOCODING =====
-export async function geocodeProfileIfNeeded() {
-  const profile = getCurrentProfile();
-  const user = getCurrentUser();
-  if (!profile || !user) return false;
-  if (profile.birth_latitude) return true;
-  if (!profile.birth_city || !profile.birth_country) return false;
-
-  try {
-    const url = `${API_URL}/api/geocode?city=${encodeURIComponent(profile.birth_city)}&country=${encodeURIComponent(profile.birth_country)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Geocoding failed');
-    const data = await res.json();
-
-    if (data.lat != null && data.lng != null) {
-      const supabase = getSupabase();
-      if (!supabase) return false;
-
-      await supabase.from('profiles').update({
-        birth_latitude: data.lat,
-        birth_longitude: data.lng,
-        birth_timezone: data.timezone,
-        updated_at: new Date().toISOString(),
-      }).eq('id', user.id);
-
-      await loadUserData();
-      return true;
-    }
-  } catch (err) {
-    console.error('Geocoding error:', err);
-  }
-  return false;
-}
 
 // ===== CARICA TEMA NATALE =====
 export async function loadNatalChart() {
