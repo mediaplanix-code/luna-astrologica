@@ -12,11 +12,34 @@ const API_URL = 'https://luna-astrologica-api-render.onrender.com';
 // ===== CARICA TEMA NATALE =====
 export async function loadNatalChart() {
   const profile = getCurrentProfile();
-  if (!profile?.birth_latitude || !profile.birth_date) return null;
-  if (cachedChart) return cachedChart;
+  if (!profile?.birth_latitude || !profile.birth_date) {
+    console.warn('⏳ Tema natale: mancano coordinate o data di nascita', {
+      lat: profile?.birth_latitude,
+      date: profile?.birth_date
+    });
+    return null;
+  }
+  if (cachedChart) {
+    console.log('📦 Tema natale: usando cache');
+    return cachedChart;
+  }
 
   try {
+    // ✅ FIX: Normalizza birth_time da "10:30:00+00" a "10:30"
+    let birthTime = profile.birth_time || '12:00';
+    if (birthTime.includes(':')) {
+      const parts = birthTime.split(':');
+      birthTime = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+    }
+
     const url = `${API_URL}/api/natal-chart`;
+    console.log('🚀 Invio richiesta tema natale:', {
+      birthDate: profile.birth_date,
+      birthTime: birthTime,
+      lat: profile.birth_latitude,
+      lng: profile.birth_longitude
+    });
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -24,18 +47,25 @@ export async function loadNatalChart() {
       },
       body: JSON.stringify({
         birthDate: profile.birth_date,
-        birthTime: profile.birth_time || '12:00',
+        birthTime: birthTime,
         lat: profile.birth_latitude,
         lng: profile.birth_longitude,
-        timezone: profile.birth_timezone,
+        timezone: profile.birth_timezone || 'Europe/Rome',
       }),
     });
-    if (!res.ok) throw new Error('Chart failed: ' + res.status);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('❌ Server errore:', res.status, errText);
+      throw new Error('Chart failed: ' + res.status);
+    }
+
     cachedChart = await res.json();
+    console.log('✅ Tema natale ricevuto:', cachedChart);
     updateNatalChartUI(cachedChart);
     return cachedChart;
   } catch (err) {
-    console.error('Natal chart error:', err);
+    console.error('❌ Natal chart error:', err);
     return null;
   }
 }
