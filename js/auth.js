@@ -227,15 +227,26 @@ function notifyChange() {
 
 // ===== GEOCODING PROFILO (Worker Cloudflare) =====
 export async function geocodeProfileIfNeeded() {
-  if (!currentUser || !currentProfile) return false;
-  if (currentProfile.birth_latitude) return true;
-  if (!currentProfile.birth_city || !currentProfile.birth_country) return false;
+  if (!currentUser || !currentProfile) {
+    console.warn('Geocoding: no user or profile');
+    return false;
+  }
+  if (currentProfile.birth_latitude) {
+    console.log('Geocoding: already has coordinates');
+    return true;
+  }
+  if (!currentProfile.birth_city || !currentProfile.birth_country) {
+    console.warn('Geocoding: missing city or country');
+    return false;
+  }
 
   try {
     const url = `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country)}`;
+    console.log('🌍 Geocoding request:', url);
     const res = await fetch(url);
-    if (!res.ok) throw new Error('Geocoding failed');
+    if (!res.ok) throw new Error('Geocoding failed: ' + res.status);
     const data = await res.json();
+    console.log('🌍 Geocoding response:', data);
 
     if (data.lat != null && data.lng != null) {
       const { error } = await supabase.from('profiles').update({
@@ -247,10 +258,11 @@ export async function geocodeProfileIfNeeded() {
 
       if (error) throw error;
       await loadUserData();
+      console.log('✅ Geocoding saved to profile');
       return true;
     }
   } catch (err) {
-    console.error('Geocoding error:', err);
+    console.error('❌ Geocoding error:', err);
   }
   return false;
 }
