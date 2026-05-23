@@ -541,7 +541,7 @@ let serviceChoiceCategory = null;
 export function showServiceChoice(category) {
     serviceChoiceCategory = category;
     const label = CATEGORY_LABELS[category] || category;
-    
+
     let modal = document.getElementById("serviceChoiceModal");
     if (!modal) {
         modal = document.createElement("div");
@@ -561,7 +561,7 @@ export function showServiceChoice(category) {
         `;
         document.body.appendChild(modal);
     }
-    
+
     const sub = document.getElementById("scSubtitle");
     if (sub) sub.textContent = `Argomento: ${label}`;
     modal.classList.add("active");
