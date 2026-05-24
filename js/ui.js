@@ -1,6 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX: no bottom nav, compatibilità con nome segno, ruota arricchita
+// FIX: no bottom nav, compatibilità con nome segno, cerchio pulito
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -45,8 +45,6 @@ export function renderHeader(isLoggedIn, userData) {
 
 // ===== RENDER BOTTOM NAV — RIMOSSA =====
 export function renderNav(activePage) {
-    // Bottom nav rimossa su richiesta utente
-    // Navigazione avviene tramite header (avatar = profilo, logo = home)
     setHTML("app-nav", "");
 }
 
@@ -356,13 +354,13 @@ export function renderPersonalizedPage(profile, user) {
     const signPlaceholder = "...";
     const symbolPlaceholder = "✨";
 
-    // Compatibilità: simbolo + nome segno sotto, in verticale
+    // Compatibilità placeholder — verrà aggiornata da natal.js con segno reale
     const compatPills = [
-        { sign: 'Leone',   symbol: '♌' },
-        { sign: 'Toro',    symbol: '♉' },
-        { sign: 'Acquario',symbol: '♒' },
+        { sign: '...', symbol: '✨' },
+        { sign: '...', symbol: '✨' },
+        { sign: '...', symbol: '✨' },
     ].map(c => `
-        <button class="compat-pill" onclick="window.app.showCompat('${c.sign}')" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
+        <button class="compat-pill" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
             <span class="compat-icon" style="font-size:1.1rem;line-height:1;">${c.symbol}</span>
             <span style="font-size:0.65rem;color:var(--text-dim);line-height:1;">${c.sign}</span>
         </button>
@@ -492,7 +490,7 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-aspects">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari verranno calcolati al prossimo aggiornamento del server.</em></p>
+                    <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('aspetti')">💬 Chiedi a Luna</button>
@@ -508,7 +506,7 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-transits">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p style="color:var(--text-dim);"><em>🌙 I transiti planetari verranno aggiornati automaticamente quando il server sarà online.</em></p>
+                    <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('transiti')">💬 Chiedi a Luna</button>
