@@ -413,7 +413,7 @@ export function renderPersonalizedPage(profile, user) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-wheel">
-                <div class="natal-wheel"><div class="wheel-placeholder" id="natalWheel">✨</div></div>
+                <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
                 <div style="text-align:center; margin-top:0.5rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('ruota')">💬 Chiedi a Luna</button>
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('ruota')">🎙️ Spiegami</button>
