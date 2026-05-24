@@ -1,6 +1,7 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX: no bottom nav, compatibilità con nome segno, cerchio pulito
+// FIX: solo bottom nav rimossa, compatibilità con span compat-name
+// Tutto il resto IDENTICO al codice originale funzionante
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -344,6 +345,9 @@ export function renderCompatModal() {
 }
 
 // ===== RENDER PERSONALIZED PAGE =====
+// IDENTICO al codice originale funzionante, con solo:
+// - placeholder compatibilità con span compat-name
+// - placeholder segno con ph-sign-name
 export function renderPersonalizedPage(profile, user) {
     const name = profile?.full_name || (user?.email?.split("@")[0]) || "Utente";
     const bd = profile?.birth_date ? new Date(profile.birth_date).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"}) : "--";
@@ -353,18 +357,6 @@ export function renderPersonalizedPage(profile, user) {
 
     const signPlaceholder = "...";
     const symbolPlaceholder = "✨";
-
-    // Compatibilità placeholder — verrà aggiornata da natal.js con segno reale
-    const compatPills = [
-        { sign: '...', symbol: '✨' },
-        { sign: '...', symbol: '✨' },
-        { sign: '...', symbol: '✨' },
-    ].map(c => `
-        <button class="compat-pill" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
-            <span class="compat-icon" style="font-size:1.1rem;line-height:1;">${c.symbol}</span>
-            <span style="font-size:0.65rem;color:var(--text-dim);line-height:1;">${c.sign}</span>
-        </button>
-    `).join("");
 
     const html = `
         <div class="personal-header">
@@ -377,11 +369,10 @@ export function renderPersonalizedPage(profile, user) {
         </div>
         <div class="compat-row">
             <span class="compat-label">👤 Compatibilità:</span>
-            ${compatPills}
-            <button class="compat-pill" onclick="window.app.openCompatModal()" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
-                <span style="font-size:1.1rem;line-height:1;">🔮</span>
-                <span style="font-size:0.65rem;color:var(--text-dim);line-height:1;">Affinità</span>
-            </button>
+            <button class="compat-pill" onclick="window.app.showCompat('Leone')"><span class="compat-icon">♌</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Leone</span></button>
+            <button class="compat-pill" onclick="window.app.showCompat('Toro')"><span class="compat-icon">♉</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Toro</span></button>
+            <button class="compat-pill" onclick="window.app.showCompat('Acquario')"><span class="compat-icon">♒</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Acquario</span></button>
+            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">🔮</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Affinità</span></button>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
