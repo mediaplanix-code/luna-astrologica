@@ -234,7 +234,7 @@ function drawWheelSVG(chart, container) {
         fire: '#FF6B6B', earth: '#4ECDC4', air: '#FFE66D', water: '#45B7D1'
     };
 
-    let svgHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto;min-height:350px;max-height:600px;">
+    let svgHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${size} ${size}" style="display:block;width:100%;height:auto;min-width:350px;min-height:350px;">
 <defs>
     <style>
         .w-outer { fill: none; stroke: #666; stroke-width: 2; }
@@ -407,6 +407,12 @@ export function updateNatalChartUI(chart) {
     // 6. RUOTA SVG — disegnata lato client con dati dal server
     const wheel = document.getElementById('natalWheel');
     if (wheel && chart.houses && chart.houses.length === 12) {
+        // Forza container grande
+        wheel.style.width = '100%';
+        wheel.style.minHeight = '400px';
+        wheel.style.display = 'flex';
+        wheel.style.alignItems = 'center';
+        wheel.style.justifyContent = 'center';
         drawWheelSVG(chart, wheel);
     }
 
