@@ -288,7 +288,7 @@ function drawWheelSVG(chart, container) {
 
         // SIMBOLO ZODIACALE — uso SYMBOLS[signIdx] non SIGNS[signIdx]!
         const s = polar((rSign + rOuter) / 2, mid);
-        svgHTML += `<text x="${s.x}" y="${s.y}" class="w-sign-sym">${SYMBOLS[signIdx]}</text>
+        svgHTML += `<text x="${s.x}" y="${s.y}" class="w-sign-sym">${SYMBOLS[SIGNS[signIdx]]}</text>
 `;
     }
 
