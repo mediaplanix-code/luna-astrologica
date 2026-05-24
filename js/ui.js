@@ -1,5 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
+// FIX: pagina personalizzazione non più hardcoded a Scorpione
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -361,13 +362,14 @@ export function renderPersonalizedPage(profile, user) {
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    const sign = "Scorpione";
-    const symbol = "♏";
+    // Placeholder segno — verrà aggiornato da updateNatalChartUI quando il chart arriva
+    const signPlaceholder = "...";
+    const symbolPlaceholder = "✨";
 
     const html = `
         <div class="personal-header">
             <button class="personal-back" onclick="window.app.showPage('home')">🔙</button>
-            <div class="personal-sign" id="personalSignIcon">${symbol}</div>
+            <div class="personal-sign" id="personalSignIcon">${symbolPlaceholder}</div>
             <div class="personal-info">
                 <h2 id="personalName">Benvenuto, ${name}</h2>
                 <p id="personalDetails">Nato il ${bd} • ${bt} • ${bc}${bco ? ", " + bco : ""}</p>
@@ -392,22 +394,22 @@ export function renderPersonalizedPage(profile, user) {
             <div class="horo-content" style="margin-bottom:1.5rem;">
                 <div class="horo-text" id="ph-text-day">
                     <p><strong style="color:var(--gold);">✨ Il tuo oroscopo di oggi, ${name}</strong></p>
-                    <p style="margin-top:0.75rem;">Con il tuo Sole in ${sign} e la Luna che transita oggi in una posizione favorevole, è un giorno ideale per prendere decisioni legate al lavoro. La tua energia comunicativa è al massimo.</p>
+                    <p style="margin-top:0.75rem;">Con il tuo Sole in <span class="ph-sign-name">${signPlaceholder}</span> e la Luna che transita oggi in una posizione favorevole, è un giorno ideale per prendere decisioni legate al lavoro. La tua energia comunicativa è al massimo.</p>
                     <p style="margin-top:0.75rem;">In amore, Venere sorride al tuo segno. Se sei in coppia, un gesto spontaneo riscalderà la relazione. Se sei single, un incontro casuale potrebbe sorprenderti.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-week">
                     <p><strong style="color:var(--gold);">✨ La tua settimana</strong></p>
-                    <p style="margin-top:0.75rem;">Questa settimana Giove transita in una posizione favorevole rispetto al tuo segno solare. Le opportunità professionali si moltiplicano.</p>
+                    <p style="margin-top:0.75rem;">Questa settimana Giove transita in una posizione favorevole rispetto al tuo segno solare <span class="ph-sign-name">${signPlaceholder}</span>. Le opportunità professionali si moltiplicano.</p>
                     <p style="margin-top:0.75rem;">Attenzione alla Luna piena di mercoledì: potrebbe portare chiarimenti in una relazione importante.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-month">
                     <p><strong style="color:var(--gold);">✨ Il tuo mese</strong></p>
-                    <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività. È il momento di lanciare progetti rimandati.</p>
+                    <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività per <span class="ph-sign-name">${signPlaceholder}</span>. È il momento di lanciare progetti rimandati.</p>
                     <p style="margin-top:0.75rem;">Saturno ti invita alla prudenza finanziaria nei primi 10 giorni. Poi Giove apre una finestra fortunata.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-year">
                     <p><strong style="color:var(--gold);">✨ Il tuo anno</strong></p>
-                    <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Con il tuo segno, sarai chiamato a riscoprire la tua autenticità.</p>
+                    <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Con il tuo segno <span class="ph-sign-name">${signPlaceholder}</span>, sarai chiamato a riscoprire la tua autenticità.</p>
                     <p style="margin-top:0.75rem;">Nel lavoro, aspettati una svolta importante tra la primavera e l'estate. Le collaborazioni internazionali sono favorite.</p>
                 </div>
             </div>
@@ -419,7 +421,7 @@ export function renderPersonalizedPage(profile, user) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-wheel">
-                <div class="natal-wheel"><div class="wheel-placeholder" id="natalWheel">${symbol}</div></div>
+                <div class="natal-wheel"><div class="wheel-placeholder" id="natalWheel">✨</div></div>
                 <div style="text-align:center; margin-top:0.5rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('ruota')">💬 Chiedi a Luna</button>
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('ruota')">🎙️ Spiegami</button>
@@ -435,17 +437,17 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-planets">
                 <div class="planet-grid">
-    <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos" id="pos-sun">Scorpione 22°</span></div>
-    <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">Leone 8°</span></div>
-    <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">Sagittario 5°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">Scorpione 14°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">Capricorno 3°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">Pesci 28°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">Acquario 15°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">Toro 17°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">Pesci 24°</span></div>
-    <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">Capricorno 28°</span></div>
-</div>
+                    <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos" id="pos-sun">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
+                </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('pianeti')">💬 Chiedi a Luna</button>
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('pianeti')">🎙️ Spiegami</button>
@@ -460,13 +462,18 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-houses">
                 <div class="planet-grid">
-                    ${[1,2,3,4,5,6,7,8,9,10,11,12].map(n => `
-                        <div class="planet-item">
-                            <span class="planet-symbol">${n}</span>
-                            <span class="planet-name">Casa ${n === 10 ? 'X (MC)' : (n === 1 ? 'I' : ['II','III','IV','V','VI','VII','VIII','IX','XI','XII'][n-2])}</span>
-                            <span class="planet-pos">--</span>
-                        </div>
-                    `).join("")}
+                    <div class="planet-item"><span class="planet-symbol">1</span><span class="planet-name">Casa I</span><span class="planet-pos" id="house-1">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">2</span><span class="planet-name">Casa II</span><span class="planet-pos" id="house-2">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">3</span><span class="planet-name">Casa III</span><span class="planet-pos" id="house-3">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">4</span><span class="planet-name">Casa IV</span><span class="planet-pos" id="house-4">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">5</span><span class="planet-name">Casa V</span><span class="planet-pos" id="house-5">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">6</span><span class="planet-name">Casa VI</span><span class="planet-pos" id="house-6">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">7</span><span class="planet-name">Casa VII</span><span class="planet-pos" id="house-7">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">8</span><span class="planet-name">Casa VIII</span><span class="planet-pos" id="house-8">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">9</span><span class="planet-name">Casa IX</span><span class="planet-pos" id="house-9">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">10</span><span class="planet-name">Casa X (MC)</span><span class="planet-pos" id="house-10">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">11</span><span class="planet-name">Casa XI</span><span class="planet-pos" id="house-11">--</span></div>
+                    <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('case')">💬 Chiedi a Luna</button>
@@ -482,9 +489,9 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-aspects">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p><strong style="color:var(--gold);">Sole congiunta Venere</strong> — Scorpione 22°/14° • Intensità emotiva e magnetismo personale elevato.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Luna quadrata Sole</strong> — Leone/Scorpione • Tensione tra espressione emotiva e identità.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Marte trigono Giove</strong> — Capricorno/Pesci • Energia costruttiva e ambizione.</p>
+                    <p><strong style="color:var(--gold);">Sole congiunta Venere</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Intensità emotiva e magnetismo personale elevato.</p>
+                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Luna quadrata Sole</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Tensione tra espressione emotiva e identità.</p>
+                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Marte trigono Giove</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Energia costruttiva e ambizione.</p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('aspetti')">💬 Chiedi a Luna</button>
@@ -500,8 +507,8 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-transits">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p><strong style="color:var(--gold);">Giove in Gemelli</strong> transita nella tua Casa VII — Periodo favorevole per nuove partnership.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno in Pesci</strong> transita nella tua Casa II — Ristrutturazione delle finanze.</p>
+                    <p><strong style="color:var(--gold);">Giove in Gemelli</strong> transita nella tua Casa VII — Periodo favorevole per nuove partnership per <span class="ph-sign-name">${signPlaceholder}</span>.</p>
+                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno in Pesci</strong> transita nella tua Casa II — Ristrutturazione delle finanze per <span class="ph-sign-name">${signPlaceholder}</span>.</p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('transiti')">💬 Chiedi a Luna</button>
