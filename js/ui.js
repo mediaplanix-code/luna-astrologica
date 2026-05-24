@@ -1,6 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX: pagina personalizzazione non più hardcoded a Scorpione
+// FIX: no bottom nav, compatibilità con nome segno, ruota arricchita
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -43,20 +43,11 @@ export function renderHeader(isLoggedIn, userData) {
     setHTML("app-header", html);
 }
 
-// ===== RENDER BOTTOM NAV =====
+// ===== RENDER BOTTOM NAV — RIMOSSA =====
 export function renderNav(activePage) {
-    const html = `
-        <button class="nav-item ${activePage === 'home' ? 'active' : ''}" id="nav-home" onclick="window.app.showPage('home')">
-            <span class="nav-icon">🏠</span><span>Home</span>
-        </button>
-        <button class="nav-item ${activePage === 'chat' ? 'active' : ''}" id="nav-chat" onclick="window.app.requireAuthOrModalForChat('chat')">
-            <span class="nav-icon">💬</span><span>Chat</span>
-        </button>
-        <button class="nav-item ${activePage === 'personalized' ? 'active' : ''}" id="nav-personalized" onclick="window.app.requireAuthOrModal()">
-            <span class="nav-icon">👤</span><span>Profilo</span>
-        </button>
-    `;
-    setHTML("app-nav", html);
+    // Bottom nav rimossa su richiesta utente
+    // Navigazione avviene tramite header (avatar = profilo, logo = home)
+    setHTML("app-nav", "");
 }
 
 // ===== RENDER HOME PAGE =====
@@ -362,9 +353,20 @@ export function renderPersonalizedPage(profile, user) {
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    // Placeholder segno — verrà aggiornato da updateNatalChartUI quando il chart arriva
     const signPlaceholder = "...";
     const symbolPlaceholder = "✨";
+
+    // Compatibilità: simbolo + nome segno sotto, in verticale
+    const compatPills = [
+        { sign: 'Leone',   symbol: '♌' },
+        { sign: 'Toro',    symbol: '♉' },
+        { sign: 'Acquario',symbol: '♒' },
+    ].map(c => `
+        <button class="compat-pill" onclick="window.app.showCompat('${c.sign}')" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
+            <span class="compat-icon" style="font-size:1.1rem;line-height:1;">${c.symbol}</span>
+            <span style="font-size:0.65rem;color:var(--text-dim);line-height:1;">${c.sign}</span>
+        </button>
+    `).join("");
 
     const html = `
         <div class="personal-header">
@@ -377,10 +379,11 @@ export function renderPersonalizedPage(profile, user) {
         </div>
         <div class="compat-row">
             <span class="compat-label">👤 Compatibilità:</span>
-            <button class="compat-pill" onclick="window.app.showCompat('Leone')"><span class="compat-icon">♌</span> Leone</button>
-            <button class="compat-pill" onclick="window.app.showCompat('Toro')"><span class="compat-icon">♉</span> Toro</button>
-            <button class="compat-pill" onclick="window.app.showCompat('Acquario')"><span class="compat-icon">♒</span> Acquario</button>
-            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">🔮</span> Affinità</button>
+            ${compatPills}
+            <button class="compat-pill" onclick="window.app.openCompatModal()" style="display:flex;flex-direction:column;align-items:center;gap:0.15rem;padding:0.4rem 0.6rem;">
+                <span style="font-size:1.1rem;line-height:1;">🔮</span>
+                <span style="font-size:0.65rem;color:var(--text-dim);line-height:1;">Affinità</span>
+            </button>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -489,9 +492,7 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-aspects">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p><strong style="color:var(--gold);">Sole congiunta Venere</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Intensità emotiva e magnetismo personale elevato.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Luna quadrata Sole</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Tensione tra espressione emotiva e identità.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Marte trigono Giove</strong> — <span class="ph-sign-name">${signPlaceholder}</span> • Energia costruttiva e ambizione.</p>
+                    <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari verranno calcolati al prossimo aggiornamento del server.</em></p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('aspetti')">💬 Chiedi a Luna</button>
@@ -507,8 +508,7 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-transits">
                 <div style="font-size:0.8125rem; line-height:1.7;">
-                    <p><strong style="color:var(--gold);">Giove in Gemelli</strong> transita nella tua Casa VII — Periodo favorevole per nuove partnership per <span class="ph-sign-name">${signPlaceholder}</span>.</p>
-                    <p style="margin-top:0.75rem;"><strong style="color:var(--gold);">Saturno in Pesci</strong> transita nella tua Casa II — Ristrutturazione delle finanze per <span class="ph-sign-name">${signPlaceholder}</span>.</p>
+                    <p style="color:var(--text-dim);"><em>🌙 I transiti planetari verranno aggiornati automaticamente quando il server sarà online.</em></p>
                 </div>
                 <div style="text-align:center; margin-top:0.75rem;">
                     <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('transiti')">💬 Chiedi a Luna</button>
@@ -588,13 +588,9 @@ export function getServiceChoiceCategory() {
 // ===== NAVIGAZIONE PAGINE =====
 export function showPage(pageId, lastPageRef) {
     document.querySelectorAll(".page-section").forEach(s => s.classList.remove("active"));
-    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
 
     const target = document.getElementById("page-" + pageId);
     if (target) target.classList.add("active");
-
-    const nav = document.getElementById("nav-" + pageId);
-    if (nav) nav.classList.add("active");
 
     window.scrollTo(0, 0);
     return pageId;
