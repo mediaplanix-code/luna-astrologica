@@ -1,6 +1,7 @@
 // ============================================================
-// NATAL.JS — Calcolo e visualizzazione Tema Natale
-// FIX: timezone dinamico, UI minimale (solo testo, niente grid)
+// NATAL.JS — Calcolo tema natale + disegno ruota SVG lato client
+// Swiss Ephemeris calcola (server), browser disegna (SVG)
+// Nessuna modifica al server Render necessaria
 // ============================================================
 
 import { getCurrentUser, getCurrentProfile } from './auth.js';
@@ -13,6 +14,8 @@ const SIGN_SYMBOLS = {
     'Leone': '♌', 'Vergine': '♍', 'Bilancia': '♎', 'Scorpione': '♏',
     'Sagittario': '♐', 'Capricorno': '♑', 'Acquario': '♒', 'Pesci': '♓'
 };
+
+const SIGNS = ['Ariete','Toro','Gemelli','Cancro','Leone','Vergine','Bilancia','Scorpione','Sagittario','Capricorno','Acquario','Pesci'];
 
 const SIGN_LONGITUDE = {
     'Ariete': 0, 'Toro': 30, 'Gemelli': 60, 'Cancro': 90, 'Leone': 120, 'Vergine': 150,
@@ -40,42 +43,17 @@ const COMPAT_MAP = {
     'Pesci': ['Cancro', 'Scorpione', 'Capricorno']
 };
 
-function getLon(p) {
-    return (SIGN_LONGITUDE[p.sign] || 0) + (p.degree || 0) + ((p.minutes || 0) / 60);
-}
+// Colori per elemento
+const ELEMENT_COLORS = {
+    fire: '#FF6B6B',    // Ariete, Leone, Sagittario
+    earth: '#4ECDC4',   // Toro, Vergine, Capricorno
+    air: '#FFE66D',     // Gemelli, Bilancia, Acquario
+    water: '#45B7D1'    // Cancro, Scorpione, Pesci
+};
 
-function calcAspects(planets) {
-    const aspects = [];
-    const longs = {};
-    planets.forEach(p => { if (p.key && p.sign && p.degree !== undefined) longs[p.key] = getLon(p); });
-    const keys = Object.keys(longs);
-    const types = [
-        { name: 'congiunzione', angle: 0, orb: 8 },
-        { name: 'sestile', angle: 60, orb: 6 },
-        { name: 'quadratura', angle: 90, orb: 8 },
-        { name: 'trigono', angle: 120, orb: 8 },
-        { name: 'opposizione', angle: 180, orb: 8 }
-    ];
-    for (let i = 0; i < keys.length; i++) {
-        for (let j = i + 1; j < keys.length; j++) {
-            let diff = Math.abs(longs[keys[i]] - longs[keys[j]]);
-            if (diff > 180) diff = 360 - diff;
-            for (const t of types) {
-                const orb = Math.abs(diff - t.angle);
-                if (orb <= t.orb) {
-                    aspects.push({
-                        planet1: PLANET_NAMES[keys[i]] || keys[i],
-                        planet2: PLANET_NAMES[keys[j]] || keys[j],
-                        type: t.name, orb: orb.toFixed(1)
-                    });
-                    break;
-                }
-            }
-        }
-    }
-    return aspects;
-}
+const SIGN_ELEMENTS = ['fire','earth','air','water','fire','earth','air','water','fire','earth','air','water'];
 
+// ===== CONVERTE ORA LOCALE IN UTC =====
 function convertToUTC(birthDate, birthTime, timeZone) {
     let cleanTime = birthTime || '12:00';
     if (cleanTime.includes('+')) cleanTime = cleanTime.split('+')[0];
@@ -123,6 +101,7 @@ function convertToUTC(birthDate, birthTime, timeZone) {
     };
 }
 
+// ===== CARICA TEMA NATALE =====
 export async function loadNatalChart() {
     const profile = getCurrentProfile();
     if (!profile?.birth_latitude || !profile.birth_date) {
@@ -151,51 +130,230 @@ export async function loadNatalChart() {
 export function invalidateChartCache() { cachedChart = null; }
 export function getCachedChart() { return cachedChart; }
 
-// ===== AGGIORNA UI — MINIMALE, solo testo su elementi ESISTENTI =====
+// ===== CALCOLO ASPETTI =====
+function getLon(p) {
+    return (SIGN_LONGITUDE[p.sign] || 0) + (p.degree || 0) + ((p.minutes || 0) / 60);
+}
+
+function calcAspects(planets) {
+    const aspects = [];
+    const longs = {};
+    planets.forEach(p => { if (p.key && p.sign && p.degree !== undefined) longs[p.key] = getLon(p); });
+    const keys = Object.keys(longs);
+    const types = [
+        { name: 'congiunzione', angle: 0, orb: 8 },
+        { name: 'sestile', angle: 60, orb: 6 },
+        { name: 'quadratura', angle: 90, orb: 8 },
+        { name: 'trigono', angle: 120, orb: 8 },
+        { name: 'opposizione', angle: 180, orb: 8 }
+    ];
+    for (let i = 0; i < keys.length; i++) {
+        for (let j = i + 1; j < keys.length; j++) {
+            let diff = Math.abs(longs[keys[i]] - longs[keys[j]]);
+            if (diff > 180) diff = 360 - diff;
+            for (const t of types) {
+                const orb = Math.abs(diff - t.angle);
+                if (orb <= t.orb) {
+                    aspects.push({
+                        planet1: PLANET_NAMES[keys[i]] || keys[i],
+                        planet2: PLANET_NAMES[keys[j]] || keys[j],
+                        type: t.name, orb: orb.toFixed(1)
+                    });
+                    break;
+                }
+            }
+        }
+    }
+    return aspects;
+}
+
+// ===== COMPATIBILITÀ =====
+function updateCompatibility(sunSign) {
+    const compat = COMPAT_MAP[sunSign];
+    if (!compat) return;
+    const pills = document.querySelectorAll('.compat-pill');
+    let idx = 0;
+    pills.forEach(pill => {
+        if (pill.textContent.includes('Affinit') || pill.getAttribute('onclick')?.includes('CompatModal')) return;
+        if (compat[idx]) {
+            const sign = compat[idx];
+            const sym = SIGN_SYMBOLS[sign] || '?';
+            pill.setAttribute('onclick', `window.app.showCompat('${sign}')`);
+            const iconSpan = pill.querySelector('.compat-icon');
+            if (iconSpan) {
+                iconSpan.textContent = sym;
+                let nameSpan = pill.querySelector('.compat-name');
+                if (!nameSpan) {
+                    nameSpan = document.createElement('span');
+                    nameSpan.className = 'compat-name';
+                    nameSpan.style.cssText = 'display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;';
+                    pill.appendChild(nameSpan);
+                }
+                nameSpan.textContent = sign;
+            }
+            idx++;
+        }
+    });
+}
+
+// ===== DISEGNA RUOTA SVG LATO CLIENT =====
+function drawWheelSVG(chart, container) {
+    if (!chart.houses || chart.houses.length !== 12) return;
+
+    const size = 500;
+    const cx = size / 2;
+    const cy = size / 2;
+    const rOuter = 240;
+    const rInner = 140;
+    const rPlanet = 190;
+
+    // Helper: polar to cartesian
+    function polar(r, angle) {
+        const rad = (angle - 90) * Math.PI / 180;
+        return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    }
+
+    // Helper: arco SVG
+    function arc(r, start, end) {
+        const s = polar(r, end);
+        const e = polar(r, start);
+        const large = end - start <= 180 ? 0 : 1;
+        return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y}`;
+    }
+
+    // Calcola longitudini case dal server
+    const houseLongs = chart.houses.map(h => {
+        return (SIGN_LONGITUDE[h.name] || 0) + (h.degree || 0) + ((h.minutes || 0) / 60);
+    });
+
+    // Calcola longitudini pianeti
+    const planetLongs = (chart.planets || []).map(p => {
+        return (SIGN_LONGITUDE[p.sign] || 0) + (p.degree || 0) + ((p.minutes || 0) / 60);
+    });
+
+    let svgHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${size} ${size}" style="max-width:500px;display:block;margin:0 auto;">
+<defs>
+    <style>
+        .w-line { stroke: #444; stroke-width: 1; fill: none; }
+        .w-house-num { font-family: Arial, sans-serif; font-size: 10px; fill: #888; text-anchor: middle; }
+        .w-sign-sym { font-family: Arial, sans-serif; font-size: 16px; text-anchor: middle; dominant-baseline: middle; fill: #FFD700; }
+        .w-sign-txt { font-family: Arial, sans-serif; font-size: 8px; fill: #aaa; text-anchor: middle; }
+        .w-planet { font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
+        .w-planet-deg { font-family: Arial, sans-serif; font-size: 7px; fill: #888; text-anchor: middle; }
+        .w-center { font-family: Arial, sans-serif; font-size: 13px; fill: #FFD700; text-anchor: middle; }
+        .w-center-sub { font-family: Arial, sans-serif; font-size: 10px; fill: #aaa; text-anchor: middle; }
+        .w-aspect { stroke-width: 0.8; opacity: 0.5; }
+    </style>
+</defs>
+<rect width="100%" height="100%" fill="transparent"/>
+`;
+
+    // 12 spicchi
+    for (let i = 0; i < 12; i++) {
+        const start = houseLongs[i];
+        const end = houseLongs[(i + 1) % 12];
+        const signIdx = Math.floor(start / 30) % 12;
+        const color = ELEMENT_COLORS[SIGN_ELEMENTS[signIdx]];
+
+        // Riempimento spicchio
+        const path = `${arc(rOuter, start, end)} L ${polar(rInner, end).x} ${polar(rInner, end).y} ${arc(rInner, end, start)} L ${polar(rOuter, start).x} ${polar(rOuter, start).y} Z`;
+        svgHTML += `<path d="${path}" fill="${color}" fill-opacity="0.12" stroke="#333" stroke-width="0.5"/>\n`;
+
+        // Linea divisoria
+        const o = polar(rOuter, start);
+        const inn = polar(rInner, start);
+        svgHTML += `<line x1="${inn.x}" y1="${inn.y}" x2="${o.x}" y2="${o.y}" class="w-line"/>\n`;
+
+        // Numero casa
+        const mid = (start + end) / 2;
+        const n = polar(rInner + 12, mid);
+        svgHTML += `<text x="${n.x}" y="${n.y}" class="w-house-num">${i + 1}</text>\n`;
+
+        // Simbolo zodiacale
+        const s = polar(rOuter - 20, mid);
+        svgHTML += `<text x="${s.x}" y="${s.y}" class="w-sign-sym">${SIGNS[signIdx]}</text>\n`;
+
+        // Nome segno
+        const sn = polar(rOuter - 38, mid);
+        const deg = Math.floor(start % 30);
+        svgHTML += `<text x="${sn.x}" y="${sn.y}" class="w-sign-txt">${SIGNS[signIdx]} ${deg}°</text>\n`;
+    }
+
+    // Cerchi
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#444" stroke-width="1"/>\n`;
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rPlanet}" fill="none" stroke="#333" stroke-width="0.5"/>\n`;
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#444" stroke-width="1"/>\n`;
+
+    // Pianeti
+    const planetSymbols = {'sun':'☉','moon':'☽','mercury':'☿','venus':'♀','mars':'♂','jupiter':'♃','saturn':'♄','uranus':'♅','neptune':'♆','pluto':'♇'};
+    const planetColors = {'sun':'#FFD700','moon':'#C0C0C0','mercury':'#A9A9A9','venus':'#FFC0CB','mars':'#FF4500','jupiter':'#DAA520','saturn':'#808080','uranus':'#00CED1','neptune':'#1E90FF','pluto':'#8B008B'};
+
+    (chart.planets || []).forEach((p, idx) => {
+        const lon = planetLongs[idx];
+        const pt = polar(rPlanet, lon);
+        const sym = planetSymbols[p.key] || '●';
+        const col = planetColors[p.key] || '#fff';
+
+        // Cerchietto sfondo
+        svgHTML += `<circle cx="${pt.x}" cy="${pt.y}" r="11" fill="#1a1a2e" stroke="${col}" stroke-width="1"/>\n`;
+        // Simbolo
+        svgHTML += `<text x="${pt.x}" y="${pt.y}" class="w-planet" fill="${col}">${sym}</text>\n`;
+        // Grado
+        const dpt = polar(rPlanet + 18, lon);
+        const deg = Math.floor(lon % 30);
+        const min = Math.floor((lon % 30 - deg) * 60);
+        svgHTML += `<text x="${dpt.x}" y="${dpt.y}" class="w-planet-deg">${deg}°${min}'</text>\n`;
+    });
+
+    // Linee aspetti
+    const aspects = calcAspects(chart.planets || []);
+    aspects.forEach(asp => {
+        const p1 = chart.planets.find(p => PLANET_NAMES[p.key] === asp.planet1);
+        const p2 = chart.planets.find(p => PLANET_NAMES[p.key] === asp.planet2);
+        if (p1 && p2) {
+            const lon1 = (SIGN_LONGITUDE[p1.sign] || 0) + (p1.degree || 0) + ((p1.minutes || 0) / 60);
+            const lon2 = (SIGN_LONGITUDE[p2.sign] || 0) + (p2.degree || 0) + ((p2.minutes || 0) / 60);
+            const pt1 = polar(rPlanet - 12, lon1);
+            const pt2 = polar(rPlanet - 12, lon2);
+            let color = '#666';
+            if (asp.type === 'congiunzione') color = '#FFD700';
+            else if (asp.type === 'trigono') color = '#4ECDC4';
+            else if (asp.type === 'quadratura') color = '#FF6B6B';
+            else if (asp.type === 'opposizione') color = '#FF6B6B';
+            else if (asp.type === 'sestile') color = '#FFE66D';
+            svgHTML += `<line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" class="w-aspect" stroke="${color}"/>\n`;
+        }
+    });
+
+    // Centro: Ascendente
+    const asc = chart.ascendant;
+    const ascSym = SIGN_SYMBOLS[asc?.name] || '?';
+    svgHTML += `<text x="${cx}" y="${cy - 12}" class="w-center">${ascSym} Ascendente</text>\n`;
+    svgHTML += `<text x="${cx}" y="${cy + 6}" class="w-center-sub">${asc?.name || '?'} ${asc?.degree !== undefined ? asc.degree + '°' : ''}</text>\n`;
+    svgHTML += `<text x="${cx}" y="${cy + 22}" class="w-center-sub" fill="#666">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</text>\n`;
+
+    svgHTML += `</svg>`;
+    container.innerHTML = svgHTML;
+}
+
+// ===== AGGIORNA UI =====
 export function updateNatalChartUI(chart) {
     if (!chart) return;
     const sunPlanet = chart.planets?.find(p => p.key === 'sun');
     const sunSign = sunPlanet ? sunPlanet.sign : null;
     const sunSymbol = sunSign ? (SIGN_SYMBOLS[sunSign] || '?') : '?';
 
-    // 1. Icona segno in testa alla pagina
+    // 1. Icona segno
     const signIconEl = document.getElementById('personalSignIcon');
     if (signIconEl) signIconEl.textContent = sunSymbol;
 
-    // 2. Nome segno nei testi dell'oroscopo
+    // 2. Nome segno
     document.querySelectorAll('.ph-sign-name').forEach(el => { if (sunSign) el.textContent = sunSign; });
 
-    // 3. COMPATIBILITÀ — aggiorna SOLO il testo dentro i pill esistenti
-    const compat = sunSign ? COMPAT_MAP[sunSign] : null;
-    if (compat) {
-        const pills = document.querySelectorAll('.compat-pill');
-        let idx = 0;
-        pills.forEach(pill => {
-            if (pill.textContent.includes('Affinit') || pill.getAttribute('onclick')?.includes('CompatModal')) return;
-            if (compat[idx]) {
-                const sign = compat[idx];
-                const sym = SIGN_SYMBOLS[sign] || '?';
-                pill.setAttribute('onclick', `window.app.showCompat('${sign}')`);
-                // Mantieni la struttura originale: span compat-icon + testo
-                const iconSpan = pill.querySelector('.compat-icon');
-                if (iconSpan) {
-                    iconSpan.textContent = sym;
-                    // Aggiungi nome sotto se non c'è già
-                    let nameSpan = pill.querySelector('.compat-name');
-                    if (!nameSpan) {
-                        nameSpan = document.createElement('span');
-                        nameSpan.className = 'compat-name';
-                        nameSpan.style.cssText = 'display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;';
-                        pill.appendChild(nameSpan);
-                    }
-                    nameSpan.textContent = sign;
-                }
-                idx++;
-            }
-        });
-    }
+    // 3. Compatibilità
+    if (sunSign) updateCompatibility(sunSign);
 
-    // 4. PIANETI — aggiorna solo textContent
+    // 4. Pianeti
     if (chart.planets && Array.isArray(chart.planets)) {
         chart.planets.forEach(p => {
             const el = document.getElementById(`pos-${p.key}`);
@@ -207,7 +365,7 @@ export function updateNatalChartUI(chart) {
         });
     }
 
-    // 5. Info extra Luna + Ascendente
+    // 5. Info extra
     const nameEl = document.getElementById('personalName');
     if (nameEl && chart.moonSign) {
         const old = document.getElementById('natalExtra');
@@ -219,18 +377,13 @@ export function updateNatalChartUI(chart) {
         nameEl.parentElement.appendChild(extra);
     }
 
-    // 6. RUOTA — struttura IDENTICA al codice originale funzionante
+    // 6. RUOTA SVG — disegnata lato client con dati dal server
     const wheel = document.getElementById('natalWheel');
-    if (wheel && chart.ascendant) {
-        const ascSym = SIGN_SYMBOLS[chart.ascendant.name] || '?';
-        wheel.innerHTML = `<div style="text-align:center;font-size:0.875rem;line-height:1.4;">
-            <div style="font-size:2rem;margin-bottom:0.25rem;">${ascSym}</div>
-            <div><strong>Ascendente</strong><br>${chart.ascendant.name || '?'} ${chart.ascendant?.degree !== undefined ? chart.ascendant.degree + '°' : ''}</div>
-            <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-dim);">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</div>
-        </div>`;
+    if (wheel && chart.houses && chart.houses.length === 12) {
+        drawWheelSVG(chart, wheel);
     }
 
-    // 7. CASE ASTROLOGICHE — aggiorna solo textContent
+    // 7. Case
     if (chart.houses && chart.houses.length === 12) {
         for (let i = 0; i < 12; i++) {
             const el = document.getElementById(`house-${i + 1}`);
@@ -238,11 +391,10 @@ export function updateNatalChartUI(chart) {
         }
     }
 
-    // 8. ASPETTI — calcolo lato client, inserisce in paragrafi semplici
+    // 8. Aspetti
     const aspectsEl = document.getElementById('acc-aspects');
     if (aspectsEl) {
         const container = aspectsEl.querySelector('div[style*="font-size:0.8125rem"]') || aspectsEl;
-        // Rimuovi SOLO i paragrafi (mantieni i bottoni)
         container.querySelectorAll('p').forEach(p => p.remove());
         const aspects = calcAspects(chart.planets || []);
         const btns = container.querySelector('div[style*="text-align:center"]');
@@ -262,15 +414,15 @@ export function updateNatalChartUI(chart) {
         }
     }
 
-    // 9. TRANSITI — placeholder
+    // 9. Transiti
     const transitsEl = document.getElementById('acc-transits');
     if (transitsEl) {
         const container = transitsEl.querySelector('div[style*="font-size:0.8125rem"]') || transitsEl;
         container.querySelectorAll('p').forEach(p => p.remove());
         const p = document.createElement('p');
         p.style.marginTop = '0.75rem';
-        p.style.color = 'var(--text-dim)';
         p.innerHTML = '<em>🌙 I transiti vengono aggiornati quotidianamente. Torna domani per le previsioni.</em>';
+        p.style.color = 'var(--text-dim)';
         const btns = container.querySelector('div[style*="text-align:center"]');
         container.insertBefore(p, btns);
     }
