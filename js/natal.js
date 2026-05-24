@@ -219,18 +219,15 @@ export function updateNatalChartUI(chart) {
         nameEl.parentElement.appendChild(extra);
     }
 
-    // 6. RUOTA — aggiorna SOLO il testo, nessun nuovo div, nessun grid
+    // 6. RUOTA — struttura IDENTICA al codice originale funzionante
     const wheel = document.getElementById('natalWheel');
     if (wheel && chart.ascendant) {
         const ascSym = SIGN_SYMBOLS[chart.ascendant.name] || '?';
-        const mcSym = chart.mc?.name ? (SIGN_SYMBOLS[chart.mc.name] || '?') : '?';
-        // Mantieni il layout semplice: simbolo grande + testo sotto
-        wheel.innerHTML = `
-            <div style="font-size:2.5rem;margin-bottom:0.25rem;">${ascSym}</div>
-            <div><strong>Ascendente</strong></div>
-            <div>${chart.ascendant.name || '?'} ${chart.ascendant?.degree !== undefined ? chart.ascendant.degree + '°' : ''}</div>
+        wheel.innerHTML = `<div style="text-align:center;font-size:0.875rem;line-height:1.4;">
+            <div style="font-size:2rem;margin-bottom:0.25rem;">${ascSym}</div>
+            <div><strong>Ascendente</strong><br>${chart.ascendant.name || '?'} ${chart.ascendant?.degree !== undefined ? chart.ascendant.degree + '°' : ''}</div>
             <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-dim);">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</div>
-        `;
+        </div>`;
     }
 
     // 7. CASE ASTROLOGICHE — aggiorna solo textContent
