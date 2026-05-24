@@ -200,20 +200,19 @@ function updateCompatibility(sunSign) {
 function drawWheelSVG(chart, container) {
     if (!chart.houses || chart.houses.length !== 12) return;
 
-    const size = 500;
+    // DIMENSIONI MAGGIORI per leggibilità
+    const size = 800;
     const cx = size / 2;
     const cy = size / 2;
-    const rOuter = 240;
-    const rInner = 140;
-    const rPlanet = 190;
+    const rOuter = 380;    // più grande
+    const rInner = 80;     // molto piccolo, quasi al centro
+    const rPlanet = 230;   // tra centro e bordo
 
-    // Helper: polar to cartesian
     function polar(r, angle) {
         const rad = (angle - 90) * Math.PI / 180;
         return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
     }
 
-    // Helper: arco SVG
     function arc(r, start, end) {
         const s = polar(r, end);
         const e = polar(r, start);
@@ -221,70 +220,70 @@ function drawWheelSVG(chart, container) {
         return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 0 ${e.x} ${e.y}`;
     }
 
-    // Calcola longitudini case dal server
     const houseLongs = chart.houses.map(h => {
         return (SIGN_LONGITUDE[h.name] || 0) + (h.degree || 0) + ((h.minutes || 0) / 60);
     });
 
-    // Calcola longitudini pianeti
     const planetLongs = (chart.planets || []).map(p => {
         return (SIGN_LONGITUDE[p.sign] || 0) + (p.degree || 0) + ((p.minutes || 0) / 60);
     });
 
-    let svgHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${size} ${size}" style="max-width:500px;display:block;margin:0 auto;">
+    // SVG con viewBox grande, si adatta al container
+    let svgHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${size} ${size}" style="display:block;margin:0 auto;min-height:400px;">
 <defs>
     <style>
-        .w-line { stroke: #444; stroke-width: 1; fill: none; }
-        .w-house-num { font-family: Arial, sans-serif; font-size: 10px; fill: #888; text-anchor: middle; }
-        .w-sign-sym { font-family: Arial, sans-serif; font-size: 16px; text-anchor: middle; dominant-baseline: middle; fill: #FFD700; }
-        .w-sign-txt { font-family: Arial, sans-serif; font-size: 8px; fill: #aaa; text-anchor: middle; }
-        .w-planet { font-family: Arial, sans-serif; font-size: 14px; text-anchor: middle; dominant-baseline: middle; }
-        .w-planet-deg { font-family: Arial, sans-serif; font-size: 7px; fill: #888; text-anchor: middle; }
-        .w-center { font-family: Arial, sans-serif; font-size: 13px; fill: #FFD700; text-anchor: middle; }
-        .w-center-sub { font-family: Arial, sans-serif; font-size: 10px; fill: #aaa; text-anchor: middle; }
-        .w-aspect { stroke-width: 0.8; opacity: 0.5; }
+        .w-line { stroke: #555; stroke-width: 1.5; fill: none; }
+        .w-house-num { font-family: Arial, sans-serif; font-size: 14px; fill: #aaa; text-anchor: middle; font-weight: bold; }
+        .w-sign-sym { font-family: Arial, sans-serif; font-size: 28px; text-anchor: middle; dominant-baseline: middle; fill: #FFD700; }
+        .w-sign-txt { font-family: Arial, sans-serif; font-size: 13px; fill: #ddd; text-anchor: middle; font-weight: 500; }
+        .w-planet { font-family: Arial, sans-serif; font-size: 22px; text-anchor: middle; dominant-baseline: middle; }
+        .w-planet-deg { font-family: Arial, sans-serif; font-size: 11px; fill: #bbb; text-anchor: middle; }
+        .w-center { font-family: Arial, sans-serif; font-size: 18px; fill: #FFD700; text-anchor: middle; font-weight: bold; }
+        .w-center-sub { font-family: Arial, sans-serif; font-size: 14px; fill: #ccc; text-anchor: middle; }
+        .w-aspect { stroke-width: 1.2; opacity: 0.6; }
     </style>
 </defs>
 <rect width="100%" height="100%" fill="transparent"/>
 `;
 
-    // 12 spicchi
+    // 12 spicchi con colori più intensi
     for (let i = 0; i < 12; i++) {
         const start = houseLongs[i];
         const end = houseLongs[(i + 1) % 12];
         const signIdx = Math.floor(start / 30) % 12;
         const color = ELEMENT_COLORS[SIGN_ELEMENTS[signIdx]];
 
-        // Riempimento spicchio
         const path = `${arc(rOuter, start, end)} L ${polar(rInner, end).x} ${polar(rInner, end).y} ${arc(rInner, end, start)} L ${polar(rOuter, start).x} ${polar(rOuter, start).y} Z`;
-        svgHTML += `<path d="${path}" fill="${color}" fill-opacity="0.12" stroke="#333" stroke-width="0.5"/>\n`;
+        svgHTML += `<path d="${path}" fill="${color}" fill-opacity="0.18" stroke="#444" stroke-width="1"/>
+`;
 
-        // Linea divisoria
         const o = polar(rOuter, start);
         const inn = polar(rInner, start);
-        svgHTML += `<line x1="${inn.x}" y1="${inn.y}" x2="${o.x}" y2="${o.y}" class="w-line"/>\n`;
+        svgHTML += `<line x1="${inn.x}" y1="${inn.y}" x2="${o.x}" y2="${o.y}" class="w-line"/>
+`;
 
-        // Numero casa
         const mid = (start + end) / 2;
-        const n = polar(rInner + 12, mid);
-        svgHTML += `<text x="${n.x}" y="${n.y}" class="w-house-num">${i + 1}</text>\n`;
+        const n = polar(rInner + 25, mid);
+        svgHTML += `<text x="${n.x}" y="${n.y}" class="w-house-num">${i + 1}</text>
+`;
 
-        // Simbolo zodiacale
-        const s = polar(rOuter - 20, mid);
-        svgHTML += `<text x="${s.x}" y="${s.y}" class="w-sign-sym">${SIGNS[signIdx]}</text>\n`;
+        const s = polar(rOuter - 35, mid);
+        svgHTML += `<text x="${s.x}" y="${s.y}" class="w-sign-sym">${SIGNS[signIdx]}</text>
+`;
 
-        // Nome segno
-        const sn = polar(rOuter - 38, mid);
+        const sn = polar(rOuter - 65, mid);
         const deg = Math.floor(start % 30);
-        svgHTML += `<text x="${sn.x}" y="${sn.y}" class="w-sign-txt">${SIGNS[signIdx]} ${deg}°</text>\n`;
+        svgHTML += `<text x="${sn.x}" y="${sn.y}" class="w-sign-txt">${SIGNS[signIdx]} ${deg}°</text>
+`;
     }
 
-    // Cerchi
-    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#444" stroke-width="1"/>\n`;
-    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rPlanet}" fill="none" stroke="#333" stroke-width="0.5"/>\n`;
-    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#444" stroke-width="1"/>\n`;
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rInner}" fill="none" stroke="#555" stroke-width="1.5"/>
+`;
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rPlanet}" fill="none" stroke="#444" stroke-width="1"/>
+`;
+    svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#555" stroke-width="1.5"/>
+`;
 
-    // Pianeti
     const planetSymbols = {'sun':'☉','moon':'☽','mercury':'☿','venus':'♀','mars':'♂','jupiter':'♃','saturn':'♄','uranus':'♅','neptune':'♆','pluto':'♇'};
     const planetColors = {'sun':'#FFD700','moon':'#C0C0C0','mercury':'#A9A9A9','venus':'#FFC0CB','mars':'#FF4500','jupiter':'#DAA520','saturn':'#808080','uranus':'#00CED1','neptune':'#1E90FF','pluto':'#8B008B'};
 
@@ -294,18 +293,18 @@ function drawWheelSVG(chart, container) {
         const sym = planetSymbols[p.key] || '●';
         const col = planetColors[p.key] || '#fff';
 
-        // Cerchietto sfondo
-        svgHTML += `<circle cx="${pt.x}" cy="${pt.y}" r="11" fill="#1a1a2e" stroke="${col}" stroke-width="1"/>\n`;
-        // Simbolo
-        svgHTML += `<text x="${pt.x}" y="${pt.y}" class="w-planet" fill="${col}">${sym}</text>\n`;
-        // Grado
-        const dpt = polar(rPlanet + 18, lon);
+        svgHTML += `<circle cx="${pt.x}" cy="${pt.y}" r="16" fill="#1a1a2e" stroke="${col}" stroke-width="1.5"/>
+`;
+        svgHTML += `<text x="${pt.x}" y="${pt.y}" class="w-planet" fill="${col}">${sym}</text>
+`;
+
+        const dpt = polar(rPlanet + 28, lon);
         const deg = Math.floor(lon % 30);
         const min = Math.floor((lon % 30 - deg) * 60);
-        svgHTML += `<text x="${dpt.x}" y="${dpt.y}" class="w-planet-deg">${deg}°${min}'</text>\n`;
+        svgHTML += `<text x="${dpt.x}" y="${dpt.y}" class="w-planet-deg">${deg}°${min}'</text>
+`;
     });
 
-    // Linee aspetti
     const aspects = calcAspects(chart.planets || []);
     aspects.forEach(asp => {
         const p1 = chart.planets.find(p => PLANET_NAMES[p.key] === asp.planet1);
@@ -313,24 +312,27 @@ function drawWheelSVG(chart, container) {
         if (p1 && p2) {
             const lon1 = (SIGN_LONGITUDE[p1.sign] || 0) + (p1.degree || 0) + ((p1.minutes || 0) / 60);
             const lon2 = (SIGN_LONGITUDE[p2.sign] || 0) + (p2.degree || 0) + ((p2.minutes || 0) / 60);
-            const pt1 = polar(rPlanet - 12, lon1);
-            const pt2 = polar(rPlanet - 12, lon2);
-            let color = '#666';
+            const pt1 = polar(rPlanet - 18, lon1);
+            const pt2 = polar(rPlanet - 18, lon2);
+            let color = '#888';
             if (asp.type === 'congiunzione') color = '#FFD700';
             else if (asp.type === 'trigono') color = '#4ECDC4';
             else if (asp.type === 'quadratura') color = '#FF6B6B';
             else if (asp.type === 'opposizione') color = '#FF6B6B';
             else if (asp.type === 'sestile') color = '#FFE66D';
-            svgHTML += `<line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" class="w-aspect" stroke="${color}"/>\n`;
+            svgHTML += `<line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" class="w-aspect" stroke="${color}"/>
+`;
         }
     });
 
-    // Centro: Ascendente
     const asc = chart.ascendant;
     const ascSym = SIGN_SYMBOLS[asc?.name] || '?';
-    svgHTML += `<text x="${cx}" y="${cy - 12}" class="w-center">${ascSym} Ascendente</text>\n`;
-    svgHTML += `<text x="${cx}" y="${cy + 6}" class="w-center-sub">${asc?.name || '?'} ${asc?.degree !== undefined ? asc.degree + '°' : ''}</text>\n`;
-    svgHTML += `<text x="${cx}" y="${cy + 22}" class="w-center-sub" fill="#666">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</text>\n`;
+    svgHTML += `<text x="${cx}" y="${cy - 18}" class="w-center">${ascSym} Ascendente</text>
+`;
+    svgHTML += `<text x="${cx}" y="${cy + 8}" class="w-center-sub">${asc?.name || '?'} ${asc?.degree !== undefined ? asc.degree + '°' : ''}</text>
+`;
+    svgHTML += `<text x="${cx}" y="${cy + 30}" class="w-center-sub" fill="#999">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</text>
+`;
 
     svgHTML += `</svg>`;
     container.innerHTML = svgHTML;
