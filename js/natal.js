@@ -424,7 +424,43 @@ export function updateNatalChartUI(chart) {
         container.querySelectorAll('p').forEach(p => p.remove());
         const p = document.createElement('p');
         p.style.marginTop = '0.75rem';
-        p.innerHTML = '<em>🌙 I transiti vengono aggiornati quotidianamente. Torna domani per le previsioni.</em>';
+        // Carica transiti reali dal server Render
+const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
+if (userId) {
+  fetch('https://TUO-URL-RENDER.onrender.com/api/transits', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.transitsToday && data.transitsToday.length > 0) {
+      let html = '<div class="transits-grid">';
+      data.transitsToday.forEach(t => {
+        const aspects = t.aspectsToNatal.map(a => 
+          `${a.aspect} ${a.natalPlanet} (orb ${a.orb}°)`
+        ).join(', ');
+        html += `
+          <div class="transit-card">
+            <strong>${t.planet}</strong> in ${t.sign} ${Math.floor(t.degree % 30)}° 
+            <span class="house">Casa ${t.house}</span>
+            ${aspects ? `<br><small class="aspects">↳ ${aspects}</small>` : ''}
+          </div>
+        `;
+      });
+      html += '</div>';
+      p.innerHTML = html;
+    } else {
+      p.innerHTML = '<em>🌙 Nessun transito significativo oggi.</em>';
+    }
+  })
+  .catch(err => {
+    console.error('Transiti error:', err);
+    p.innerHTML = '<em>🌙 Transiti temporaneamente non disponibili.</em>';
+  });
+} else {
+  p.innerHTML = '<em>🌙 Accedi per vedere i tuoi transiti personalizzati.</em>';
+}
         p.style.color = 'var(--text-dim)';
         const btns = container.querySelector('div[style*="text-align:center"]');
         container.insertBefore(p, btns);
