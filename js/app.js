@@ -94,6 +94,7 @@ async function ensureGeocodingAndChart() {
   } else {
     console.warn('❌ Tema natale non calcolato');
   }
+}
 
 function updateUI(authState) {
   const isLoggedIn = authState?.isLoggedIn || false;
