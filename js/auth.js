@@ -270,4 +270,3 @@ export async function geocodeProfileIfNeeded() {
   export function getUserId() {
   return currentUser ? currentUser.id : null;
 }
-}
