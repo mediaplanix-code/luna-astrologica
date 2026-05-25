@@ -4,6 +4,7 @@
 // Nessuna modifica al server Render necessaria
 // ============================================================
 
+import { getUserId } from './auth.js';
 import { getCurrentUser, getCurrentProfile } from './auth.js';
 
 let cachedChart = null;
