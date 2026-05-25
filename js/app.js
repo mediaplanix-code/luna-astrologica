@@ -91,9 +91,6 @@ async function ensureGeocodingAndChart() {
   const chart = await loadNatalChart();
   if (chart) {
     console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
-    // Carica transiti reali
-    const { loadTransits } = await import('./transits.js');
-    loadTransits();
   } else {
     console.warn('❌ Tema natale non calcolato');
   }
