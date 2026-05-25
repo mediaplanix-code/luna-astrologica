@@ -265,4 +265,7 @@ export async function geocodeProfileIfNeeded() {
     console.error('❌ Geocoding error:', err);
   }
   return false;
+  export function getUserId() {
+  return currentUser ? currentUser.id : null;
+}
 }
