@@ -299,7 +299,7 @@ function drawWheelSVG(chart, container) {
         const dpt = polar(rPlanet + 40, lon);
         const deg = Math.floor(lon % 30);
         const min = Math.floor((lon % 30 - deg) * 60);
-        svgHTML += '<text x="' + dpt.x + '" y="' + dpt.y + '" class="w-planet-deg">' + deg + '°' + min + ''</text>';
+        svgHTML += '<text x="' + dpt.x + '" y="' + dpt.y + '" class="w-planet-deg">' + deg + '°' + min + '\'</text>';
     });
 
     // Linee aspetti
