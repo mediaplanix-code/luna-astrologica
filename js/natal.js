@@ -427,7 +427,7 @@ export function updateNatalChartUI(chart) {
         // Carica transiti reali dal server Render
 const userId = localStorage.getItem('user_id') || sessionStorage.getItem('user_id');
 if (userId) {
-  fetch('https://TUO-URL-RENDER.onrender.com/api/transits', {
+  fetch('https://luna-astrologica-api-render.onrender.com/api/transits', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId })
