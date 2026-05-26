@@ -25,6 +25,7 @@ import {
   setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
   sendMessage, goBackFromChat
 } from './chat.js';
+import { loadTransits } from './transits.js';  // 🌙 AGGIUNTO: import transiti
 
 let state = {
   currentPage: "home",
@@ -69,7 +70,7 @@ function onAuthStateChange(authState) {
   }
 }
 
-// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale
+// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale e transiti
 async function ensureGeocodingAndChart() {
   const profile = getCurrentProfile();
   if (!profile) return;
@@ -94,6 +95,10 @@ async function ensureGeocodingAndChart() {
   } else {
     console.warn('❌ Tema natale non calcolato');
   }
+
+  // 🌙 AGGIUNTO: Carica transiti del giorno
+  console.log('🌙 Avvio caricamento transiti...');
+  await loadTransits();
 }
 
 function updateUI(authState) {
