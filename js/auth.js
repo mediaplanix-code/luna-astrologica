@@ -2,7 +2,6 @@
 // AUTH.JS — Autenticazione Supabase
 // Il profilo viene creato AUTOMATICAMENTE dal trigger su Supabase
 // Nessun insert manuale nel frontend
-// MODIFICATO: gestione checkbox "Ora legale" — sottrae 1 ora se spuntato
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -75,25 +74,17 @@ export async function handleRegister(e) {
     const birthDate = document.getElementById("regBirthDate").value;
     let birthTime = document.getElementById("regBirthTime").value;
     const birthCity = document.getElementById("regBirthCity").value.trim();
-    const birthCountry = document.getElementById("regBirthCountry").value;
 
-    // ============================================================
-    // MODIFICATO: gestione checkbox "Ora legale"
-    // Se spuntato, sottrae 1 ora dall'ora di nascita
-    // ============================================================
+    // Ora legale: se spuntato, sottrae 1 ora
     const isDst = document.getElementById("regDst")?.checked;
     if (isDst && birthTime) {
       const [h, m] = birthTime.split(':').map(Number);
       const adjustedHour = h - 1;
       if (adjustedHour >= 0) {
         birthTime = `${String(adjustedHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      } else {
-        // Se l'ora è 00:xx, diventa 23:xx del giorno precedente
-        // Ma per semplicità, lasciamo 00:xx (caso limite raro)
-        birthTime = `00:${String(m).padStart(2, '0')}`;
       }
-      console.log('🕐 Ora legale spuntata: ora corretta =', birthTime);
     }
+    const birthCountry = document.getElementById("regBirthCountry").value;
 
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email, password,
@@ -284,7 +275,7 @@ export async function geocodeProfileIfNeeded() {
     console.error('❌ Geocoding error:', err);
   }
   return false;
-}
+  }
 
   export function getUserId() {
   return currentUser ? currentUser.id : null;
