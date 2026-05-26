@@ -1,7 +1,7 @@
 // ============================================================
 // TRANSITS.JS — Carica transiti reali dal server Render
 // File separato, non tocca natal.js
-// VERSIONE ITALIANA — pianeti, segni, aspetti tutto in italiano
+// VERSIONE ITALIANA — elimina testo statico placeholder
 // ============================================================
 
 import { getCurrentUser } from './auth.js';
@@ -22,7 +22,7 @@ const PLANET_NAMES = {
   pluto: '♇ Plutone'
 };
 
-// Mappa segni: già italiani dall'endpoint, ma per sicurezza
+// Mappa segni: già italiani dall'endpoint
 const SIGN_NAMES = {
   'Ariete': '♈ Ariete',
   'Toro': '♉ Toro',
@@ -83,7 +83,13 @@ export async function loadTransits() {
   // Trova il container interno
   const container = transitsEl.querySelector('div[style*="font-size:0.8125rem"]') || transitsEl;
 
-  // Rimuovi vecchi paragrafi
+  // 🗑️ ELIMINA TESTO STATICO PLACEHOLDER
+  const staticText = container.querySelector('p');
+  if (staticText && staticText.textContent.includes('Torna domani')) {
+    staticText.style.display = 'none';
+  }
+
+  // Rimuovi vecchi paragrafi transiti
   container.querySelectorAll('p.transit-real').forEach(p => p.remove());
 
   try {
