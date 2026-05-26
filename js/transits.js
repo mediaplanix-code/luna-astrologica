@@ -19,7 +19,7 @@ export async function loadTransits() {
 
   // Trova il container interno
   const container = transitsEl.querySelector('div[style*="font-size:0.8125rem"]') || transitsEl;
-  
+
   // Rimuovi vecchi paragrafi
   container.querySelectorAll('p.transit-real').forEach(p => p.remove());
 
