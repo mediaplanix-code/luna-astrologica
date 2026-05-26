@@ -130,15 +130,6 @@ export async function loadTransits() {
       });
 
       html += '</div>';
-
-      // Aggiungi info data e eventi
-      if (data.date && data.eventsFound) {
-        html += `<div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text-dim);text-align:center;">
-          📅 Transiti del ${new Date(data.date).toLocaleDateString('it-IT')} — 
-          ${data.eventsFound} eventi astrologici nei prossimi 90 giorni
-        </div>`;
-      }
-
       p.innerHTML = html;
     } else {
       p.innerHTML = '<em style="color:var(--text-dim);">🌙 Nessun transito significativo oggi.</em>';
