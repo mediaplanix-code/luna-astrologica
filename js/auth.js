@@ -72,18 +72,8 @@ export async function handleRegister(e) {
     const password = document.getElementById("regPassword").value;
     const gender = document.getElementById("regGender").value;
     const birthDate = document.getElementById("regBirthDate").value;
-    let birthTime = document.getElementById("regBirthTime").value;
+    const birthTime = document.getElementById("regBirthTime").value;
     const birthCity = document.getElementById("regBirthCity").value.trim();
-
-    // Ora legale: se spuntato, sottrae 1 ora
-    const isDst = document.getElementById("regDst")?.checked;
-    if (isDst && birthTime) {
-      const [h, m] = birthTime.split(':').map(Number);
-      const adjustedHour = h - 1;
-      if (adjustedHour >= 0) {
-        birthTime = `${String(adjustedHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      }
-    }
     const birthCountry = document.getElementById("regBirthCountry").value;
 
     const { data: authData, error: authErr } = await supabase.auth.signUp({
