@@ -72,18 +72,8 @@ export async function handleRegister(e) {
     const password = document.getElementById("regPassword").value;
     const gender = document.getElementById("regGender").value;
     const birthDate = document.getElementById("regBirthDate").value;
-    let birthTime = document.getElementById("regBirthTime").value;
+    const birthTime = document.getElementById("regBirthTime").value;
     const birthCity = document.getElementById("regBirthCity").value.trim();
-
-    // Ora legale: se spuntato, sottrae 1 ora
-    const isDst = document.getElementById("regDst")?.checked;
-    if (isDst && birthTime) {
-      const [h, m] = birthTime.split(':').map(Number);
-      const adjustedHour = h - 1;
-      if (adjustedHour >= 0) {
-        birthTime = `${String(adjustedHour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-      }
-    }
     const birthCountry = document.getElementById("regBirthCountry").value;
 
     const { data: authData, error: authErr } = await supabase.auth.signUp({
@@ -100,6 +90,32 @@ export async function handleRegister(e) {
       }
     });
     if (authErr) throw authErr;
+
+    // 🌙 CREA PROFILO MANUALMENTE (bypass trigger)
+    if (authData?.user?.id) {
+      try {
+        const { error: profileErr } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: email,
+            full_name: name || email,
+            gender: gender || null,
+            birth_date: birthDate || '2000-01-01',
+            birth_time: birthTime || null,
+            birth_city: birthCity || 'Sconosciuta',
+            birth_country: birthCountry || 'IT',
+            credits: 10
+          });
+        if (profileErr) {
+          console.warn('Errore creazione profilo:', profileErr);
+        } else {
+          console.log('✅ Profilo creato manualmente');
+        }
+      } catch (e) {
+        console.warn('Eccezione creazione profilo:', e);
+      }
+    }
 
     // ✅ FIX: Mostra messaggio, nascondi form, NON switchare a login
     showAlert("auth", "success",
@@ -275,7 +291,7 @@ export async function geocodeProfileIfNeeded() {
     console.error('❌ Geocoding error:', err);
   }
   return false;
- }
+  }
 
   export function getUserId() {
   return currentUser ? currentUser.id : null;
