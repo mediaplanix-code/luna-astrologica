@@ -1,7 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
 // FIX: solo bottom nav rimossa, compatibilità con span compat-name
-// MODIFICATO: aggiunto checkbox "Ora legale" nel form registrazione
 // Tutto il resto IDENTICO al codice originale funzionante
 // ============================================================
 
@@ -205,7 +204,6 @@ export function renderChatPage() {
 }
 
 // ===== RENDER AUTH MODAL =====
-// MODIFICATO: aggiunto checkbox "Ora legale" dopo il campo ora di nascita
 export function renderAuthModal() {
     const html = `
         <div class="modal">
@@ -274,13 +272,6 @@ export function renderAuthModal() {
                         <label class="form-label">Città di nascita *</label>
                         <input type="text" class="form-input" id="regBirthCity" placeholder="Es. Roma" required>
                     </div>
-                </div>
-                <!-- MODIFICATO: checkbox ora legale -->
-                <div class="form-group" style="margin-top:0.25rem;">
-                    <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.8125rem;cursor:pointer;">
-                        <input type="checkbox" id="regDst" style="width:auto;">
-                        <span>Ora legale — sottrae 1 ora automaticamente</span>
-                    </label>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nazione *</label>
