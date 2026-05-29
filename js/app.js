@@ -78,17 +78,25 @@ function onAuthStateChange(authState) {
         renderPersonalizedPage(authState.profile, authState.user);
         showPage("personalized");
 
-        // Step B1: avvia geocoding e calcolo tema natale in background
+        // Step B1: avvia geocoding, tema natale, dossier e transiti in background
         setTimeout(async () => {
             await ensureGeocodingAndChart();
+            // Ricarica profilo per aggiornare dossier_generated_at e next_events
+            await loadUserData();
+            // Rerenderizza pagina con dati aggiornati
+            const updatedProfile = getCurrentProfile();
+            if (updatedProfile) {
+                renderPersonalizedPage(updatedProfile, authState.user);
+            }
         }, 500);
     }
 }
 
-// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale e transiti
+// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale, dossier e transiti
 async function ensureGeocodingAndChart() {
     const profile = getCurrentProfile();
-    if (!profile) return;
+    const user = getCurrentUser();
+    if (!profile || !user) return;
 
     // Se mancano le coordinate, fai geocoding
     if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
@@ -109,9 +117,47 @@ async function ensureGeocodingAndChart() {
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
     } else {
         console.warn('❌ Tema natale non calcolato');
+        return;
     }
 
-    // 🌙 AGGIUNTO: Carica transiti del giorno
+    // 🌙 GENERA DOSSIER in background (una sola volta, invisibile all'utente)
+    if (!profile.dossier_generated_at) {
+        console.log('✨ Generazione dossier astrologico in background...');
+        try {
+            const res = await fetch('https://luna-astrologica-api-render.onrender.com/api/generate-dossier', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                console.log('✅ Dossier generato con successo');
+            }
+        } catch (e) {
+            console.error('❌ Errore generazione dossier:', e.message);
+        }
+    }
+
+    // 🌙 CALCOLA TRANSITI INTERPRETATI in background (una sola volta, invisibile all'utente)
+    const hasEvents = profile.next_events && profile.next_events.length > 0;
+    if (!hasEvents) {
+        console.log('🪐 Calcolo transiti interpretati in background...');
+        try {
+            const res = await fetch('https://luna-astrologica-api-render.onrender.com/api/calculate-transits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: user.id, days: 90 })
+            });
+            const data = await res.json();
+            if (data.success) {
+                console.log(`✅ Transiti calcolati: ${data.events_calculated} eventi importanti`);
+            }
+        } catch (e) {
+            console.error('❌ Errore calcolo transiti:', e.message);
+        }
+    }
+
+    // 🌙 AGGIUNTO: Carica transiti del giorno in UI
     console.log('🌙 Avvio caricamento transiti...');
     await loadTransits();
 }
