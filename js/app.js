@@ -1,7 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX B2: passa natalData a renderPersonalizedPage, 
-// aggiunge handleCompatSubmit per sinastria al volo
+// FIX: mantiene logica originale, aggiunge solo natalData + affinità
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -19,7 +18,10 @@ import {
     updateCredits, geocodeProfileIfNeeded
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
-// profile.js non esiste — funzioni definite sotto
+import {
+    openCompatModal, closeCompatModal, handleCompatSubmit as profileCompatSubmit,
+    showCompat, openProfileEdit, toggleAccordion
+} from './profile.js';
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
     sendMessage, goBackFromChat
@@ -33,9 +35,9 @@ let state = {
 };
 
 let isFirstAuthCheck = true;
-let cachedNatalChart = null; // 🆕 Cache tema natale
+let cachedNatalChart = null;
 
-// 🆕 Helper: carica tema natale dal DB
+// 🆕 Carica tema natale dal DB
 async function fetchNatalChart(userId) {
     if (!window.supabase) return null;
     try {
@@ -55,12 +57,9 @@ async function fetchNatalChart(userId) {
     }
 }
 
-// 🆕 Helper: calcola sinastria al volo (no salvataggio)
+// 🆕 Calcola sinastria al volo (no salvataggio)
 async function calculateSynastry(profile, partnerData) {
-    // Geocoding partner
-    let partnerLat = null;
-    let partnerLng = null;
-    let partnerTz = 'Europe/Rome';
+    let partnerLat = null, partnerLng = null, partnerTz = 'Europe/Rome';
 
     try {
         const geoRes = await fetch(
@@ -76,7 +75,6 @@ async function calculateSynastry(profile, partnerData) {
         console.warn('Geocoding partner fallito:', e.message);
     }
 
-    // Calcolo tema natale partner via API
     let partnerChart = null;
     if (partnerLat !== null) {
         try {
@@ -101,8 +99,7 @@ async function calculateSynastry(profile, partnerData) {
         return { score: 0, description: 'Impossibile calcolare: dati insufficienti.' };
     }
 
-    // Calcolo sinastria semplificata
-    let score = 50; // base
+    let score = 50;
     const aspects = [];
     const natalPlanets = cachedNatalChart.planets || [];
     const partnerPlanets = partnerChart.planets || [];
@@ -132,26 +129,25 @@ async function calculateSynastry(profile, partnerData) {
         }
     }
 
-    // Bonus segni solari compatibili
     const sun1 = natalPlanets.find(p => p.key === 'sun')?.sign;
     const sun2 = partnerPlanets.find(p => p.key === 'sun')?.sign;
     const COMPATIBLE_PAIRS = [
-        ['Ariete', 'Leone'], ['Ariete', 'Sagittario'],
-        ['Toro', 'Vergine'], ['Toro', 'Capricorno'],
-        ['Gemelli', 'Bilancia'], ['Gemelli', 'Acquario'],
-        ['Cancro', 'Scorpione'], ['Cancro', 'Pesci'],
-        ['Leone', 'Ariete'], ['Leone', 'Sagittario'],
-        ['Vergine', 'Toro'], ['Vergine', 'Capricorno'],
-        ['Bilancia', 'Gemelli'], ['Bilancia', 'Acquario'],
-        ['Scorpione', 'Cancro'], ['Scorpione', 'Pesci'],
-        ['Sagittario', 'Ariete'], ['Sagittario', 'Leone'],
-        ['Capricorno', 'Toro'], ['Capricorno', 'Vergine'],
-        ['Acquario', 'Gemelli'], ['Acquario', 'Bilancia'],
-        ['Pesci', 'Cancro'], ['Pesci', 'Scorpione'],
+        ['Ariete','Leone'],['Ariete','Sagittario'],
+        ['Toro','Vergine'],['Toro','Capricorno'],
+        ['Gemelli','Bilancia'],['Gemelli','Acquario'],
+        ['Cancro','Scorpione'],['Cancro','Pesci'],
+        ['Leone','Ariete'],['Leone','Sagittario'],
+        ['Vergine','Toro'],['Vergine','Capricorno'],
+        ['Bilancia','Gemelli'],['Bilancia','Acquario'],
+        ['Scorpione','Cancro'],['Scorpione','Pesci'],
+        ['Sagittario','Ariete'],['Sagittario','Leone'],
+        ['Capricorno','Toro'],['Capricorno','Vergine'],
+        ['Acquario','Gemelli'],['Acquario','Bilancia'],
+        ['Pesci','Cancro'],['Pesci','Scorpione'],
     ];
     if (sun1 && sun2) {
-        const isCompat = COMPATIBLE_PAIRS.some(([a, b]) => 
-            (a === sun1 && b === sun2) || (a === sun2 && b === sun1)
+        const isCompat = COMPATIBLE_PAIRS.some(([a,b]) => 
+            (a===sun1 && b===sun2) || (a===sun2 && b===sun1)
         );
         if (isCompat) score += 10;
     }
@@ -159,19 +155,19 @@ async function calculateSynastry(profile, partnerData) {
     score = Math.max(0, Math.min(100, score));
 
     let description = '';
-    if (score >= 80) description = `🔥 Affinità eccezionale (${score}%). I vostri temi natali si armonizzano perfettamente. Le energie planetarie si completano, creando una connessione profonda e duratura.`;
-    else if (score >= 60) description = `✨ Buona affinità (${score}%). Ci sono molti punti di contatto tra i vostri temi. Con consapevolezza e comunicazione, la relazione può crescere solida.`;
-    else if (score >= 40) description = `🌙 Affinità moderata (${score}%). Ci sono differenze significative che richiedono comprensione reciproca. I contrasti possono diventare opportunità di crescita.`;
-    else description = `⚡ Affinità complessa (${score}%). I vostri temi mostrano energie molto diverse. Questo non significa impossibilità, ma richiede lavoro conscio e pazienza.`;
+    if (score >= 80) description = `🔥 Affinità eccezionale (${score}%). I vostri temi natali si armonizzano perfettamente.`;
+    else if (score >= 60) description = `✨ Buona affinità (${score}%). Ci sono molti punti di contatto tra i vostri temi.`;
+    else if (score >= 40) description = `🌙 Affinità moderata (${score}%). Ci sono differenze significative che richiedono comprensione.`;
+    else description = `⚡ Affinità complessa (${score}%). I vostri temi mostrano energie molto diverse.`;
 
     if (aspects.length > 0) {
-        description += `\n\nAspetti principali: ${aspects.slice(0, 5).join(', ')}${aspects.length > 5 ? '...' : ''}`;
+        description += `\n\nAspetti principali: ${aspects.slice(0,5).join(', ')}${aspects.length > 5 ? '...' : ''}`;
     }
 
     return { score, description, aspects };
 }
 
-// 🆕 Handler submit modale affinità
+// 🆕 Handler affinità (sovrascrive quello di profile.js)
 async function handleCompatSubmit(event) {
     event.preventDefault();
     const name = document.getElementById('compatName')?.value;
@@ -208,49 +204,6 @@ async function handleCompatSubmit(event) {
     }
 }
 
-// ===== FUNZIONI DI profile.js (mancanti) =====
-function openCompatModal() {
-    const modal = document.getElementById("compatModal");
-    if (modal) {
-        modal.classList.add("active");
-        document.body.style.overflow = "hidden";
-    }
-}
-
-function closeCompatModal() {
-    const modal = document.getElementById("compatModal");
-    if (modal) {
-        modal.classList.remove("active");
-        document.body.style.overflow = "";
-    }
-    const resultDiv = document.getElementById("compatResult");
-    if (resultDiv) {
-        resultDiv.style.display = "none";
-        resultDiv.innerHTML = "";
-    }
-}
-
-function showCompat(sign) {
-    alert("Compatibilità con " + sign + " — in arrivo nello step B5");
-}
-
-function openProfileEdit() {
-    alert("Modifica profilo — in arrivo");
-}
-
-function toggleAccordion(header, bodyId) {
-    const body = document.getElementById(bodyId);
-    if (!body) return;
-    const isOpen = body.classList.contains("open");
-    if (isOpen) {
-        body.classList.remove("open");
-        header.classList.remove("open");
-    } else {
-        body.classList.add("open");
-        header.classList.add("open");
-    }
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
     renderCompatModal();
@@ -267,7 +220,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
-        // 🆕 Carica natalData prima di renderizzare
         cachedNatalChart = await fetchNatalChart(profile.id);
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
@@ -289,7 +241,6 @@ function onAuthStateChange(authState) {
 
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        // 🆕 Carica natalData prima di renderizzare
         fetchNatalChart(authState.profile.id).then(natalData => {
             cachedNatalChart = natalData;
             renderPersonalizedPage(authState.profile, authState.user, natalData);
@@ -321,11 +272,9 @@ async function ensureGeocodingAndChart() {
     const chart = await loadNatalChart();
     if (chart) {
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
-        // 🆕 Ricarica natalData dopo calcolo
         const profile = getCurrentProfile();
         if (profile?.id) {
             cachedNatalChart = await fetchNatalChart(profile.id);
-            // Re-render solo se siamo sulla pagina personalizzata
             if (state.currentPage === 'personalized') {
                 renderPersonalizedPage(profile, getCurrentUser(), cachedNatalChart);
             }
@@ -382,7 +331,6 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
-        // 🆕 Passa natalData
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
     } else {
@@ -555,7 +503,6 @@ window.app = {
     showServiceChoice: handleShowServiceChoice,
     closeServiceChoice,
     chooseService: handleChooseService,
-    // 🆕 Esposte per compatibilità
     getCurrentProfile,
     getCurrentUser,
     loadNatalChart,
