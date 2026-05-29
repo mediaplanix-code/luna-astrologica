@@ -1,7 +1,7 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX: solo bottom nav rimossa, compatibilità con span compat-name
-// Tutto il resto IDENTICO al codice originale funzionante
+// FIX B2: header senza back, simbolo dinamico, MC, compat decorativa,
+// pulsanti Chat/Voce con icone SVG, affinità con calcolo sinastria
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -304,30 +304,30 @@ export function renderCompatModal() {
     const html = `
         <div class="modal">
             <button class="modal-close" onclick="window.app.closeCompatModal()">✕</button>
-            <div class="modal-title">Compatibilità</div>
+            <div class="modal-title">🔮 Affinità</div>
             <div class="modal-subtitle">Inserisci i dati della persona da confrontare</div>
-            <form onsubmit="window.app.handleCompatSubmit(event)">
+            <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
                 <div class="form-group">
                     <label class="form-label">Nome</label>
-                    <input type="text" class="form-input" placeholder="Nome della persona" required>
+                    <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Data nascita</label>
-                        <input type="date" class="form-input" required>
+                        <label class="form-label">Data nascita *</label>
+                        <input type="date" class="form-input" id="compatBirthDate" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Ora nascita</label>
-                        <input type="time" class="form-input">
+                        <input type="time" class="form-input" id="compatBirthTime">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Città nascita</label>
-                    <input type="text" class="form-input" placeholder="Città">
+                    <label class="form-label">Città nascita *</label>
+                    <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Nazione</label>
-                    <select class="form-input form-select">
+                    <label class="form-label">Nazione *</label>
+                    <select class="form-input form-select" id="compatBirthCountry" required>
                         <option value="">Seleziona</option>
                         <option value="IT">Italia</option>
                         <option value="FR">Francia</option>
@@ -337,42 +337,73 @@ export function renderCompatModal() {
                         <option value="US">USA</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-gold btn-full">Calcola compatibilità</button>
+                <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
             </form>
+            <div id="compatResult" style="margin-top:1rem; display:none;"></div>
         </div>
     `;
     setHTML("compatModal", html);
 }
 
+// ===== ICONS SVG =====
+const CHAT_ICON = `<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+const VOICE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+
 // ===== RENDER PERSONALIZED PAGE =====
-// IDENTICO al codice originale funzionante, con solo:
-// - placeholder compatibilità con span compat-name
-// - placeholder segno con ph-sign-name
-export function renderPersonalizedPage(profile, user) {
+export function renderPersonalizedPage(profile, user, natalData) {
     const name = profile?.full_name || (user?.email?.split("@")[0]) || "Utente";
     const bd = profile?.birth_date ? new Date(profile.birth_date).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"}) : "--";
     const bt = profile?.birth_time || "--";
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    const signPlaceholder = "...";
-    const symbolPlaceholder = "✨";
+    // Simbolo e segno solare dal tema natale
+    let sunSign = "...";
+    let sunSymbol = "✨";
+    let moonSign = "...";
+    let ascSign = "...";
+    let ascDeg = "";
+    let mcSign = "...";
+    let mcDeg = "";
+
+    if (natalData?.planets) {
+        const sun = natalData.planets.find(p => p.key === 'sun');
+        if (sun) { sunSign = sun.sign; sunSymbol = sun.symbol || '☉'; }
+        const moon = natalData.planets.find(p => p.key === 'moon');
+        if (moon) moonSign = moon.sign;
+    }
+    if (natalData?.points?.ascendant) {
+        ascSign = natalData.points.ascendant.name;
+        ascDeg = natalData.points.ascendant.degree + "°" + (natalData.points.ascendant.minutes || "0") + "'";
+    }
+    if (natalData?.points?.mc) {
+        mcSign = natalData.points.mc.name;
+        mcDeg = natalData.points.mc.degree + "°" + (natalData.points.mc.minutes || "0") + "'";
+    }
 
     const html = `
         <div class="personal-header">
-            <button class="personal-back" onclick="window.app.showPage('home')">🔙</button>
-            <div class="personal-sign" id="personalSignIcon">${symbolPlaceholder}</div>
+            <div class="personal-sign" id="personalSignIcon">${sunSymbol}</div>
             <div class="personal-info">
                 <h2 id="personalName">Benvenuto, ${name}</h2>
                 <p id="personalDetails">Nato il ${bd} • ${bt} • ${bc}${bco ? ", " + bco : ""}</p>
             </div>
         </div>
+
+        <div class="personal-astro-line">
+            <span>🌙 Luna in <span class="astro-gold">${moonSign}</span></span>
+            <span class="astro-sep">|</span>
+            <span>⬆️ Ascendente <span class="astro-gold">${ascSign} ${ascDeg}</span></span>
+            <span class="astro-sep">|</span>
+            <span>🏠 MC <span class="astro-gold">${mcSign} ${mcDeg}</span></span>
+        </div>
+
         <div class="compat-row">
             <span class="compat-label">👤 Compatibilità:</span>
-            <button class="compat-pill" onclick="window.app.showCompat('Leone')"><span class="compat-icon">♌</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Leone</span></button>
-            <button class="compat-pill" onclick="window.app.showCompat('Toro')"><span class="compat-icon">♉</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Toro</span></button>
-            <button class="compat-pill" onclick="window.app.showCompat('Acquario')"><span class="compat-icon">♒</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Acquario</span></button>
-            <button class="compat-pill" onclick="window.app.openCompatModal()"><span style="font-size:0.75rem;">🔮</span><span class="compat-name" style="display:block;font-size:0.65rem;color:var(--text-dim);margin-top:0.1rem;">Affinità</span></button>
+            <span class="compat-pill"><span class="compat-icon">♌</span><span class="compat-name">Leone</span></span>
+            <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
+            <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
+            <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -386,22 +417,22 @@ export function renderPersonalizedPage(profile, user) {
             <div class="horo-content" style="margin-bottom:1.5rem;">
                 <div class="horo-text" id="ph-text-day">
                     <p><strong style="color:var(--gold);">✨ Il tuo oroscopo di oggi, ${name}</strong></p>
-                    <p style="margin-top:0.75rem;">Con il tuo Sole in <span class="ph-sign-name">${signPlaceholder}</span> e la Luna che transita oggi in una posizione favorevole, è un giorno ideale per prendere decisioni legate al lavoro. La tua energia comunicativa è al massimo.</p>
+                    <p style="margin-top:0.75rem;">Con il tuo Sole in <span class="ph-sign-name">${sunSign}</span> e la Luna che transita oggi in una posizione favorevole, è un giorno ideale per prendere decisioni legate al lavoro. La tua energia comunicativa è al massimo.</p>
                     <p style="margin-top:0.75rem;">In amore, Venere sorride al tuo segno. Se sei in coppia, un gesto spontaneo riscalderà la relazione. Se sei single, un incontro casuale potrebbe sorprenderti.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-week">
                     <p><strong style="color:var(--gold);">✨ La tua settimana</strong></p>
-                    <p style="margin-top:0.75rem;">Questa settimana Giove transita in una posizione favorevole rispetto al tuo segno solare <span class="ph-sign-name">${signPlaceholder}</span>. Le opportunità professionali si moltiplicano.</p>
+                    <p style="margin-top:0.75rem;">Questa settimana Giove transita in una posizione favorevole rispetto al tuo segno solare <span class="ph-sign-name">${sunSign}</span>. Le opportunità professionali si moltiplicano.</p>
                     <p style="margin-top:0.75rem;">Attenzione alla Luna piena di mercoledì: potrebbe portare chiarimenti in una relazione importante.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-month">
                     <p><strong style="color:var(--gold);">✨ Il tuo mese</strong></p>
-                    <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività per <span class="ph-sign-name">${signPlaceholder}</span>. È il momento di lanciare progetti rimandati.</p>
+                    <p style="margin-top:0.75rem;">Il mese si apre con un transito favorevole che illumina il settore della creatività per <span class="ph-sign-name">${sunSign}</span>. È il momento di lanciare progetti rimandati.</p>
                     <p style="margin-top:0.75rem;">Saturno ti invita alla prudenza finanziaria nei primi 10 giorni. Poi Giove apre una finestra fortunata.</p>
                 </div>
                 <div class="horo-text hidden" id="ph-text-year">
                     <p><strong style="color:var(--gold);">✨ Il tuo anno</strong></p>
-                    <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Con il tuo segno <span class="ph-sign-name">${signPlaceholder}</span>, sarai chiamato a riscoprire la tua autenticità.</p>
+                    <p style="margin-top:0.75rem;">L'anno che ti attende è segnato da una profonda crescita interiore. Con il tuo segno <span class="ph-sign-name">${sunSign}</span>, sarai chiamato a riscoprire la tua autenticità.</p>
                     <p style="margin-top:0.75rem;">Nel lavoro, aspettati una svolta importante tra la primavera e l'estate. Le collaborazioni internazionali sono favorite.</p>
                 </div>
             </div>
@@ -414,11 +445,17 @@ export function renderPersonalizedPage(profile, user) {
             </div>
             <div class="accordion-body" id="acc-wheel">
                 <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
-                <div style="text-align:center; margin-top:0.5rem;">
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('ruota')">💬 Chiedi a Luna</button>
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('ruota')">🎙️ Spiegami</button>
+                <div class="action-btn-row">
+                    <button class="action-btn" onclick="window.app.startChatAbout('ruota')">
+                        ${CHAT_ICON}
+                        <span>Chiedi a Luna</span>
+                    </button>
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
+                        ${VOICE_ICON}
+                        <span>Spiegami</span>
+                    </button>
                 </div>
-                <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem;">Tema natale calcolato con effemeridi svizzere</p>
+                <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">Tema natale calcolato con effemeridi svizzere</p>
             </div>
         </div>
 
@@ -440,9 +477,15 @@ export function renderPersonalizedPage(profile, user) {
                     <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">--</span></div>
                     <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
                 </div>
-                <div style="text-align:center; margin-top:0.75rem;">
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('pianeti')">💬 Chiedi a Luna</button>
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('pianeti')">🎙️ Spiegami</button>
+                <div class="action-btn-row">
+                    <button class="action-btn" onclick="window.app.startChatAbout('pianeti')">
+                        ${CHAT_ICON}
+                        <span>Chiedi a Luna</span>
+                    </button>
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
+                        ${VOICE_ICON}
+                        <span>Spiegami</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -467,9 +510,15 @@ export function renderPersonalizedPage(profile, user) {
                     <div class="planet-item"><span class="planet-symbol">11</span><span class="planet-name">Casa XI</span><span class="planet-pos" id="house-11">--</span></div>
                     <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
                 </div>
-                <div style="text-align:center; margin-top:0.75rem;">
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('case')">💬 Chiedi a Luna</button>
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('case')">🎙️ Spiegami</button>
+                <div class="action-btn-row">
+                    <button class="action-btn" onclick="window.app.startChatAbout('case')">
+                        ${CHAT_ICON}
+                        <span>Chiedi a Luna</span>
+                    </button>
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
+                        ${VOICE_ICON}
+                        <span>Spiegami</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -480,12 +529,18 @@ export function renderPersonalizedPage(profile, user) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-aspects">
-                <div style="font-size:0.8125rem; line-height:1.7;">
+                <div style="font-size:0.875rem; line-height:1.7;">
                     <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                 </div>
-                <div style="text-align:center; margin-top:0.75rem;">
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('aspetti')">💬 Chiedi a Luna</button>
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('aspetti')">🎙️ Spiegami</button>
+                <div class="action-btn-row">
+                    <button class="action-btn" onclick="window.app.startChatAbout('aspetti')">
+                        ${CHAT_ICON}
+                        <span>Chiedi a Luna</span>
+                    </button>
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
+                        ${VOICE_ICON}
+                        <span>Spiegami</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -496,12 +551,18 @@ export function renderPersonalizedPage(profile, user) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-transits">
-                <div style="font-size:0.8125rem; line-height:1.7;">
+                <div style="font-size:0.875rem; line-height:1.7;">
                     <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                 </div>
-                <div style="text-align:center; margin-top:0.75rem;">
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem;" onclick="window.app.startChatAbout('transiti')">💬 Chiedi a Luna</button>
-                    <button class="btn-gold-outline" style="padding:0.375rem 0.75rem; font-size:0.75rem; margin-left:0.5rem;" onclick="window.app.startVoiceAbout('transiti')">🎙️ Spiegami</button>
+                <div class="action-btn-row">
+                    <button class="action-btn" onclick="window.app.startChatAbout('transiti')">
+                        ${CHAT_ICON}
+                        <span>Chiedi a Luna</span>
+                    </button>
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
+                        ${VOICE_ICON}
+                        <span>Spiegami</span>
+                    </button>
                 </div>
             </div>
         </div>
