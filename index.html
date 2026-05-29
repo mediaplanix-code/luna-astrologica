@@ -22,7 +22,12 @@
             <!-- PAGES -->
             <div class="page-section active" id="page-home"></div>
             <div class="page-section" id="page-horoscope"></div>
-            <div class="page-section" id="page-personalized"></div>
+            
+            <!-- PAGINA PERSONALIZZATA: aggiunto container Luna Context -->
+            <div class="page-section" id="page-personalized">
+                <div id="luna-context"></div>
+            </div>
+            
             <div class="page-section" id="page-chat"></div>
 
             <!-- MODALS -->
@@ -30,6 +35,9 @@
             <div class="modal-overlay" id="compatModal" onclick="if(event.target===this)window.app.closeCompatModal()"></div>
         </div>
     </div>
+
+    <!-- LUNA CONTEXT — caricato prima dei moduli, funzioni globali -->
+    <script src="js/luna-context.js"></script>
 
     <!-- MODULI JS — ORDINE IMPORTANTE -->
     <script type="module" src="js/config.js"></script>
@@ -41,5 +49,45 @@
     <script type="module" src="js/chat.js"></script>
     <script type="module" src="js/transits.js"></script>
     <script type="module" src="js/app.js"></script>
+
+    <!-- AUTO-INIT: quando il DOM è pronto e c'è un utente loggato, attiva Luna -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attendi che Supabase (globale dal CDN) sia pronto
+        let attempts = 0;
+        const maxAttempts = 30;
+        
+        const tryInitLuna = async function() {
+            // Cerca il client Supabase globale (dal CDN UMD)
+            const sb = window.supabase || window.supabaseClient || window._supabase;
+            
+            if (sb && sb.auth && typeof initLunaContext === 'function') {
+                try {
+                    const { data, error } = await sb.auth.getUser();
+                    if (data && data.user) {
+                        console.log('[Luna AutoInit] Utente trovato, avvio dashboard...');
+                        initLunaContext(data.user.id);
+                        return true;
+                    }
+                } catch (e) {
+                    console.log('[Luna AutoInit] Auth non pronto:', e.message);
+                }
+            }
+            return false;
+        };
+        
+        // Prova subito, altrimenti polling ogni 600ms
+        if (!tryInitLuna()) {
+            const interval = setInterval(async function() {
+                attempts++;
+                const ok = await tryInitLuna();
+                if (ok || attempts >= maxAttempts) {
+                    clearInterval(interval);
+                    if (!ok) console.log('[Luna AutoInit] Timeout: nessun utente loggato trovato.');
+                }
+            }, 600);
+        }
+    });
+    </script>
 </body>
 </html>
