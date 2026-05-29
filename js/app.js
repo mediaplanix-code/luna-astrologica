@@ -19,10 +19,7 @@ import {
     updateCredits, geocodeProfileIfNeeded
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
-import {
-    openCompatModal, closeCompatModal,
-    showCompat, openProfileEdit, toggleAccordion
-} from './profile.js';
+// profile.js non esiste — funzioni definite sotto
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
     sendMessage, goBackFromChat
@@ -40,9 +37,9 @@ let cachedNatalChart = null; // 🆕 Cache tema natale
 
 // 🆕 Helper: carica tema natale dal DB
 async function fetchNatalChart(userId) {
-    if (!window.supabaseClient) return null;
+    if (!window.supabase) return null;
     try {
-        const { data, error } = await window.supabaseClient
+        const { data, error } = await window.supabase
             .from('natal_charts')
             .select('*')
             .eq('user_id', userId)
@@ -208,6 +205,49 @@ async function handleCompatSubmit(event) {
             </div>
             <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="window.app.closeCompatModal()">Chiudi</button>
         `;
+    }
+}
+
+// ===== FUNZIONI DI profile.js (mancanti) =====
+function openCompatModal() {
+    const modal = document.getElementById("compatModal");
+    if (modal) {
+        modal.classList.add("active");
+        document.body.style.overflow = "hidden";
+    }
+}
+
+function closeCompatModal() {
+    const modal = document.getElementById("compatModal");
+    if (modal) {
+        modal.classList.remove("active");
+        document.body.style.overflow = "";
+    }
+    const resultDiv = document.getElementById("compatResult");
+    if (resultDiv) {
+        resultDiv.style.display = "none";
+        resultDiv.innerHTML = "";
+    }
+}
+
+function showCompat(sign) {
+    alert("Compatibilità con " + sign + " — in arrivo nello step B5");
+}
+
+function openProfileEdit() {
+    alert("Modifica profilo — in arrivo");
+}
+
+function toggleAccordion(header, bodyId) {
+    const body = document.getElementById(bodyId);
+    if (!body) return;
+    const isOpen = body.classList.contains("open");
+    if (isOpen) {
+        body.classList.remove("open");
+        header.classList.remove("open");
+    } else {
+        body.classList.add("open");
+        header.classList.add("open");
     }
 }
 
