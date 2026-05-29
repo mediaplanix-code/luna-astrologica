@@ -37,24 +37,9 @@ let state = {
 let isFirstAuthCheck = true;
 let cachedNatalChart = null;
 
-// 🆕 Carica tema natale dal DB
-async function fetchNatalChart(userId) {
-    if (!window.supabase) return null;
-    try {
-        const { data, error } = await window.supabase
-            .from('natal_charts')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-        if (error) {
-            console.warn('Errore caricamento natal_charts:', error.message);
-            return null;
-        }
-        return data;
-    } catch (e) {
-        console.warn('Exception fetchNatalChart:', e.message);
-        return null;
-    }
+// 🆕 Popola cachedNatalChart dai dati di loadNatalChart
+function setCachedNatalChart(chartData) {
+    cachedNatalChart = chartData;
 }
 
 // 🆕 Calcola sinastria al volo (no salvataggio)
@@ -220,13 +205,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
-        cachedNatalChart = await fetchNatalChart(profile.id);
+        // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
     } else if (user && profile?.id) {
-        cachedNatalChart = await fetchNatalChart(profile.id);
+        // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
     } else {
@@ -241,11 +226,8 @@ function onAuthStateChange(authState) {
 
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        fetchNatalChart(authState.profile.id).then(natalData => {
-            cachedNatalChart = natalData;
-            renderPersonalizedPage(authState.profile, authState.user, natalData);
+        renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
             showPage("personalized");
-        });
 
         setTimeout(async () => {
             await ensureGeocodingAndChart();
@@ -274,7 +256,7 @@ async function ensureGeocodingAndChart() {
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
         const profile = getCurrentProfile();
         if (profile?.id) {
-            cachedNatalChart = await fetchNatalChart(profile.id);
+            // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
             if (state.currentPage === 'personalized') {
                 renderPersonalizedPage(profile, getCurrentUser(), cachedNatalChart);
             }
