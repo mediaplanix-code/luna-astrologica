@@ -1,5 +1,7 @@
 // ============================================================
 // APP.JS — Orchestratore principale
+// FIX B2: passa natalData a renderPersonalizedPage, 
+// aggiunge handleCompatSubmit per sinastria al volo
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -18,14 +20,14 @@ import {
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
-    openCompatModal, closeCompatModal, handleCompatSubmit,
+    openCompatModal, closeCompatModal,
     showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
     sendMessage, goBackFromChat
 } from './chat.js';
-import { loadTransits } from './transits.js'; // 🌙 AGGIUNTO: import transiti
+import { loadTransits } from './transits.js';
 
 let state = {
     currentPage: "home",
@@ -34,6 +36,180 @@ let state = {
 };
 
 let isFirstAuthCheck = true;
+let cachedNatalChart = null; // 🆕 Cache tema natale
+
+// 🆕 Helper: carica tema natale dal DB
+async function fetchNatalChart(userId) {
+    if (!window.supabaseClient) return null;
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('natal_charts')
+            .select('*')
+            .eq('user_id', userId)
+            .single();
+        if (error) {
+            console.warn('Errore caricamento natal_charts:', error.message);
+            return null;
+        }
+        return data;
+    } catch (e) {
+        console.warn('Exception fetchNatalChart:', e.message);
+        return null;
+    }
+}
+
+// 🆕 Helper: calcola sinastria al volo (no salvataggio)
+async function calculateSynastry(profile, partnerData) {
+    // Geocoding partner
+    let partnerLat = null;
+    let partnerLng = null;
+    let partnerTz = 'Europe/Rome';
+
+    try {
+        const geoRes = await fetch(
+            `https://luna-astrologica-api-render.onrender.com/api/geocode?city=${encodeURIComponent(partnerData.city)}&country=${encodeURIComponent(partnerData.country)}`
+        );
+        if (geoRes.ok) {
+            const geo = await geoRes.json();
+            partnerLat = geo.lat;
+            partnerLng = geo.lng;
+            partnerTz = geo.timezone || 'Europe/Rome';
+        }
+    } catch (e) {
+        console.warn('Geocoding partner fallito:', e.message);
+    }
+
+    // Calcolo tema natale partner via API
+    let partnerChart = null;
+    if (partnerLat !== null) {
+        try {
+            const chartRes = await fetch('https://luna-astrologica-api-render.onrender.com/api/natal-chart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    birthDate: partnerData.birthDate,
+                    birthTime: partnerData.birthTime || '12:00',
+                    lat: partnerLat,
+                    lng: partnerLng,
+                    timezone: partnerTz
+                })
+            });
+            if (chartRes.ok) partnerChart = await chartRes.json();
+        } catch (e) {
+            console.warn('Calcolo tema partner fallito:', e.message);
+        }
+    }
+
+    if (!partnerChart || !cachedNatalChart) {
+        return { score: 0, description: 'Impossibile calcolare: dati insufficienti.' };
+    }
+
+    // Calcolo sinastria semplificata
+    let score = 50; // base
+    const aspects = [];
+    const natalPlanets = cachedNatalChart.planets || [];
+    const partnerPlanets = partnerChart.planets || [];
+
+    const ASPECTS = [
+        { name: 'congiunzione', angle: 0, orb: 8, score: 15 },
+        { name: 'trigono', angle: 120, orb: 8, score: 12 },
+        { name: 'sestile', angle: 60, orb: 6, score: 8 },
+        { name: 'quadrato', angle: 90, orb: 6, score: -8 },
+        { name: 'opposizione', angle: 180, orb: 6, score: -10 },
+    ];
+
+    function angleDiff(a, b) {
+        let diff = Math.abs(a - b) % 360;
+        return diff > 180 ? 360 - diff : diff;
+    }
+
+    for (const np of natalPlanets) {
+        for (const pp of partnerPlanets) {
+            for (const asp of ASPECTS) {
+                const diff = angleDiff(np.lon || 0, pp.lon || 0);
+                if (Math.abs(diff - asp.angle) <= asp.orb) {
+                    score += asp.score;
+                    aspects.push(`${np.key} ${asp.name} ${pp.key}`);
+                }
+            }
+        }
+    }
+
+    // Bonus segni solari compatibili
+    const sun1 = natalPlanets.find(p => p.key === 'sun')?.sign;
+    const sun2 = partnerPlanets.find(p => p.key === 'sun')?.sign;
+    const COMPATIBLE_PAIRS = [
+        ['Ariete', 'Leone'], ['Ariete', 'Sagittario'],
+        ['Toro', 'Vergine'], ['Toro', 'Capricorno'],
+        ['Gemelli', 'Bilancia'], ['Gemelli', 'Acquario'],
+        ['Cancro', 'Scorpione'], ['Cancro', 'Pesci'],
+        ['Leone', 'Ariete'], ['Leone', 'Sagittario'],
+        ['Vergine', 'Toro'], ['Vergine', 'Capricorno'],
+        ['Bilancia', 'Gemelli'], ['Bilancia', 'Acquario'],
+        ['Scorpione', 'Cancro'], ['Scorpione', 'Pesci'],
+        ['Sagittario', 'Ariete'], ['Sagittario', 'Leone'],
+        ['Capricorno', 'Toro'], ['Capricorno', 'Vergine'],
+        ['Acquario', 'Gemelli'], ['Acquario', 'Bilancia'],
+        ['Pesci', 'Cancro'], ['Pesci', 'Scorpione'],
+    ];
+    if (sun1 && sun2) {
+        const isCompat = COMPATIBLE_PAIRS.some(([a, b]) => 
+            (a === sun1 && b === sun2) || (a === sun2 && b === sun1)
+        );
+        if (isCompat) score += 10;
+    }
+
+    score = Math.max(0, Math.min(100, score));
+
+    let description = '';
+    if (score >= 80) description = `🔥 Affinità eccezionale (${score}%). I vostri temi natali si armonizzano perfettamente. Le energie planetarie si completano, creando una connessione profonda e duratura.`;
+    else if (score >= 60) description = `✨ Buona affinità (${score}%). Ci sono molti punti di contatto tra i vostri temi. Con consapevolezza e comunicazione, la relazione può crescere solida.`;
+    else if (score >= 40) description = `🌙 Affinità moderata (${score}%). Ci sono differenze significative che richiedono comprensione reciproca. I contrasti possono diventare opportunità di crescita.`;
+    else description = `⚡ Affinità complessa (${score}%). I vostri temi mostrano energie molto diverse. Questo non significa impossibilità, ma richiede lavoro conscio e pazienza.`;
+
+    if (aspects.length > 0) {
+        description += `\n\nAspetti principali: ${aspects.slice(0, 5).join(', ')}${aspects.length > 5 ? '...' : ''}`;
+    }
+
+    return { score, description, aspects };
+}
+
+// 🆕 Handler submit modale affinità
+async function handleCompatSubmit(event) {
+    event.preventDefault();
+    const name = document.getElementById('compatName')?.value;
+    const birthDate = document.getElementById('compatBirthDate')?.value;
+    const birthTime = document.getElementById('compatBirthTime')?.value;
+    const city = document.getElementById('compatBirthCity')?.value;
+    const country = document.getElementById('compatBirthCountry')?.value;
+
+    if (!name || !birthDate || !city || !country) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Calcolo in corso...</p>';
+    }
+
+    const partnerData = { name, birthDate, birthTime, city, country };
+    const result = await calculateSynastry(getCurrentProfile(), partnerData);
+
+    if (resultDiv) {
+        resultDiv.innerHTML = `
+            <div style="text-align:center; margin:1.5rem 0;">
+                <div style="font-size:3rem; font-weight:800; color:var(--gold); line-height:1;">${result.score}%</div>
+                <div style="font-size:0.875rem; color:var(--text-muted); margin-top:0.5rem;">Affinità con ${name}</div>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:0.75rem; padding:1rem; font-size:0.875rem; line-height:1.7; color:var(--text-muted); white-space:pre-line;">
+                ${result.description}
+            </div>
+            <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="window.app.closeCompatModal()">Chiudi</button>
+        `;
+    }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
@@ -41,9 +217,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHomePage();
     renderChatPage();
 
-    // ============================================================
-    // 🌙 GESTIONE ARRIVO DA LINK DI VERIFICA EMAIL
-    // ============================================================
     const urlParams = new URLSearchParams(window.location.search);
     const isVerified = urlParams.get("verified");
 
@@ -52,16 +225,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = getCurrentUser();
     const profile = getCurrentProfile();
 
-    // Se arriviamo da verifica email e abbiamo sessione + profilo,
-    // forza direttamente la pagina personalizzata e avvia i calcoli
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
-        renderPersonalizedPage(profile, user);
+        // 🆕 Carica natalData prima di renderizzare
+        cachedNatalChart = await fetchNatalChart(profile.id);
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
     } else if (user && profile?.id) {
-        renderPersonalizedPage(profile, user);
+        cachedNatalChart = await fetchNatalChart(profile.id);
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
     } else {
         showPage("home");
@@ -75,22 +249,23 @@ function onAuthStateChange(authState) {
 
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        renderPersonalizedPage(authState.profile, authState.user);
-        showPage("personalized");
+        // 🆕 Carica natalData prima di renderizzare
+        fetchNatalChart(authState.profile.id).then(natalData => {
+            cachedNatalChart = natalData;
+            renderPersonalizedPage(authState.profile, authState.user, natalData);
+            showPage("personalized");
+        });
 
-        // Step B1: avvia geocoding e calcolo tema natale in background
         setTimeout(async () => {
             await ensureGeocodingAndChart();
         }, 500);
     }
 }
 
-// ✅ FIX: Forza geocoding se mancano coordinate, poi calcola tema natale e transiti
 async function ensureGeocodingAndChart() {
     const profile = getCurrentProfile();
     if (!profile) return;
 
-    // Se mancano le coordinate, fai geocoding
     if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
         console.log('🌍 Geocoding necessario per:', profile.birth_city);
         const geoOk = await geocodeProfileIfNeeded();
@@ -102,16 +277,23 @@ async function ensureGeocodingAndChart() {
         }
     }
 
-    // Ora calcola il tema natale
     console.log('🔮 Avvio calcolo tema natale...');
     const chart = await loadNatalChart();
     if (chart) {
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
+        // 🆕 Ricarica natalData dopo calcolo
+        const profile = getCurrentProfile();
+        if (profile?.id) {
+            cachedNatalChart = await fetchNatalChart(profile.id);
+            // Re-render solo se siamo sulla pagina personalizzata
+            if (state.currentPage === 'personalized') {
+                renderPersonalizedPage(profile, getCurrentUser(), cachedNatalChart);
+            }
+        }
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
 
-    // 🌙 AGGIUNTO: Carica transiti del giorno
     console.log('🌙 Avvio caricamento transiti...');
     await loadTransits();
 }
@@ -142,7 +324,6 @@ function showPage(pageId) {
     uiShowPage(pageId, state.lastPage);
     renderNav(pageId);
 
-    // Forza aggiornamento header quando cambi pagina
     const user = getCurrentUser();
     const profile = getCurrentProfile();
     updateUI({
@@ -161,7 +342,8 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
-        renderPersonalizedPage(profile, user);
+        // 🆕 Passa natalData
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
     } else {
         openAuthModal();
@@ -333,7 +515,7 @@ window.app = {
     showServiceChoice: handleShowServiceChoice,
     closeServiceChoice,
     chooseService: handleChooseService,
-    // Espone funzioni utili per debug
+    // 🆕 Esposte per compatibilità
     getCurrentProfile,
     getCurrentUser,
     loadNatalChart,
