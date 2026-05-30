@@ -372,13 +372,14 @@ export function renderPersonalizedPage(profile, user, natalData) {
         const moon = natalData.planets.find(p => p.key === 'moon');
         if (moon) moonSign = moon.sign;
     }
-    if (natalData?.points?.ascendant) {
-        ascSign = natalData.points.ascendant.name;
-        ascDeg = natalData.points.ascendant.degree + "°" + (natalData.points.ascendant.minutes || "0") + "'";
+    // ─── FIX: l'API ritorna ascendant/mc direttamente, NON dentro points ───
+    if (natalData?.ascendant) {
+        ascSign = natalData.ascendant.name;
+        ascDeg = natalData.ascendant.degree + "°" + (natalData.ascendant.minutes || "0") + "'";
     }
-    if (natalData?.points?.mc) {
-        mcSign = natalData.points.mc.name;
-        mcDeg = natalData.points.mc.degree + "°" + (natalData.points.mc.minutes || "0") + "'";
+    if (natalData?.mc) {
+        mcSign = natalData.mc.name;
+        mcDeg = natalData.mc.degree + "°" + (natalData.mc.minutes || "0") + "'";
     }
 
     const html = `
