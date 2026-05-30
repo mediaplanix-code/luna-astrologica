@@ -253,17 +253,27 @@ async function ensureGeocodingAndChart() {
     console.log('🔮 Avvio calcolo tema natale...');
     const chart = await loadNatalChart();
     if (chart) {
-        // ─── FIX 1: popola esplicitamente la cache ───
         cachedNatalChart = chart;
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
-        // ─── FIX 2: NON richiamare renderPersonalizedPage qui —
-        // loadNatalChart() chiama già updateNatalChartUI() che popola il DOM.
-        // Rerenderizzare cancellerebbe la ruota SVG e i dati appena disegnati.
+
+        // ─── FIX: genera transiti e dossier in background ───
+        const profile = getCurrentProfile();
+        if (profile?.id) {
+            console.log('🌙 Avvio calcolo transiti 90gg + dossier...');
+            fetch(`https://luna-astrologica-api-render.onrender.com/api/transits`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: profile.id })
+            }).then(r => {
+                if (r.ok) console.log('✅ Transiti 90gg calcolati e salvati');
+                else console.warn('⚠️ Transiti error:', r.status);
+            }).catch(e => console.warn('⚠️ Transiti fetch error:', e.message));
+        }
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
 
-    console.log('🌙 Avvio caricamento transiti...');
+    console.log('🌙 Avvio caricamento transiti del giorno...');
     await loadTransits();
 }
 
