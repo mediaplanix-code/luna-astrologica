@@ -10,7 +10,8 @@ import {
     renderHeader, renderNav, renderHomePage, renderHoroscopePage,
     renderChatPage, renderAuthModal, renderCompatModal,
     renderPersonalizedPage, showPage as uiShowPage,
-    showServiceChoice, closeServiceChoice, getServiceChoiceCategory
+    showServiceChoice, closeServiceChoice, getServiceChoiceCategory,
+    updateTelegramCta
 } from './ui.js';
 import {
     initAuth, handleRegister, handleLogin, handleLogout,
@@ -227,7 +228,12 @@ function onAuthStateChange(authState) {
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
-            showPage("personalized");
+        showPage("personalized");
+
+        // Mostra/nascondi bottone Telegram
+        setTimeout(() => {
+            updateTelegramCta(authState.profile, authState.user?.id);
+        }, 600);
 
         setTimeout(async () => {
             await ensureGeocodingAndChart();
