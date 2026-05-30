@@ -253,14 +253,12 @@ async function ensureGeocodingAndChart() {
     console.log('🔮 Avvio calcolo tema natale...');
     const chart = await loadNatalChart();
     if (chart) {
-        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant.sign);
-        const profile = getCurrentProfile();
-        if (profile?.id) {
-            // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
-            if (state.currentPage === 'personalized') {
-                renderPersonalizedPage(profile, getCurrentUser(), cachedNatalChart);
-            }
-        }
+        // ─── FIX 1: popola esplicitamente la cache ───
+        cachedNatalChart = chart;
+        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
+        // ─── FIX 2: NON richiamare renderPersonalizedPage qui —
+        // loadNatalChart() chiama già updateNatalChartUI() che popola il DOM.
+        // Rerenderizzare cancellerebbe la ruota SVG e i dati appena disegnati.
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
