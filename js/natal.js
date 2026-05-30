@@ -374,6 +374,23 @@ export function updateNatalChartUI(chart) {
         nameEl.parentElement.appendChild(extra);
     }
 
+    // 5b. FIX: aggiorna la riga personal-astro-line (renderizzata inizialmente con "...")
+    const astroLine = document.querySelector('.personal-astro-line');
+    if (astroLine) {
+        const goldSpans = astroLine.querySelectorAll('.astro-gold');
+        if (goldSpans[0] && chart.moonSign) {
+            goldSpans[0].textContent = chart.moonSign;
+        }
+        if (goldSpans[1] && chart.ascendant) {
+            const ascText = chart.ascendant.name + (chart.ascendant.degree !== undefined ? ' ' + chart.ascendant.degree + '°' + (chart.ascendant.minutes || '0') + "'" : '');
+            goldSpans[1].textContent = ascText;
+        }
+        if (goldSpans[2] && chart.mc) {
+            const mcText = chart.mc.name + (chart.mc.degree !== undefined ? ' ' + chart.mc.degree + '°' + (chart.mc.minutes || '0') + "'" : '');
+            goldSpans[2].textContent = mcText;
+        }
+    }
+
     // 6. RUOTA SVG — disegnata lato client con dati dal server
     const wheel = document.getElementById('natalWheel');
     if (wheel && chart.houses && chart.houses.length === 12) {
