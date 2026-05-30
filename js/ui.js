@@ -372,14 +372,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
         const moon = natalData.planets.find(p => p.key === 'moon');
         if (moon) moonSign = moon.sign;
     }
-    // ─── FIX: l'API ritorna ascendant/mc direttamente, NON dentro points ───
-    if (natalData?.ascendant) {
-        ascSign = natalData.ascendant.name;
-        ascDeg = natalData.ascendant.degree + "°" + (natalData.ascendant.minutes || "0") + "'";
+    if (natalData?.points?.ascendant) {
+        ascSign = natalData.points.ascendant.name;
+        ascDeg = natalData.points.ascendant.degree + "°" + (natalData.points.ascendant.minutes || "0") + "'";
     }
-    if (natalData?.mc) {
-        mcSign = natalData.mc.name;
-        mcDeg = natalData.mc.degree + "°" + (natalData.mc.minutes || "0") + "'";
+    if (natalData?.points?.mc) {
+        mcSign = natalData.points.mc.name;
+        mcDeg = natalData.points.mc.degree + "°" + (natalData.points.mc.minutes || "0") + "'";
     }
 
     const html = `
@@ -405,6 +404,19 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
             <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
             <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
+        </div>
+
+        <!-- Telegram CTA -->
+        <div id="telegramCta" style="padding: 0 1rem; margin-top:0.75rem; display:none;">
+            <div style="background: linear-gradient(135deg, rgba(0,136,204,0.15), rgba(0,136,204,0.05)); border: 1px solid rgba(0,136,204,0.3); border-radius: 0.75rem; padding: 0.875rem 1rem; text-align: center;">
+                <div style="font-size: 1.25rem; margin-bottom: 0.375rem;">📱</div>
+                <div style="font-size: 0.875rem; color: var(--text); font-weight: 600; margin-bottom: 0.5rem;">Ricevi il tuo oroscopo ogni mattina</div>
+                <div style="font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.5;">Luna ti invierà un messaggio personalizzato con il cielo del giorno, direttamente su Telegram.</div>
+                <a id="telegramLink" href="#" target="_blank" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #0088cc; color: white; text-decoration: none; padding: 0.625rem 1.25rem; border-radius: 0.625rem; font-size: 0.875rem; font-weight: 600; transition: opacity 0.2s;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                    Attiva su Telegram
+                </a>
+            </div>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -645,6 +657,34 @@ export function showPage(pageId, lastPageRef) {
 
     window.scrollTo(0, 0);
     return pageId;
+}
+
+// ===== TELEGRAM CTA =====
+export function updateTelegramCta(profile, userId) {
+    const cta = document.getElementById('telegramCta');
+    const link = document.getElementById('telegramLink');
+    if (!cta || !link) return;
+
+    if (profile?.telegram_chat_id) {
+        // Già collegato: nascondi
+        cta.style.display = 'none';
+    } else if (userId) {
+        // Non collegato: mostra con link diretto all'app
+        // tg://resolve apre direttamente l'app Telegram mobile
+        const botUsername = 'LunaAstrologicaBot'; // ← CAMBIA con il tuo username bot
+        link.href = `tg://resolve?domain=${botUsername}&start=${userId}`;
+
+        // Fallback per desktop: apre web.telegram.org
+        link.onclick = function(e) {
+            // Se tg:// non funziona (desktop), apri web
+            setTimeout(function() {
+                if (document.hidden) return; // L'app si è aperta
+                window.open(`https://t.me/${botUsername}?start=${userId}`, '_blank');
+            }, 500);
+        };
+
+        cta.style.display = 'block';
+    }
 }
 
 // ===== HELPER: icona categoria =====
