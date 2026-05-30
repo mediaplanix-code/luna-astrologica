@@ -671,7 +671,7 @@ export function updateTelegramCta(profile, userId) {
     } else if (userId) {
         // Non collegato: mostra con link diretto all'app
         // tg://resolve apre direttamente l'app Telegram mobile
-        const botUsername = 'LunaAstrologicaBot'; // ← CAMBIA con il tuo username bot
+        const botUsername = '@LunaAstrologicaBot'; // ← CAMBIA con il tuo username bot
         link.href = `tg://resolve?domain=${botUsername}&start=${userId}`;
 
         // Fallback per desktop: apre web.telegram.org
