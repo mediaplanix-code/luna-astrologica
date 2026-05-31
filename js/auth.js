@@ -76,12 +76,10 @@ export async function handleRegister(e) {
         const birthCountry = document.getElementById("regBirthCountry").value;
 
         // 1. Registrazione Supabase Auth — SENZA metadata pesante
-        // Il trigger potrebbe fallire, quindi non affidiamoci a lui
         const { data: authData, error: authErr } = await supabase.auth.signUp({
             email, password,
             options: {
                 emailRedirectTo: `${window.location.origin}/?verified=true`
-                // NON mettiamo data: {} qui — evitiamo che il trigger processi metadata
             }
         });
         if (authErr) throw authErr;
@@ -106,23 +104,20 @@ export async function handleRegister(e) {
 
             if (profileErr) {
                 console.warn('Errore creazione profilo:', profileErr);
-                // Non blocchiamo — l'utente può comunque verificare l'email
             } else {
                 console.log('✅ Profilo creato manualmente');
             }
 
-            // 3. Crea riga credits per storico
+            // 3. Crea riga credits per storico (upsert per sicurezza)
             const { error: creditsErr } = await supabase
                 .from('credits')
-                .insert({
+                .upsert({
                     user_id: authData.user.id,
                     balance: 0,
                     total_earned: 10,
                     total_spent: 0,
                     status: 'active'
-                })
-                .onConflict('user_id')
-                .ignore();
+                }, { onConflict: 'user_id' });
 
             if (creditsErr) {
                 console.warn('Errore creazione credits:', creditsErr);
