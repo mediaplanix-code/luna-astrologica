@@ -1,7 +1,6 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// Il profilo viene creato AUTOMATICAMENTE dal trigger su Supabase
-// Il frontend aggiorna solo i dati del form (nome, data, luogo)
+// FIX: crea profilo manualmente post-signup per bypassare trigger rotto
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -62,7 +61,7 @@ export async function handleRegister(e) {
     e.preventDefault();
     const btn = document.getElementById("regSubmitBtn");
     const orig = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.innerHTML = '<div class="spinner"></div>';
     btn.disabled = true;
     hideAlerts();
 
@@ -76,47 +75,61 @@ export async function handleRegister(e) {
         const birthCity = document.getElementById("regBirthCity").value.trim();
         const birthCountry = document.getElementById("regBirthCountry").value;
 
-        // 1. Registrazione Supabase Auth
-        //    emailRedirectTo: dopo il click sul link email, l'utente arriva a /?verified=true
+        // 1. Registrazione Supabase Auth — SENZA metadata pesante
+        // Il trigger potrebbe fallire, quindi non affidiamoci a lui
         const { data: authData, error: authErr } = await supabase.auth.signUp({
             email, password,
             options: {
-                emailRedirectTo: `${window.location.origin}/?verified=true`,
-                data: {
-                    full_name: name,
-                    gender: gender || null,
-                    birth_date: birthDate || null,
-                    birth_time: birthTime || null,
-                    birth_city: birthCity || null,
-                    birth_country: birthCountry || null
-                }
+                emailRedirectTo: `${window.location.origin}/?verified=true`
+                // NON mettiamo data: {} qui — evitiamo che il trigger processi metadata
             }
         });
         if (authErr) throw authErr;
 
-        // 2. AGGIORNA il profilo creato automaticamente dal trigger
-        //    con i dati completi inseriti nel form
+        // 2. CREA MANUALMENTE il profilo con TUTTI i campi richiesti
         if (authData?.user?.id) {
-            const { error: updateError } = await supabase
+            const { error: profileErr } = await supabase
                 .from('profiles')
-                .update({
-                    full_name: name || email,
+                .insert({
+                    id: authData.user.id,
+                    email: email,
+                    full_name: name || email.split('@')[0],
                     gender: gender || null,
-                    birth_date: birthDate || null,
+                    birth_date: birthDate || '2000-01-01',
                     birth_time: birthTime || null,
-                    birth_city: birthCity || null,
-                    birth_country: birthCountry || null
-                })
-                .eq('id', authData.user.id);
+                    birth_city: birthCity || 'Sconosciuta',
+                    birth_country: birthCountry || 'IT',
+                    credits: 10,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
 
-            if (updateError) {
-                console.warn('Errore aggiornamento profilo:', updateError);
+            if (profileErr) {
+                console.warn('Errore creazione profilo:', profileErr);
+                // Non blocchiamo — l'utente può comunque verificare l'email
             } else {
-                console.log('✅ Profilo aggiornato con dati del form');
+                console.log('✅ Profilo creato manualmente');
+            }
+
+            // 3. Crea riga credits per storico
+            const { error: creditsErr } = await supabase
+                .from('credits')
+                .insert({
+                    user_id: authData.user.id,
+                    balance: 0,
+                    total_earned: 10,
+                    total_spent: 0,
+                    status: 'active'
+                })
+                .onConflict('user_id')
+                .ignore();
+
+            if (creditsErr) {
+                console.warn('Errore creazione credits:', creditsErr);
             }
         }
 
-        // 3. Messaggio all'utente
+        // 4. Messaggio all'utente
         showAlert("auth", "success",
             "🌙 Account creato! Controlla la tua email e clicca il link di conferma per attivare il tuo account.");
 
@@ -124,7 +137,7 @@ export async function handleRegister(e) {
         const regForm = document.getElementById("registerForm");
         if (regForm) regForm.classList.add("hidden");
 
-        // Nascondi anche i tab (login/registrazione)
+        // Nascondi anche i tab
         const authTabs = document.querySelector(".auth-tabs");
         if (authTabs) authTabs.style.display = "none";
 
@@ -140,7 +153,7 @@ export async function handleLogin(e) {
     e.preventDefault();
     const btn = document.getElementById("loginSubmitBtn");
     const orig = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner"></span>';
+    btn.innerHTML = '<div class="spinner"></div>';
     btn.disabled = true;
     hideAlerts();
 
@@ -250,7 +263,7 @@ function notifyChange() {
     }
 }
 
-// ===== GEOCODING PROFILO (Worker Cloudflare) =====
+// ===== GEOCODING PROFILO =====
 export async function geocodeProfileIfNeeded() {
     if (!currentUser || !currentProfile) {
         console.warn('Geocoding: no user or profile');
