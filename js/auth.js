@@ -1,239 +1,192 @@
 // ============================================================
-// AUTH.JS — Autenticazione, profilo, crediti, geocoding
-// FIX: handleRegister ora invia correttamente i metadati del form
-//      a Supabase Auth, così il trigger handle_new_user() li trova.
+// AUTH.JS — Autenticazione Supabase
+// VERSIONE FINALE CORRETTA
+// 
+// Funzionamento:
+// 1. handleRegister legge i campi del form
+// 2. Invia email, password + METADATI (nome, data, ora, città, nazione) a Supabase Auth
+// 3. Il trigger handle_new_user() nel DB crea automaticamente profilo e crediti
+// 4. Dopo conferma email, loadUserData carica il profilo creato dal trigger
+// 
+// NON crea profilo manualmente — lascia fare al trigger!
 // ============================================================
 
-import { createClient } from '@supabase/supabase-js';
 import { CONFIG } from './config.js';
-import { $, setText } from './utils.js';
 
-const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
-
+let supabase = null;
 let currentUser = null;
 let currentProfile = null;
-let currentCredits = 0;
-
-export function getCurrentUser() { return currentUser; }
-export function getCurrentProfile() { return currentProfile; }
-export function getCredits() { return currentCredits; }
+let credits = 0;
+let onAuthChange = null;
 
 // ============================================================
-// INIT AUTH — ascolta cambio stato login/logout
+// INIT
 // ============================================================
-export async function initAuth(onChange) {
-    const { data: { session } } = await supabase.auth.getSession();
-    await refreshAuthState(session, onChange);
+export async function initAuth(callback) {
+    onAuthChange = callback;
 
-    supabase.auth.onAuthStateChange(async (event, session) => {
-        await refreshAuthState(session, onChange);
-    });
-}
-
-async function refreshAuthState(session, onChange) {
-    if (session?.user) {
-        currentUser = session.user;
-        await loadUserData();
-    } else {
-        currentUser = null;
-        currentProfile = null;
-        currentCredits = 0;
+    if (!CONFIG.SUPABASE_URL || CONFIG.SUPABASE_ANON_KEY.includes("YOUR")) {
+        console.warn("⚠️ Configura SUPABASE_URL e SUPABASE_ANON_KEY in js/config.js");
+        notifyChange();
+        return false;
     }
-    if (onChange) {
-        onChange({
-            isLoggedIn: !!currentUser,
-            user: currentUser,
-            profile: currentProfile,
-            credits: currentCredits
-        });
-    }
-}
-
-// ============================================================
-// LOAD USER DATA — carica profilo e crediti
-// ============================================================
-export async function loadUserData() {
-    if (!currentUser) return;
 
     try {
-        const { data: profile, error: pErr } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single();
+        supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-        if (pErr) {
-            console.warn('Errore caricamento profilo:', pErr);
-            // Se il profilo non esiste, potrebbe essere un utente appena registrato
-            // che il trigger non ha ancora processato. Ritenta tra 1 secondo.
-            if (pErr.code === 'PGRST116') {
-                console.log('Profilo non trovato, ritento tra 1s...');
-                setTimeout(() => loadUserData(), 1000);
+        supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+                currentUser = session?.user ?? null;
+                await loadUserData();
+            } else if (event === "SIGNED_OUT") {
+                currentUser = null;
+                currentProfile = null;
+                credits = 0;
+                notifyChange();
             }
-            return;
+        });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            currentUser = session.user;
+            await loadUserData();
+        } else {
+            notifyChange();
         }
-
-        currentProfile = profile;
-
-        const { data: credits, error: cErr } = await supabase
-            .from('credits')
-            .select('balance')
-            .eq('user_id', currentUser.id)
-            .single();
-
-        if (!cErr && credits) {
-            currentCredits = credits.balance || 0;
-        }
-
-        // Aggiorna UI crediti
-        const creditsVal = $('creditsVal');
-        if (creditsVal) creditsVal.textContent = currentCredits;
-
+        return true;
     } catch (err) {
-        console.error('Errore loadUserData:', err);
+        console.error("Errore init Supabase:", err);
+        notifyChange();
+        return false;
     }
 }
 
 // ============================================================
-// HANDLE REGISTER — FIX CRITICO: invia metadati del form!
+// HANDLE REGISTER — INVIA METADATI AL SIGNUP
 // ============================================================
-export async function handleRegister(event) {
-    event.preventDefault();
+export async function handleRegister(e) {
+    e.preventDefault();
 
-    const btn = $('regSubmitBtn');
+    const btn = document.getElementById("regSubmitBtn");
+    const orig = btn?.innerHTML || "Crea account";
     if (btn) {
+        btn.innerHTML = '<div class="spinner"></div>';
         btn.disabled = true;
-        btn.textContent = 'Creazione account...';
     }
 
-    const errorEl = $('authError');
-    const successEl = $('authSuccess');
-    if (errorEl) errorEl.style.display = 'none';
-    if (successEl) successEl.style.display = 'none';
+    hideAlerts();
 
-    // ─── LEGGI I CAMPI DEL FORM ───
-    const fullName      = document.getElementById('regName')?.value?.trim();
-    const email         = document.getElementById('regEmail')?.value?.trim();
-    const password      = document.getElementById('regPassword')?.value;
-    const gender        = document.getElementById('regGender')?.value || null;
-    const birthDate     = document.getElementById('regBirthDate')?.value;      // YYYY-MM-DD da <input type="date">
-    const birthTime     = document.getElementById('regBirthTime')?.value || null;  // HH:MM da <input type="time">
-    const birthCity     = document.getElementById('regBirthCity')?.value?.trim();
-    const birthCountry  = document.getElementById('regBirthCountry')?.value;
+    // ─── LEGGI I VALORI DEL FORM ───
+    const fullName      = document.getElementById("regName")?.value?.trim();
+    const email         = document.getElementById("regEmail")?.value?.trim();
+    const password      = document.getElementById("regPassword")?.value;
+    const gender        = document.getElementById("regGender")?.value || null;
+    const birthDate     = document.getElementById("regBirthDate")?.value;
+    const birthTime     = document.getElementById("regBirthTime")?.value || null;
+    const birthCity     = document.getElementById("regBirthCity")?.value?.trim();
+    const birthCountry  = document.getElementById("regBirthCountry")?.value;
 
-    // Validazione base
+    // DEBUG — guarda in F12 Console cosa legge
+    console.log("📋 [handleRegister] Form letto:", {
+        fullName, email, birthDate, birthTime, birthCity, birthCountry, gender
+    });
+
+    // Validazione
     if (!fullName || !email || !password || !birthDate || !birthCity || !birthCountry) {
-        if (errorEl) {
-            errorEl.textContent = 'Compila tutti i campi obbligatori.';
-            errorEl.style.display = 'block';
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Crea account'; }
+        showAlert("auth", "error", "Compila tutti i campi obbligatori (*)");
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         return;
     }
-
     if (password.length < 6) {
-        if (errorEl) {
-            errorEl.textContent = 'La password deve essere di almeno 6 caratteri.';
-            errorEl.style.display = 'block';
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Crea account'; }
+        showAlert("auth", "error", "La password deve essere di almeno 6 caratteri");
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         return;
     }
 
     try {
-        // ─── FIX CRITICO: invia i dati del form nei metadati! ───
-        // Il trigger handle_new_user() nel DB cerca queste chiavi:
-        // full_name, birth_date, birth_time, birth_city, birth_country
-        const { data, error } = await supabase.auth.signUp({
+        // ─── SIGNUP CON METADATI ───
+        // Questi dati vanno in auth.users.raw_user_meta_data
+        // Il trigger handle_new_user() nel DB li legge e crea il profilo
+        const { data: authData, error: authErr } = await supabase.auth.signUp({
             email: email,
             password: password,
             options: {
                 data: {
-                    full_name: fullName,           // ← il trigger cerca questo!
-                    birth_date: birthDate,         // ← il trigger cerca questo!
-                    birth_time: birthTime,         // ← il trigger cerca questo!
-                    birth_city: birthCity,         // ← il trigger cerca questo!
-                    birth_country: birthCountry,   // ← il trigger cerca questo!
-                    gender: gender                 // ← extra, non usato dal trigger ma utile
+                    full_name: fullName,
+                    birth_date: birthDate,
+                    birth_time: birthTime,
+                    birth_city: birthCity,
+                    birth_country: birthCountry,
+                    gender: gender
                 },
                 emailRedirectTo: window.location.origin + '/?verified=true'
             }
         });
 
-        if (error) throw error;
+        if (authErr) throw authErr;
 
-        if (successEl) {
-            successEl.textContent = 'Account creato! Controlla la tua email per confermare.';
-            successEl.style.display = 'block';
-        }
+        console.log("✅ [handleRegister] Utente creato:", authData.user?.id);
+        console.log("📦 [handleRegister] Metadati inviati:", authData.user?.user_metadata);
 
-        // Pulisci form
-        document.getElementById('registerForm')?.reset();
+        showAlert("auth", "success", 
+            "🌙 Account creato! Controlla la tua email e clicca il link di conferma.");
 
-        // Dopo 3 secondi, switcha al tab login
-        setTimeout(() => {
-            window.app.switchAuthTab('login');
-            if (successEl) successEl.style.display = 'none';
-        }, 3000);
+        // Pulisci form e nascondi
+        const regForm = document.getElementById("registerForm");
+        if (regForm) regForm.reset();
+
+        const authTabs = document.querySelector(".auth-tabs");
+        if (authTabs) authTabs.style.display = "none";
 
     } catch (err) {
-        console.error('Errore registrazione:', err);
-        if (errorEl) {
-            errorEl.textContent = err.message || 'Errore durante la registrazione.';
-            errorEl.style.display = 'block';
-        }
+        console.error("❌ [handleRegister] Errore:", err);
+        showAlert("auth", "error", err.message || "Errore durante la registrazione");
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Crea account'; }
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
     }
 }
 
 // ============================================================
 // HANDLE LOGIN
 // ============================================================
-export async function handleLogin(event) {
-    event.preventDefault();
+export async function handleLogin(e) {
+    e.preventDefault();
 
-    const btn = $('loginSubmitBtn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Accesso...'; }
+    const btn = document.getElementById("loginSubmitBtn");
+    const orig = btn?.innerHTML || "Accedi";
+    if (btn) {
+        btn.innerHTML = '<div class="spinner"></div>';
+        btn.disabled = true;
+    }
 
-    const errorEl = $('authError');
-    if (errorEl) errorEl.style.display = 'none';
+    hideAlerts();
 
-    const email    = document.getElementById('loginEmail')?.value?.trim();
-    const password = document.getElementById('loginPassword')?.value;
-    const remember = document.getElementById('rememberMe')?.checked;
+    const email = document.getElementById("loginEmail")?.value?.trim();
+    const password = document.getElementById("loginPassword")?.value;
 
     if (!email || !password) {
-        if (errorEl) {
-            errorEl.textContent = 'Inserisci email e password.';
-            errorEl.style.display = 'block';
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Accedi'; }
+        showAlert("auth", "error", "Inserisci email e password");
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
         return;
     }
 
     try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         currentUser = data.user;
         await loadUserData();
 
-        window.app.closeAuthModal();
-        window.app.showPage('personalized');
+        if (window.app) {
+            window.app.closeAuthModal();
+            window.app.showPage("personalized");
+        }
 
     } catch (err) {
-        console.error('Errore login:', err);
-        if (errorEl) {
-            errorEl.textContent = err.message || 'Email o password non validi.';
-            errorEl.style.display = 'block';
-        }
+        console.error("❌ [handleLogin] Errore:", err);
+        showAlert("auth", "error", err.message || "Credenziali non valide");
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = 'Accedi'; }
+        if (btn) { btn.innerHTML = orig; btn.disabled = false; }
     }
 }
 
@@ -241,87 +194,163 @@ export async function handleLogin(event) {
 // HANDLE LOGOUT
 // ============================================================
 export async function handleLogout() {
-    await supabase.auth.signOut();
+    if (!supabase) return;
+    try {
+        await supabase.auth.signOut();
+    } catch (e) {
+        console.error("Logout error:", e);
+    }
     currentUser = null;
     currentProfile = null;
-    currentCredits = 0;
-    window.app.showPage('home');
+    credits = 0;
+    notifyChange();
+    if (window.app) window.app.showPage("home");
 }
 
 // ============================================================
-// UPDATE CREDITS — aggiorna saldo locale e nel DB
+// LOAD USER DATA
+// ============================================================
+export async function loadUserData() {
+    if (!currentUser || !supabase) return;
+
+    const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .single();
+
+    if (error) {
+        console.error("❌ [loadUserData] Errore:", error);
+        if (error.code === "PGRST116") {
+            console.warn("⚠️ Profilo non trovato per utente:", currentUser.id);
+        }
+        currentProfile = null;
+        credits = 0;
+        notifyChange();
+        return;
+    }
+
+    currentProfile = profile;
+    credits = profile?.credits || 0;
+
+    console.log("✅ [loadUserData] Profilo caricato:", {
+        nome: profile?.full_name,
+        data: profile?.birth_date,
+        citta: profile?.birth_city,
+        crediti: credits
+    });
+
+    notifyChange();
+}
+
+// ============================================================
+// CREDITS
 // ============================================================
 export async function updateCredits(delta) {
-    if (!currentUser) return;
+    if (!supabase || !currentUser) return false;
 
-    const newBalance = currentCredits + delta;
-    if (newBalance < 0) {
-        console.warn('Crediti insufficienti');
+    const newCredits = Math.max(0, credits + delta);
+
+    const { error } = await supabase
+        .from("profiles")
+        .update({ credits: newCredits, updated_at: new Date().toISOString() })
+        .eq("id", currentUser.id);
+
+    if (error) {
+        console.error("Errore aggiornamento crediti:", error);
         return false;
     }
 
-    try {
-        const { error } = await supabase
-            .from('credits')
-            .update({ balance: newBalance })
-            .eq('user_id', currentUser.id);
+    credits = newCredits;
+    notifyChange();
+    return true;
+}
 
-        if (error) throw error;
-
-        currentCredits = newBalance;
-        const creditsVal = $('creditsVal');
-        if (creditsVal) creditsVal.textContent = currentCredits;
-
-        return true;
-    } catch (err) {
-        console.error('Errore aggiornamento crediti:', err);
-        return false;
-    }
+export function setCredits(newCredits) {
+    credits = Math.max(0, newCredits);
+    notifyChange();
 }
 
 // ============================================================
-// GEOCODE PROFILE — calcola lat/lng/timezone se mancanti
+// GEOCODING
 // ============================================================
 export async function geocodeProfileIfNeeded() {
-    if (!currentProfile || !currentUser) return false;
-
-    // Se già ha coordinate, non fare nulla
-    if (currentProfile.birth_latitude && currentProfile.birth_longitude) {
-        return true;
-    }
-
-    const city = currentProfile.birth_city;
-    const country = currentProfile.birth_country;
-
-    if (!city) return false;
-
-    try {
-        const res = await fetch(
-            `${CONFIG.API_URL}/api/geocode?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country || '')}`
-        );
-        if (!res.ok) throw new Error('Geocoding fallito');
-
-        const geo = await res.json();
-
-        const { error } = await supabase
-            .from('profiles')
-            .update({
-                birth_latitude: geo.lat,
-                birth_longitude: geo.lng,
-                birth_timezone: geo.timezone || 'Europe/Rome'
-            })
-            .eq('id', currentUser.id);
-
-        if (error) throw error;
-
-        // Aggiorna cache locale
-        currentProfile.birth_latitude = geo.lat;
-        currentProfile.birth_longitude = geo.lng;
-        currentProfile.birth_timezone = geo.timezone || 'Europe/Rome';
-
-        return true;
-    } catch (err) {
-        console.warn('Geocoding fallito:', err.message);
+    if (!currentUser || !currentProfile) {
+        console.warn('Geocoding: no user/profile');
         return false;
     }
+    if (currentProfile.birth_latitude) {
+        console.log('Geocoding: already has coordinates');
+        return true;
+    }
+    if (!currentProfile.birth_city) {
+        console.warn('Geocoding: no city');
+        return false;
+    }
+
+    try {
+        const url = `${CONFIG.WORKER_URL || CONFIG.API_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country || '')}`;
+        console.log('🌍 Geocoding:', url);
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Geocoding failed: ' + res.status);
+
+        const data = await res.json();
+        console.log('🌍 Geocoding response:', data);
+
+        if (data.lat != null && data.lng != null) {
+            const { error } = await supabase.from('profiles').update({
+                birth_latitude: data.lat,
+                birth_longitude: data.lng,
+                birth_timezone: data.timezone || 'Europe/Rome',
+                updated_at: new Date().toISOString(),
+            }).eq('id', currentUser.id);
+
+            if (error) throw error;
+
+            await loadUserData();
+            console.log('✅ Geocoding saved');
+            return true;
+        }
+    } catch (err) {
+        console.error('❌ Geocoding error:', err);
+    }
+    return false;
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
+function notifyChange() {
+    if (onAuthChange) {
+        onAuthChange({
+            isLoggedIn: !!currentUser,
+            user: currentUser,
+            profile: currentProfile,
+            credits: credits
+        });
+    }
+}
+
+function showAlert(scope, type, message) {
+    const el = document.getElementById(scope + "Error") || document.getElementById(scope + "Success");
+    if (!el) return;
+    el.textContent = message;
+    el.className = "alert alert-" + type;
+    el.style.display = "block";
+}
+
+function hideAlerts() {
+    document.querySelectorAll(".alert").forEach(el => {
+        el.style.display = "none";
+    });
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+export function getCurrentUser() { return currentUser; }
+export function getCurrentProfile() { return currentProfile; }
+export function getCredits() { return credits; }
+export function getSupabase() { return supabase; }
+export function getUserId() { return currentUser?.id || null; }
