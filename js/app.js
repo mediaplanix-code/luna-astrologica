@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX: aggiunto resetCompatForm, showServiceChoice per affinità
+// FIX v3: aggiunto openLunaFromCompat
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -20,7 +20,8 @@ import {
 import { switchHoroTab } from './horoscope.js';
 import {
     openCompatModal, closeCompatModal, handleCompatSubmit,
-    showCompat, openProfileEdit, toggleAccordion, resetCompatForm
+    showCompat, openProfileEdit, toggleAccordion, resetCompatForm,
+    openLunaFromCompat
 } from './profile.js';
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
@@ -308,7 +309,8 @@ window.app = {
     openCompatModal,
     closeCompatModal,
     handleCompatSubmit,
-    resetCompatForm,  // ← NUOVO: reset form senza cambiare pagina
+    resetCompatForm,
+    openLunaFromCompat,  // ← NUOVO: chiude affinità e apre box scelta
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
@@ -327,7 +329,7 @@ window.app = {
             if (textEl) textEl.classList.toggle("hidden", t !== tab);
         });
     },
-    showServiceChoice: handleShowServiceChoice,  // ← FIX: per affinità
+    showServiceChoice: handleShowServiceChoice,
     closeServiceChoice,
     chooseService: handleChooseService,
     getCurrentProfile,
