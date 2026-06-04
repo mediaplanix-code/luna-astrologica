@@ -1,7 +1,7 @@
 // ============================================================
 // PROFILE.JS — Gestione profilo, tema natale, compatibilità
 // Step C: calcolo reale con Swiss Ephemeris via API
-// FIX: geocoding partner + formato data corretto + pulsanti corretti
+// FIX v3: chiude modal affinità prima di aprire service choice
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -27,8 +27,10 @@ export function closeCompatModal() {
     const modal = document.getElementById("compatModal");
     if (modal) {
         modal.classList.remove("active");
-        document.body.style.overflow = "";
     }
+    // NON resettare overflow qui — potrebbe esserci un altro modal aperto
+    // document.body.style.overflow = "";
+
     // Resetta il form alla chiusura
     const form = document.getElementById("compatForm");
     if (form) form.reset();
@@ -68,7 +70,6 @@ export async function handleCompatSubmit(e) {
         return;
     }
 
-    // Recupera user_id dal profilo loggato
     const userId = window.app?.getCurrentProfile?.()?.id;
     if (!userId) {
         alert('Devi essere loggato per calcolare l\'affinità');
@@ -220,10 +221,30 @@ function renderCompatResult(data, partnerName) {
         </div>
 
         <div style="display:flex; gap:0.75rem; margin-top:1rem;">
-            <button class="btn-gold btn-full" onclick="window.app.showServiceChoice('amore')">💬 Chiedi a Luna</button>
-            <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.resetCompatForm()">Nuovo calcolo</button>
+            <button type="button" class="btn-gold btn-full" onclick="window.app.openLunaFromCompat('amore')">💬 Chiedi a Luna</button>
+            <button type="button" class="btn-gold btn-full btn-gold-outline" onclick="window.app.resetCompatForm()">Nuovo calcolo</button>
         </div>
     `;
+}
+
+// ===== APRI LUNA DALLA COMPATIBILITÀ =====
+// Chiude il modal affinità, POI apre il box scelta chat/voce
+export function openLunaFromCompat(category) {
+    // Chiudi il modal affinità
+    const compatModal = document.getElementById('compatModal');
+    if (compatModal) compatModal.classList.remove('active');
+
+    // Resetta form
+    const form = document.getElementById('compatForm');
+    if (form) form.reset();
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+    }
+
+    // Apri il box scelta chat/voce
+    window.app.showServiceChoice(category);
 }
 
 // ===== RESET FORM SENZA CHIUDERE MODAL =====
