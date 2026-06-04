@@ -1,6 +1,7 @@
 // ============================================================
 // PROFILE.JS — Gestione profilo, tema natale, compatibilità
 // Step C: calcolo reale con Swiss Ephemeris via API
+// FIX: geocoding partner + formato data corretto
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -38,17 +39,31 @@ export function closeCompatModal() {
     }
 }
 
+// ===== GEOCODING PARTNER =====
+async function geocodePartner(city, country) {
+    try {
+        const response = await fetch(
+            `${CONFIG.WORKER_URL}/api/geocode?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country || '')}`
+        );
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (err) {
+        console.error('Geocoding partner error:', err);
+        return null;
+    }
+}
+
 // ===== HANDLER COMPATIBILITÀ REALE =====
 export async function handleCompatSubmit(e) {
     e.preventDefault();
 
-    const name = document.getElementById('compatName')?.value;
-    const birthDate = document.getElementById('compatBirthDate')?.value;
+    const name = document.getElementById('compatName')?.value?.trim();
+    const birthDateRaw = document.getElementById('compatBirthDate')?.value;
     const birthTime = document.getElementById('compatBirthTime')?.value;
-    const city = document.getElementById('compatBirthCity')?.value;
+    const city = document.getElementById('compatBirthCity')?.value?.trim();
     const country = document.getElementById('compatBirthCountry')?.value;
 
-    if (!name || !birthDate || !city || !country) {
+    if (!name || !birthDateRaw || !city || !country) {
         alert('Compila tutti i campi obbligatori');
         return;
     }
@@ -60,9 +75,31 @@ export async function handleCompatSubmit(e) {
         return;
     }
 
+    // Formatta data correttamente YYYY-MM-DD
+    // Il campo date HTML restituisce già YYYY-MM-DD, ma per sicurezza...
+    const birthDate = birthDateRaw; // HTML date input dà già YYYY-MM-DD
+
     const resultDiv = document.getElementById('compatResult');
     if (resultDiv) {
         resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Luna sta cercando le coordinate del partner...</p>';
+    }
+
+    // Geocoding del partner
+    const geo = await geocodePartner(city, country);
+    if (!geo || !geo.lat || !geo.lng) {
+        if (resultDiv) {
+            resultDiv.innerHTML = `
+                <div style="text-align:center; padding:1rem; color:var(--danger);">
+                    <p>⚠️ Impossibile trovare la città "${city}". Controlla l'ortografia.</p>
+                    <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="document.getElementById('compatBirthCity').focus()">Riprova</button>
+                </div>
+            `;
+        }
+        return;
+    }
+
+    if (resultDiv) {
         resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Luna sta calcolando la sinastria...</p>';
     }
 
@@ -75,9 +112,9 @@ export async function handleCompatSubmit(e) {
                 partner_name: name,
                 partner_birthDate: birthDate,
                 partner_birthTime: birthTime || '12:00',
-                partner_lat: null,
-                partner_lng: null,
-                partner_timezone: 'Europe/Rome'
+                partner_lat: geo.lat,
+                partner_lng: geo.lng,
+                partner_timezone: geo.timezone || 'Europe/Rome'
             })
         });
 
