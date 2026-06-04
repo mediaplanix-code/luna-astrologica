@@ -1,7 +1,7 @@
 // ============================================================
 // PROFILE.JS — Gestione profilo, tema natale, compatibilità
 // Step C: calcolo reale con Swiss Ephemeris via API
-// FIX: geocoding partner + formato data corretto
+// FIX: geocoding partner + formato data corretto + pulsanti corretti
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -75,9 +75,7 @@ export async function handleCompatSubmit(e) {
         return;
     }
 
-    // Formatta data correttamente YYYY-MM-DD
-    // Il campo date HTML restituisce già YYYY-MM-DD, ma per sicurezza...
-    const birthDate = birthDateRaw; // HTML date input dà già YYYY-MM-DD
+    const birthDate = birthDateRaw;
 
     const resultDiv = document.getElementById('compatResult');
     if (resultDiv) {
@@ -85,7 +83,6 @@ export async function handleCompatSubmit(e) {
         resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Luna sta cercando le coordinate del partner...</p>';
     }
 
-    // Geocoding del partner
     const geo = await geocodePartner(city, country);
     if (!geo || !geo.lat || !geo.lng) {
         if (resultDiv) {
@@ -148,7 +145,6 @@ function renderCompatResult(data, partnerName) {
     const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
     const scoreLabel = score >= 80 ? 'Eccezionale' : score >= 60 ? 'Buona' : score >= 40 ? 'Moderata' : 'Complessa';
 
-    // Assonanze
     const assonanzeHtml = (data.assonanze || []).map(a =>
         `<div style="display:flex; align-items:flex-start; gap:0.5rem; margin-bottom:0.5rem;">
             <span style="color:var(--gold); font-size:1rem;">✨</span>
@@ -156,7 +152,6 @@ function renderCompatResult(data, partnerName) {
         </div>`
     ).join('');
 
-    // Diversità
     const diversitaHtml = (data.diversita || []).map(d =>
         `<div style="display:flex; align-items:flex-start; gap:0.5rem; margin-bottom:0.5rem;">
             <span style="color:var(--danger); font-size:1rem;">⚡</span>
@@ -164,7 +159,6 @@ function renderCompatResult(data, partnerName) {
         </div>`
     ).join('');
 
-    // Settori
     const settori = data.settori || {};
     const settoriScores = {
         amore: data.love_score || 50,
@@ -226,10 +220,21 @@ function renderCompatResult(data, partnerName) {
         </div>
 
         <div style="display:flex; gap:0.75rem; margin-top:1rem;">
-            <button class="btn-gold btn-full" onclick="window.app.startCategoryChat('amore')">💬 Chiedi a Luna</button>
-            <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.closeCompatModal()">Nuovo calcolo</button>
+            <button class="btn-gold btn-full" onclick="window.app.showServiceChoice('amore')">💬 Chiedi a Luna</button>
+            <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.resetCompatForm()">Nuovo calcolo</button>
         </div>
     `;
+}
+
+// ===== RESET FORM SENZA CHIUDERE MODAL =====
+export function resetCompatForm() {
+    const form = document.getElementById('compatForm');
+    if (form) form.reset();
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+    }
 }
 
 // ===== MOSTRA COMPATIBILITÀ (placeholder per click sui segni) =====
