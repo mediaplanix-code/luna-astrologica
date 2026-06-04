@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX: rimosso calculateSynastry finta, usa profile.js reale
+// FIX: aggiunto resetCompatForm, showServiceChoice per affinità
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -20,7 +20,7 @@ import {
 import { switchHoroTab } from './horoscope.js';
 import {
     openCompatModal, closeCompatModal, handleCompatSubmit,
-    showCompat, openProfileEdit, toggleAccordion
+    showCompat, openProfileEdit, toggleAccordion, resetCompatForm
 } from './profile.js';
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
@@ -37,7 +37,6 @@ let state = {
 let isFirstAuthCheck = true;
 let cachedNatalChart = null;
 
-// Popola cachedNatalChart dai dati di loadNatalChart
 function setCachedNatalChart(chartData) {
     cachedNatalChart = chartData;
 }
@@ -308,7 +307,8 @@ window.app = {
     showCompat,
     openCompatModal,
     closeCompatModal,
-    handleCompatSubmit,  // ← ora usa quello reale da profile.js
+    handleCompatSubmit,
+    resetCompatForm,  // ← NUOVO: reset form senza cambiare pagina
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
@@ -327,7 +327,7 @@ window.app = {
             if (textEl) textEl.classList.toggle("hidden", t !== tab);
         });
     },
-    showServiceChoice: handleShowServiceChoice,
+    showServiceChoice: handleShowServiceChoice,  // ← FIX: per affinità
     closeServiceChoice,
     chooseService: handleChooseService,
     getCurrentProfile,
