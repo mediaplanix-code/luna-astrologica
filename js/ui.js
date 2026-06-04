@@ -1,7 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX B2: header senza back, simbolo dinamico, MC, compat decorativa,
-// pulsanti Chat/Voce con icone SVG, affinità con calcolo sinastria
+// FIX: compat modal con reset e struttura per risultato reale
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -357,7 +356,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    // Simbolo e segno solare dal tema natale
     let sunSign = "...";
     let sunSymbol = "✨";
     let moonSign = "...";
@@ -372,7 +370,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
         const moon = natalData.planets.find(p => p.key === 'moon');
         if (moon) moonSign = moon.sign;
     }
-    // ─── FIX: l'API ritorna ascendant/mc direttamente, NON dentro points ───
     if (natalData?.ascendant) {
         ascSign = natalData.ascendant.name;
         ascDeg = natalData.ascendant.degree + "°" + (natalData.ascendant.minutes || "0") + "'";
