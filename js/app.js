@@ -262,10 +262,15 @@ async function ensureGeocodingAndChart() {
         cachedNatalChart = chart;
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.name);
         
-        // Se l'utente è sulla pagina personalized, aggiorna il DOM
+        // ═══════════════════════════════════════════════════════
+        // FIX CRITICO: se la pagina personalized è già aperta,
+        // aggiorna il DOM con i dati appena calcolati
+        // ═══════════════════════════════════════════════════════
         if (state.currentPage === 'personalized') {
+            console.log('🔄 Aggiorno DOM personalized con tema natale');
             updateNatalChartUI(chart);
         }
+        // ═══════════════════════════════════════════════════════
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
