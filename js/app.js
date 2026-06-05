@@ -3,7 +3,7 @@
 // FIX: mantiene logica originale, aggiunge solo natalData + affinità
 // ============================================================
 
-import { loadNatalChart, updateNatalChartUI } from './natal.js';
+import { loadNatalChart } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -256,9 +256,9 @@ async function ensureGeocodingAndChart() {
         // ─── FIX 1: popola esplicitamente la cache ───
         cachedNatalChart = chart;
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
-        // ─── FIX: aggiorna il DOM con i dati calcolati ───
-        updateNatalChartUI(chart);
-
+        // ─── FIX 2: NON richiamare renderPersonalizedPage qui —
+        // loadNatalChart() chiama già updateNatalChartUI() che popola il DOM.
+        // Rerenderizzare cancellerebbe la ruota SVG e i dati appena disegnati.
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
