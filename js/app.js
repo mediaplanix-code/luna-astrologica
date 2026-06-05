@@ -1,7 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX: elimina race condition render, tema natale visibile,
-// logout/navigazione liberi, pagina anonima funzionante
+// FIX: mantiene logica originale, aggiunge solo natalData + affinità
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -20,7 +19,7 @@ import {
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
-    openCompatModal, closeCompatModal,
+    openCompatModal, closeCompatModal, handleCompatSubmit as profileCompatSubmit,
     showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import {
@@ -37,9 +36,13 @@ let state = {
 
 let isFirstAuthCheck = true;
 let cachedNatalChart = null;
-let hasRenderedPersonalized = false;
 
-// ===== CALCOLO SINASTRIA (affinità di coppia) =====
+// 🆕 Popola cachedNatalChart dai dati di loadNatalChart
+function setCachedNatalChart(chartData) {
+    cachedNatalChart = chartData;
+}
+
+// 🆕 Calcola sinastria al volo (no salvataggio)
 async function calculateSynastry(profile, partnerData) {
     let partnerLat = null, partnerLng = null, partnerTz = 'Europe/Rome';
 
@@ -149,7 +152,7 @@ async function calculateSynastry(profile, partnerData) {
     return { score, description, aspects };
 }
 
-// ===== HANDLER AFFINITÀ =====
+// 🆕 Handler affinità (sovrascrive quello di profile.js)
 async function handleCompatSubmit(event) {
     event.preventDefault();
     const name = document.getElementById('compatName')?.value;
@@ -186,9 +189,6 @@ async function handleCompatSubmit(event) {
     }
 }
 
-// ============================================================
-// AVVIO APPLICAZIONE
-// ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
     renderCompatModal();
@@ -203,23 +203,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = getCurrentUser();
     const profile = getCurrentProfile();
 
-    // Se arrivo da verifica email: mostra personalized e carica dati
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
+        // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
-    } 
-    // Se utente loggato ma NON arrivo da verifica: mostra home, lascia che
-    // l'utente clicchi "Personalizza" quando vuole
-    else if (user && profile?.id) {
-        // NON renderizzare personalized automaticamente — lascia l'utente libero
-        // di navigare in home. Quando clicca "Personalizza", cachedNatalChart
-        // sarà già pronto da ensureGeocodingAndChart in background.
-        showPage("home");
-        // Carica tema natale in background (silenzioso)
-        setTimeout(() => ensureGeocodingAndChart(), 100);
+    } else if (user && profile?.id) {
+        // cachedNatalChart viene popolato da loadNatalChart() in ensureGeocodingAndChart()
+        renderPersonalizedPage(profile, user, cachedNatalChart);
+        showPage("personalized");
     } else {
         showPage("home");
     }
@@ -230,11 +224,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
-    // Solo al primo login effettivo, carica i dati in background
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        // NON renderizzare automaticamente — l'utente deve poter navigare liberamente
-        // renderPersonalizedPage viene chiamato solo quando l'utente clicca "Personalizza"
+        renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
+            showPage("personalized");
+
         setTimeout(async () => {
             await ensureGeocodingAndChart();
         }, 500);
@@ -259,18 +253,12 @@ async function ensureGeocodingAndChart() {
     console.log('🔮 Avvio calcolo tema natale...');
     const chart = await loadNatalChart();
     if (chart) {
+        // ─── FIX 1: popola esplicitamente la cache ───
         cachedNatalChart = chart;
-        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.name);
-        
-        // ═══════════════════════════════════════════════════════
-        // FIX CRITICO: se la pagina personalized è già aperta,
-        // aggiorna il DOM con i dati appena calcolati
-        // ═══════════════════════════════════════════════════════
-        if (state.currentPage === 'personalized') {
-            console.log('🔄 Aggiorno DOM personalized con tema natale');
-            updateNatalChartUI(chart);
-        }
-        // ═══════════════════════════════════════════════════════
+        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
+        // ─── FIX: aggiorna il DOM con i dati calcolati ───
+        updateNatalChartUI(chart);
+
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
@@ -323,17 +311,8 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
-        // Se abbiamo già il tema natale in cache, passalo
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
-        
-        // Se il tema natale non è ancora pronto, caricalo ora
-        if (!cachedNatalChart) {
-            setTimeout(() => ensureGeocodingAndChart(), 100);
-        } else {
-            // Se è già pronto, aggiorna il DOM
-            updateNatalChartUI(cachedNatalChart);
-        }
     } else {
         openAuthModal();
     }
