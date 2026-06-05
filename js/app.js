@@ -1,9 +1,10 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v4: cache persistente in localStorage per dati natali
+// FIX: elimina race condition render, tema natale visibile,
+// logout/navigazione liberi, pagina anonima funzionante
 // ============================================================
 
-import { loadNatalChart } from './natal.js';
+import { loadNatalChart, updateNatalChartUI } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -19,9 +20,8 @@ import {
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
-    openCompatModal, closeCompatModal, handleCompatSubmit,
-    showCompat, openProfileEdit, toggleAccordion, resetCompatForm,
-    openLunaFromCompat
+    openCompatModal, closeCompatModal,
+    showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import {
     setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
@@ -36,44 +36,159 @@ let state = {
 };
 
 let isFirstAuthCheck = true;
+let cachedNatalChart = null;
+let hasRenderedPersonalized = false;
 
-// ===== CACHE PERSISTENTE =====
-const CACHE_KEY = 'luna_natal_cache';
-const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 ore
+// ===== CALCOLO SINASTRIA (affinità di coppia) =====
+async function calculateSynastry(profile, partnerData) {
+    let partnerLat = null, partnerLng = null, partnerTz = 'Europe/Rome';
 
-function getCachedNatal() {
     try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        if (!data.timestamp || Date.now() - data.timestamp > CACHE_TTL) {
-            localStorage.removeItem(CACHE_KEY);
-            return null;
+        const geoRes = await fetch(
+            `https://luna-astrologica-api-render.onrender.com/api/geocode?city=${encodeURIComponent(partnerData.city)}&country=${encodeURIComponent(partnerData.country)}`
+        );
+        if (geoRes.ok) {
+            const geo = await geoRes.json();
+            partnerLat = geo.lat;
+            partnerLng = geo.lng;
+            partnerTz = geo.timezone || 'Europe/Rome';
         }
-        return data.natal;
     } catch (e) {
-        return null;
+        console.warn('Geocoding partner fallito:', e.message);
+    }
+
+    let partnerChart = null;
+    if (partnerLat !== null) {
+        try {
+            const chartRes = await fetch('https://luna-astrologica-api-render.onrender.com/api/natal-chart', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    birthDate: partnerData.birthDate,
+                    birthTime: partnerData.birthTime || '12:00',
+                    lat: partnerLat,
+                    lng: partnerLng,
+                    timezone: partnerTz
+                })
+            });
+            if (chartRes.ok) partnerChart = await chartRes.json();
+        } catch (e) {
+            console.warn('Calcolo tema partner fallito:', e.message);
+        }
+    }
+
+    if (!partnerChart || !cachedNatalChart) {
+        return { score: 0, description: 'Impossibile calcolare: dati insufficienti.' };
+    }
+
+    let score = 50;
+    const aspects = [];
+    const natalPlanets = cachedNatalChart.planets || [];
+    const partnerPlanets = partnerChart.planets || [];
+
+    const ASPECTS = [
+        { name: 'congiunzione', angle: 0, orb: 8, score: 15 },
+        { name: 'trigono', angle: 120, orb: 8, score: 12 },
+        { name: 'sestile', angle: 60, orb: 6, score: 8 },
+        { name: 'quadrato', angle: 90, orb: 6, score: -8 },
+        { name: 'opposizione', angle: 180, orb: 6, score: -10 },
+    ];
+
+    function angleDiff(a, b) {
+        let diff = Math.abs(a - b) % 360;
+        return diff > 180 ? 360 - diff : diff;
+    }
+
+    for (const np of natalPlanets) {
+        for (const pp of partnerPlanets) {
+            for (const asp of ASPECTS) {
+                const diff = angleDiff(np.lon || 0, pp.lon || 0);
+                if (Math.abs(diff - asp.angle) <= asp.orb) {
+                    score += asp.score;
+                    aspects.push(`${np.key} ${asp.name} ${pp.key}`);
+                }
+            }
+        }
+    }
+
+    const sun1 = natalPlanets.find(p => p.key === 'sun')?.sign;
+    const sun2 = partnerPlanets.find(p => p.key === 'sun')?.sign;
+    const COMPATIBLE_PAIRS = [
+        ['Ariete','Leone'],['Ariete','Sagittario'],
+        ['Toro','Vergine'],['Toro','Capricorno'],
+        ['Gemelli','Bilancia'],['Gemelli','Acquario'],
+        ['Cancro','Scorpione'],['Cancro','Pesci'],
+        ['Leone','Ariete'],['Leone','Sagittario'],
+        ['Vergine','Toro'],['Vergine','Capricorno'],
+        ['Bilancia','Gemelli'],['Bilancia','Acquario'],
+        ['Scorpione','Cancro'],['Scorpione','Pesci'],
+        ['Sagittario','Ariete'],['Sagittario','Leone'],
+        ['Capricorno','Toro'],['Capricorno','Vergine'],
+        ['Acquario','Gemelli'],['Acquario','Bilancia'],
+        ['Pesci','Cancro'],['Pesci','Scorpione'],
+    ];
+    if (sun1 && sun2) {
+        const isCompat = COMPATIBLE_PAIRS.some(([a,b]) => 
+            (a===sun1 && b===sun2) || (a===sun2 && b===sun1)
+        );
+        if (isCompat) score += 10;
+    }
+
+    score = Math.max(0, Math.min(100, score));
+
+    let description = '';
+    if (score >= 80) description = `🔥 Affinità eccezionale (${score}%). I vostri temi natali si armonizzano perfettamente.`;
+    else if (score >= 60) description = `✨ Buona affinità (${score}%). Ci sono molti punti di contatto tra i vostri temi.`;
+    else if (score >= 40) description = `🌙 Affinità moderata (${score}%). Ci sono differenze significative che richiedono comprensione.`;
+    else description = `⚡ Affinità complessa (${score}%). I vostri temi mostrano energie molto diverse.`;
+
+    if (aspects.length > 0) {
+        description += `\n\nAspetti principali: ${aspects.slice(0,5).join(', ')}${aspects.length > 5 ? '...' : ''}`;
+    }
+
+    return { score, description, aspects };
+}
+
+// ===== HANDLER AFFINITÀ =====
+async function handleCompatSubmit(event) {
+    event.preventDefault();
+    const name = document.getElementById('compatName')?.value;
+    const birthDate = document.getElementById('compatBirthDate')?.value;
+    const birthTime = document.getElementById('compatBirthTime')?.value;
+    const city = document.getElementById('compatBirthCity')?.value;
+    const country = document.getElementById('compatBirthCountry')?.value;
+
+    if (!name || !birthDate || !city || !country) {
+        alert('Compila tutti i campi obbligatori');
+        return;
+    }
+
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Calcolo in corso...</p>';
+    }
+
+    const partnerData = { name, birthDate, birthTime, city, country };
+    const result = await calculateSynastry(getCurrentProfile(), partnerData);
+
+    if (resultDiv) {
+        resultDiv.innerHTML = `
+            <div style="text-align:center; margin:1.5rem 0;">
+                <div style="font-size:3rem; font-weight:800; color:var(--gold); line-height:1;">${result.score}%</div>
+                <div style="font-size:0.875rem; color:var(--text-muted); margin-top:0.5rem;">Affinità con ${name}</div>
+            </div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:0.75rem; padding:1rem; font-size:0.875rem; line-height:1.7; color:var(--text-muted); white-space:pre-line;">
+                ${result.description}
+            </div>
+            <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="window.app.closeCompatModal()">Chiudi</button>
+        `;
     }
 }
 
-function setCachedNatal(natal) {
-    try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({
-            natal: natal,
-            timestamp: Date.now()
-        }));
-    } catch (e) {
-        console.warn('Cache save failed:', e);
-    }
-}
-
-function clearCachedNatal() {
-    localStorage.removeItem(CACHE_KEY);
-}
-
-// Variabile in memoria per sessione attiva
-let cachedNatalChart = getCachedNatal();
-
+// ============================================================
+// AVVIO APPLICAZIONE
+// ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
     renderCompatModal();
@@ -88,22 +203,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const user = getCurrentUser();
     const profile = getCurrentProfile();
 
+    // Se arrivo da verifica email: mostra personalized e carica dati
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
-    } else if (user && profile?.id) {
-        // Se ho cache, mostro subito, poi aggiorno in background
-        renderPersonalizedPage(profile, user, cachedNatalChart);
-        showPage("personalized");
-        if (!cachedNatalChart) {
-            setTimeout(() => ensureGeocodingAndChart(), 100);
-        } else {
-            // Aggiorno in background senza bloccare l'utente
-            setTimeout(() => ensureGeocodingAndChart(true), 500);
-        }
+    } 
+    // Se utente loggato ma NON arrivo da verifica: mostra home, lascia che
+    // l'utente clicchi "Personalizza" quando vuole
+    else if (user && profile?.id) {
+        // NON renderizzare personalized automaticamente — lascia l'utente libero
+        // di navigare in home. Quando clicca "Personalizza", cachedNatalChart
+        // sarà già pronto da ensureGeocodingAndChart in background.
+        showPage("home");
+        // Carica tema natale in background (silenzioso)
+        setTimeout(() => ensureGeocodingAndChart(), 100);
     } else {
         showPage("home");
     }
@@ -114,20 +230,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
+    // Solo al primo login effettivo, carica i dati in background
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
-        showPage("personalized");
-
-        if (!cachedNatalChart) {
-            setTimeout(async () => {
-                await ensureGeocodingAndChart();
-            }, 500);
-        }
+        // NON renderizzare automaticamente — l'utente deve poter navigare liberamente
+        // renderPersonalizedPage viene chiamato solo quando l'utente clicca "Personalizza"
+        setTimeout(async () => {
+            await ensureGeocodingAndChart();
+        }, 500);
     }
 }
 
-async function ensureGeocodingAndChart(silent = false) {
+async function ensureGeocodingAndChart() {
     const profile = getCurrentProfile();
     if (!profile) return;
 
@@ -146,12 +260,11 @@ async function ensureGeocodingAndChart(silent = false) {
     const chart = await loadNatalChart();
     if (chart) {
         cachedNatalChart = chart;
-        setCachedNatal(chart);
-        console.log('✅ Tema natale calcolato e salvato:', chart.moonSign, chart.ascendant?.sign);
-
-        // Aggiorna UI solo se siamo sulla pagina personalized
-        if (state.currentPage === 'personalized' && !silent) {
-            renderPersonalizedPage(profile, getCurrentUser(), chart);
+        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.name);
+        
+        // Se l'utente è sulla pagina personalized, aggiorna il DOM
+        if (state.currentPage === 'personalized') {
+            updateNatalChartUI(chart);
         }
     } else {
         console.warn('❌ Tema natale non calcolato');
@@ -189,12 +302,6 @@ function showPage(pageId) {
 
     const user = getCurrentUser();
     const profile = getCurrentProfile();
-
-    // Se torniamo sulla pagina personalized, ricarica i dati dalla cache
-    if (pageId === 'personalized' && cachedNatalChart) {
-        renderPersonalizedPage(profile, user, cachedNatalChart);
-    }
-
     updateUI({
         isLoggedIn: !!user,
         user: user,
@@ -211,8 +318,17 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
+        // Se abbiamo già il tema natale in cache, passalo
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
+        
+        // Se il tema natale non è ancora pronto, caricalo ora
+        if (!cachedNatalChart) {
+            setTimeout(() => ensureGeocodingAndChart(), 100);
+        } else {
+            // Se è già pronto, aggiorna il DOM
+            updateNatalChartUI(cachedNatalChart);
+        }
     } else {
         openAuthModal();
     }
@@ -362,8 +478,6 @@ window.app = {
     openCompatModal,
     closeCompatModal,
     handleCompatSubmit,
-    resetCompatForm,
-    openLunaFromCompat,
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
@@ -389,7 +503,4 @@ window.app = {
     getCurrentUser,
     loadNatalChart,
     geocodeProfileIfNeeded,
-    // Esposte per debug
-    clearCache: clearCachedNatal,
-    getCache: getCachedNatal,
 };
