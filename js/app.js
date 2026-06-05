@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v3: aggiunto openLunaFromCompat
+// FIX v4: cache persistente in localStorage per dati natali
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -36,11 +36,43 @@ let state = {
 };
 
 let isFirstAuthCheck = true;
-let cachedNatalChart = null;
 
-function setCachedNatalChart(chartData) {
-    cachedNatalChart = chartData;
+// ===== CACHE PERSISTENTE =====
+const CACHE_KEY = 'luna_natal_cache';
+const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 ore
+
+function getCachedNatal() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data.timestamp || Date.now() - data.timestamp > CACHE_TTL) {
+            localStorage.removeItem(CACHE_KEY);
+            return null;
+        }
+        return data.natal;
+    } catch (e) {
+        return null;
+    }
 }
+
+function setCachedNatal(natal) {
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+            natal: natal,
+            timestamp: Date.now()
+        }));
+    } catch (e) {
+        console.warn('Cache save failed:', e);
+    }
+}
+
+function clearCachedNatal() {
+    localStorage.removeItem(CACHE_KEY);
+}
+
+// Variabile in memoria per sessione attiva
+let cachedNatalChart = getCachedNatal();
 
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
@@ -63,8 +95,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
     } else if (user && profile?.id) {
+        // Se ho cache, mostro subito, poi aggiorno in background
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
+        if (!cachedNatalChart) {
+            setTimeout(() => ensureGeocodingAndChart(), 100);
+        } else {
+            // Aggiorno in background senza bloccare l'utente
+            setTimeout(() => ensureGeocodingAndChart(true), 500);
+        }
     } else {
         showPage("home");
     }
@@ -78,15 +117,17 @@ function onAuthStateChange(authState) {
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
-            showPage("personalized");
+        showPage("personalized");
 
-        setTimeout(async () => {
-            await ensureGeocodingAndChart();
-        }, 500);
+        if (!cachedNatalChart) {
+            setTimeout(async () => {
+                await ensureGeocodingAndChart();
+            }, 500);
+        }
     }
 }
 
-async function ensureGeocodingAndChart() {
+async function ensureGeocodingAndChart(silent = false) {
     const profile = getCurrentProfile();
     if (!profile) return;
 
@@ -105,7 +146,13 @@ async function ensureGeocodingAndChart() {
     const chart = await loadNatalChart();
     if (chart) {
         cachedNatalChart = chart;
-        console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
+        setCachedNatal(chart);
+        console.log('✅ Tema natale calcolato e salvato:', chart.moonSign, chart.ascendant?.sign);
+
+        // Aggiorna UI solo se siamo sulla pagina personalized
+        if (state.currentPage === 'personalized' && !silent) {
+            renderPersonalizedPage(profile, getCurrentUser(), chart);
+        }
     } else {
         console.warn('❌ Tema natale non calcolato');
     }
@@ -142,6 +189,12 @@ function showPage(pageId) {
 
     const user = getCurrentUser();
     const profile = getCurrentProfile();
+
+    // Se torniamo sulla pagina personalized, ricarica i dati dalla cache
+    if (pageId === 'personalized' && cachedNatalChart) {
+        renderPersonalizedPage(profile, user, cachedNatalChart);
+    }
+
     updateUI({
         isLoggedIn: !!user,
         user: user,
@@ -310,7 +363,7 @@ window.app = {
     closeCompatModal,
     handleCompatSubmit,
     resetCompatForm,
-    openLunaFromCompat,  // ← NUOVO: chiude affinità e apre box scelta
+    openLunaFromCompat,
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
@@ -336,4 +389,7 @@ window.app = {
     getCurrentUser,
     loadNatalChart,
     geocodeProfileIfNeeded,
+    // Esposte per debug
+    clearCache: clearCachedNatal,
+    getCache: getCachedNatal,
 };
