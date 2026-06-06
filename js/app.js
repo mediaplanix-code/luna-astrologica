@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v2: rimossa versione finta affinità, importa quella reale da profile.js
+// FIX v2.1: aggiunte openLunaFromCompat e resetCompatForm
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -41,6 +41,34 @@ function setCachedNatalChart(chartData) {
   cachedNatalChart = chartData;
 }
 
+// ============================================================
+// FUNZIONI MANCANTI (wrapper per onclick in UI)
+// ============================================================
+
+function openLunaFromCompat() {
+  closeCompatModal();
+  showPage("chat");
+  setChatMode("chat");
+  startCategoryChat("love");
+}
+
+function resetCompatForm() {
+  const form = document.getElementById("compatForm");
+  if (form) form.reset();
+
+  // Resetta anche eventuali messaggi di risultato
+  const resultDiv = document.getElementById("compatResult");
+  if (resultDiv) resultDiv.innerHTML = "";
+
+  // Mostra di nuovo il form
+  const formContainer = document.getElementById("compatFormContainer");
+  if (formContainer) formContainer.style.display = "block";
+}
+
+// ============================================================
+// EVENT LISTENERS — DOMContentLoaded
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", async () => {
   renderAuthModal();
   renderCompatModal();
@@ -70,6 +98,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   console.log("🌙 Luna Astrologica avviata");
 });
+
+// ============================================================
+// AUTH STATE
+// ============================================================
 
 function onAuthStateChange(authState) {
   updateUI(authState);
@@ -112,6 +144,10 @@ async function ensureGeocodingAndChart() {
   console.log('🌙 Avvio caricamento transiti...');
   await loadTransits();
 }
+
+// ============================================================
+// UI UPDATES
+// ============================================================
 
 function updateUI(authState) {
   const isLoggedIn = authState?.isLoggedIn || false;
@@ -175,6 +211,10 @@ function requireAuthOrModalForChat(mode) {
   }
 }
 
+// ============================================================
+// MODALS
+// ============================================================
+
 function openAuthModal() {
   const modal = $("authModal");
   if (modal) {
@@ -206,6 +246,10 @@ function switchAuthTab(tab) {
   hideAlerts();
 }
 
+// ============================================================
+// HANDLERS PAGINA
+// ============================================================
+
 function handleShowHoroscopePage(signName) {
   renderHoroscopePage(signName);
   showPage("horoscope");
@@ -234,6 +278,10 @@ function handleChooseService(mode) {
   }
 }
 
+// ============================================================
+// CHAT
+// ============================================================
+
 function handleSendMessage() {
   sendMessage(
     getCurrentUser(),
@@ -261,6 +309,10 @@ function handleGoBackFromChat() {
   goBackFromChat(state.lastPage);
 }
 
+// ============================================================
+// PAGAMENTI — Placeholder per Stripe
+// ============================================================
+
 function showPaymentsPage() {
   if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
     alert("💳 Pagamenti — Modalità test\n\nPer attivare i pagamenti reali:\n1. Crea account Stripe\n2. Inserisci le chiavi in config.js\n3. Imposta STRIPE_PAYMENTS: true");
@@ -268,6 +320,10 @@ function showPaymentsPage() {
   }
   window.location.href = "#payments";
 }
+
+// ============================================================
+// LINGUA
+// ============================================================
 
 function toggleLang() {
   const dropdown = $("langDropdown");
@@ -293,6 +349,10 @@ document.addEventListener("click", (e) => {
     if (dropdown) dropdown.classList.remove("open");
   }
 });
+
+// ============================================================
+// EXPORT GLOBALE
+// ============================================================
 
 window.app = {
   showPage,
@@ -337,4 +397,7 @@ window.app = {
   getCurrentUser,
   loadNatalChart,
   geocodeProfileIfNeeded,
+  // FUNZIONI AGGIUNTE per fix onclick UI
+  openLunaFromCompat,
+  resetCompatForm,
 };
