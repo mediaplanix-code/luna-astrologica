@@ -1031,11 +1031,6 @@ html, body {
     .personal-astro-line { font-size: 0.875rem; }
     .action-btn { min-width: 120px; padding: 0.5rem 1rem; font-size: 0.8125rem; }
 }
-/* Fix posizione pulsanti in accordion */
-.accordion-body .action-btn-row {
-    margin-top: 1rem;
-    order: 999;
-}
 /* ============================================================
    CREDITS PAGE STYLES
    ============================================================ */
