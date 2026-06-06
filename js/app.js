@@ -138,6 +138,7 @@ async function ensureGeocodingAndChart() {
     const chart = await loadNatalChart();
     if (chart) {
         cachedNatalChart = chart;
+        saveNatalChartToStorage(chart);
         console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
     } else {
         console.warn('❌ Tema natale non calcolato');
