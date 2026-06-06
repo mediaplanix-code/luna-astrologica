@@ -1,6 +1,7 @@
 // ============================================================
 // APP.JS — Orchestratore principale
 // FIX: rimosso calculateSynastry finta, usa profile.js reale
+// FIX v2: aggiunte openLunaFromCompat e resetCompatForm in window.app
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -308,7 +309,7 @@ window.app = {
     showCompat,
     openCompatModal,
     closeCompatModal,
-    handleCompatSubmit,  // ← ora usa quello reale da profile.js
+    handleCompatSubmit,
     toggleAccordion,
     sendMessage: handleSendMessage,
     startCategoryChat: handleStartCategoryChat,
@@ -334,4 +335,17 @@ window.app = {
     getCurrentUser,
     loadNatalChart,
     geocodeProfileIfNeeded,
+    openLunaFromCompat: function(category) {
+        window.app.closeCompatModal();
+        window.app.showServiceChoice(category);
+    },
+    resetCompatForm: function() {
+        var form = document.getElementById("compatForm");
+        if (form) form.reset();
+        var resultDiv = document.getElementById("compatResult");
+        if (resultDiv) {
+            resultDiv.style.display = "none";
+            resultDiv.innerHTML = "";
+        }
+    },
 };
