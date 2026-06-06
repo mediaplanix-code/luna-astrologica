@@ -1,6 +1,6 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
-// FIX: compat modal con reset e struttura per risultato reale
+// FIX: compat modal con campo Sesso aggiunto
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -298,7 +298,7 @@ export function renderAuthModal() {
     setHTML("authModal", html);
 }
 
-// ===== RENDER COMPAT MODAL =====
+// ===== RENDER COMPAT MODAL — CON CAMPO SESSO AGGIUNTO =====
 export function renderCompatModal() {
     const html = `
         <div class="modal">
@@ -312,13 +312,22 @@ export function renderCompatModal() {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label class="form-label">Sesso</label>
+                        <select class="form-input form-select" id="compatGender">
+                            <option value="">Seleziona</option>
+                            <option value="M">Uomo</option>
+                            <option value="F">Donna</option>
+                            <option value="O">Altro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">Data nascita *</label>
                         <input type="date" class="form-input" id="compatBirthDate" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Ora nascita</label>
-                        <input type="time" class="form-input" id="compatBirthTime">
-                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ora nascita</label>
+                    <input type="time" class="form-input" id="compatBirthTime">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Città nascita *</label>
