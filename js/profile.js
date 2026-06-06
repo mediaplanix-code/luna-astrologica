@@ -1,7 +1,7 @@
 // ============================================================
 // PROFILE.JS — Gestione profilo, tema natale, compatibilità
 // Step C: calcolo reale con Swiss Ephemeris via API
-// FIX v4: preserva dati natali quando si chiude modal affinità
+// FIX v3: chiude modal affinità prima di aprire service choice
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -28,7 +28,7 @@ export function closeCompatModal() {
     if (modal) {
         modal.classList.remove("active");
     }
-    // FIX: NON resettare overflow qui — potrebbe esserci un altro modal aperto
+    // NON resettare overflow qui — potrebbe esserci un altro modal aperto
     // document.body.style.overflow = "";
 
     // Resetta il form alla chiusura
@@ -60,7 +60,6 @@ export async function handleCompatSubmit(e) {
     e.preventDefault();
 
     const name = document.getElementById('compatName')?.value?.trim();
-    const gender = document.getElementById('compatGender')?.value;
     const birthDateRaw = document.getElementById('compatBirthDate')?.value;
     const birthTime = document.getElementById('compatBirthTime')?.value;
     const city = document.getElementById('compatBirthCity')?.value?.trim();
@@ -73,7 +72,7 @@ export async function handleCompatSubmit(e) {
 
     const userId = window.app?.getCurrentProfile?.()?.id;
     if (!userId) {
-        alert('Devi essere loggato per calcolare l'affinità');
+        alert('Devi essere loggato per calcolare l\'affinità');
         return;
     }
 
@@ -109,7 +108,6 @@ export async function handleCompatSubmit(e) {
             body: JSON.stringify({
                 user_id: userId,
                 partner_name: name,
-                partner_gender: gender || null,
                 partner_birthDate: birthDate,
                 partner_birthTime: birthTime || '12:00',
                 partner_lat: geo.lat,
@@ -131,7 +129,7 @@ export async function handleCompatSubmit(e) {
         if (resultDiv) {
             resultDiv.innerHTML = `
                 <div style="text-align:center; padding:1rem; color:var(--danger);">
-                    <p>⚠️ ${err.message || 'Errore nel calcolo dell'affinità'}</p>
+                    <p>⚠️ ${err.message || 'Errore nel calcolo dell\'affinità'}</p>
                     <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="window.app.closeCompatModal()">Chiudi</button>
                 </div>
             `;
