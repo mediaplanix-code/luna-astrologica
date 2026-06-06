@@ -37,6 +37,37 @@ let state = {
 
 let isFirstAuthCheck = true;
 let cachedNatalChart = null;
+// ===== LOCALSTORAGE PER DATI NATALI (24h) =====
+const NATAL_CHART_KEY = 'luna_natal_chart';
+const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+
+function saveNatalChartToStorage(chartData) {
+    if (!chartData) return;
+    try {
+        localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chartData));
+        localStorage.setItem(NATAL_CHART_TIMESTAMP_KEY, Date.now().toString());
+    } catch (err) {
+        console.warn('Errore salvataggio:', err);
+    }
+}
+
+function loadNatalChartFromStorage() {
+    try {
+        const saved = localStorage.getItem(NATAL_CHART_KEY);
+        const timestamp = localStorage.getItem(NATAL_CHART_TIMESTAMP_KEY);
+        if (!saved || !timestamp) return null;
+        const age = Date.now() - parseInt(timestamp);
+        if (age > CACHE_DURATION_MS) {
+            localStorage.removeItem(NATAL_CHART_KEY);
+            localStorage.removeItem(NATAL_CHART_TIMESTAMP_KEY);
+            return null;
+        }
+        return JSON.parse(saved);
+    } catch (err) {
+        return null;
+    }
+}
 
 // Popola cachedNatalChart dai dati di loadNatalChart
 function setCachedNatalChart(chartData) {
