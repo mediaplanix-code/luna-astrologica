@@ -109,8 +109,9 @@ function onAuthStateChange(authState) {
 
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
+        if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
         renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
-            showPage("personalized");
+        showPage("personalized");
 
         setTimeout(async () => {
             await ensureGeocodingAndChart();
