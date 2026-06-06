@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v2.1: aggiunte openLunaFromCompat e resetCompatForm
+// FIX v2.2: importa openLunaFromCompat e resetCompatForm da profile.js
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -20,7 +20,8 @@ import {
 import { switchHoroTab } from './horoscope.js';
 import {
   openCompatModal, closeCompatModal, handleCompatSubmit as realHandleCompatSubmit,
-  showCompat, openProfileEdit, toggleAccordion
+  showCompat, openProfileEdit, toggleAccordion,
+  openLunaFromCompat, resetCompatForm
 } from './profile.js';
 import {
   setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
@@ -39,30 +40,6 @@ let cachedNatalChart = null;
 
 function setCachedNatalChart(chartData) {
   cachedNatalChart = chartData;
-}
-
-// ============================================================
-// FUNZIONI MANCANTI (wrapper per onclick in UI)
-// ============================================================
-
-function openLunaFromCompat() {
-  closeCompatModal();
-  showPage("chat");
-  setChatMode("chat");
-  startCategoryChat("love");
-}
-
-function resetCompatForm() {
-  const form = document.getElementById("compatForm");
-  if (form) form.reset();
-
-  // Resetta anche eventuali messaggi di risultato
-  const resultDiv = document.getElementById("compatResult");
-  if (resultDiv) resultDiv.innerHTML = "";
-
-  // Mostra di nuovo il form
-  const formContainer = document.getElementById("compatFormContainer");
-  if (formContainer) formContainer.style.display = "block";
 }
 
 // ============================================================
@@ -397,7 +374,7 @@ window.app = {
   getCurrentUser,
   loadNatalChart,
   geocodeProfileIfNeeded,
-  // FUNZIONI AGGIUNTE per fix onclick UI
+  // FUNZIONI da profile.js per onclick in UI
   openLunaFromCompat,
   resetCompatForm,
 };
