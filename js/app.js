@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v2.2: importa openLunaFromCompat e resetCompatForm da profile.js
+// FIX v3: importa openLunaFromCompat e resetCompatForm da profile.js
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -32,7 +32,7 @@ import { loadTransits } from './transits.js';
 let state = {
   currentPage: "home",
   lastPage: "home",
-  chatMode: "chat",
+  chatMode: "chat"
 };
 
 let isFirstAuthCheck = true;
@@ -41,10 +41,6 @@ let cachedNatalChart = null;
 function setCachedNatalChart(chartData) {
   cachedNatalChart = chartData;
 }
-
-// ============================================================
-// EVENT LISTENERS — DOMContentLoaded
-// ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
   renderAuthModal();
@@ -60,30 +56,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const user = getCurrentUser();
   const profile = getCurrentProfile();
 
-  if (isVerified === "true" && user && profile?.id) {
+  if (isVerified === "true" && user && profile && profile.id) {
     window.history.replaceState({}, document.title, window.location.pathname);
     renderPersonalizedPage(profile, user, cachedNatalChart);
     showPage("personalized");
     setTimeout(() => ensureGeocodingAndChart(), 500);
-    console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
-  } else if (user && profile?.id) {
+    console.log("Arrivo da verifica email");
+  } else if (user && profile && profile.id) {
     renderPersonalizedPage(profile, user, cachedNatalChart);
     showPage("personalized");
   } else {
     showPage("home");
   }
 
-  console.log("🌙 Luna Astrologica avviata");
+  console.log("Luna Astrologica avviata");
 });
-
-// ============================================================
-// AUTH STATE
-// ============================================================
 
 function onAuthStateChange(authState) {
   updateUI(authState);
 
-  if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
+  if (isFirstAuthCheck && authState.isLoggedIn && authState.profile && authState.profile.id) {
     isFirstAuthCheck = false;
     renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
     showPage("personalized");
@@ -99,38 +91,34 @@ async function ensureGeocodingAndChart() {
   if (!profile) return;
 
   if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
-    console.log('🌍 Geocoding necessario per:', profile.birth_city);
+    console.log("Geocoding necessario per:", profile.birth_city);
     const geoOk = await geocodeProfileIfNeeded();
     if (geoOk) {
-      console.log('✅ Geocoding completato');
+      console.log("Geocoding completato");
     } else {
-      console.warn('❌ Geocoding fallito');
+      console.warn("Geocoding fallito");
       return;
     }
   }
 
-  console.log('🔮 Avvio calcolo tema natale...');
+  console.log("Avvio calcolo tema natale");
   const chart = await loadNatalChart();
   if (chart) {
     cachedNatalChart = chart;
-    console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
+    console.log("Tema natale calcolato:", chart.moonSign, chart.ascendant && chart.ascendant.sign);
   } else {
-    console.warn('❌ Tema natale non calcolato');
+    console.warn("Tema natale non calcolato");
   }
 
-  console.log('🌙 Avvio caricamento transiti...');
+  console.log("Avvio caricamento transiti");
   await loadTransits();
 }
 
-// ============================================================
-// UI UPDATES
-// ============================================================
-
 function updateUI(authState) {
-  const isLoggedIn = authState?.isLoggedIn || false;
-  const profile = authState?.profile || null;
-  const user = authState?.user || null;
-  const credits = authState?.credits || 0;
+  const isLoggedIn = authState && authState.isLoggedIn || false;
+  const profile = authState && authState.profile || null;
+  const user = authState && authState.user || null;
+  const credits = authState && authState.credits || 0;
 
   renderHeader(isLoggedIn, profile || user);
   renderNav(state.currentPage);
@@ -188,10 +176,6 @@ function requireAuthOrModalForChat(mode) {
   }
 }
 
-// ============================================================
-// MODALS
-// ============================================================
-
 function openAuthModal() {
   const modal = $("authModal");
   if (modal) {
@@ -223,10 +207,6 @@ function switchAuthTab(tab) {
   hideAlerts();
 }
 
-// ============================================================
-// HANDLERS PAGINA
-// ============================================================
-
 function handleShowHoroscopePage(signName) {
   renderHoroscopePage(signName);
   showPage("horoscope");
@@ -246,7 +226,7 @@ function handleChooseService(mode) {
   closeServiceChoice();
   if (!category) return;
 
-  if (mode === 'chat') {
+  if (mode === "chat") {
     setChatMode("chat");
     startCategoryChat(category);
   } else {
@@ -254,10 +234,6 @@ function handleChooseService(mode) {
     startCategoryChat(category);
   }
 }
-
-// ============================================================
-// CHAT
-// ============================================================
 
 function handleSendMessage() {
   sendMessage(
@@ -286,21 +262,13 @@ function handleGoBackFromChat() {
   goBackFromChat(state.lastPage);
 }
 
-// ============================================================
-// PAGAMENTI — Placeholder per Stripe
-// ============================================================
-
 function showPaymentsPage() {
   if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
-    alert("💳 Pagamenti — Modalità test\n\nPer attivare i pagamenti reali:\n1. Crea account Stripe\n2. Inserisci le chiavi in config.js\n3. Imposta STRIPE_PAYMENTS: true");
+    alert("Pagamenti in modalita test");
     return;
   }
   window.location.href = "#payments";
 }
-
-// ============================================================
-// LINGUA
-// ============================================================
 
 function toggleLang() {
   const dropdown = $("langDropdown");
@@ -312,7 +280,7 @@ function setLang(lang) {
   const flagEl = $("currentFlag");
   if (flagEl) flagEl.textContent = flags[lang] || "🇮🇹";
 
-  document.querySelectorAll(".lang-option").forEach(o => {
+  document.querySelectorAll(".lang-option").forEach(function(o) {
     o.classList.toggle("active", o.dataset.lang === lang);
   });
 
@@ -320,47 +288,43 @@ function setLang(lang) {
   if (dropdown) dropdown.classList.remove("open");
 }
 
-document.addEventListener("click", (e) => {
+document.addEventListener("click", function(e) {
   if (!e.target.closest(".lang-dropdown")) {
     const dropdown = $("langDropdown");
     if (dropdown) dropdown.classList.remove("open");
   }
 });
 
-// ============================================================
-// EXPORT GLOBALE
-// ============================================================
-
 window.app = {
-  showPage,
-  goHome,
-  requireAuthOrModal,
-  requireAuthOrModalForChat,
-  openAuthModal,
-  closeAuthModal,
-  switchAuthTab,
-  handleRegister,
-  handleLogin,
-  handleLogout,
+  showPage: showPage,
+  goHome: goHome,
+  requireAuthOrModal: requireAuthOrModal,
+  requireAuthOrModalForChat: requireAuthOrModalForChat,
+  openAuthModal: openAuthModal,
+  closeAuthModal: closeAuthModal,
+  switchAuthTab: switchAuthTab,
+  handleRegister: handleRegister,
+  handleLogin: handleLogin,
+  handleLogout: handleLogout,
   showHoroscopePage: handleShowHoroscopePage,
-  switchHoroTab,
-  openProfileEdit,
-  showCompat,
-  openCompatModal,
-  closeCompatModal,
+  switchHoroTab: switchHoroTab,
+  openProfileEdit: openProfileEdit,
+  showCompat: showCompat,
+  openCompatModal: openCompatModal,
+  closeCompatModal: closeCompatModal,
   handleCompatSubmit: realHandleCompatSubmit,
-  toggleAccordion,
+  toggleAccordion: toggleAccordion,
   sendMessage: handleSendMessage,
   startCategoryChat: handleStartCategoryChat,
   startChatAbout: handleStartChatAbout,
   startVoiceAbout: handleStartVoiceAbout,
   goBackFromChat: handleGoBackFromChat,
-  showPaymentsPage,
-  toggleLang,
-  setLang,
-  switchPersonalHoroTab: (tab) => {
+  showPaymentsPage: showPaymentsPage,
+  toggleLang: toggleLang,
+  setLang: setLang,
+  switchPersonalHoroTab: function(tab) {
     const tabs = ["day", "week", "month", "year"];
-    tabs.forEach(t => {
+    tabs.forEach(function(t) {
       const tabBtn = document.getElementById("ph-tab-" + t);
       const textEl = document.getElementById("ph-text-" + t);
       if (tabBtn) tabBtn.classList.toggle("active", t === tab);
@@ -368,13 +332,12 @@ window.app = {
     });
   },
   showServiceChoice: handleShowServiceChoice,
-  closeServiceChoice,
+  closeServiceChoice: closeServiceChoice,
   chooseService: handleChooseService,
-  getCurrentProfile,
-  getCurrentUser,
-  loadNatalChart,
-  geocodeProfileIfNeeded,
-  // FUNZIONI da profile.js per onclick in UI
-  openLunaFromCompat,
-  resetCompatForm,
+  getCurrentProfile: getCurrentProfile,
+  getCurrentUser: getCurrentUser,
+  loadNatalChart: loadNatalChart,
+  geocodeProfileIfNeeded: geocodeProfileIfNeeded,
+  openLunaFromCompat: openLunaFromCompat,
+  resetCompatForm: resetCompatForm
 };
