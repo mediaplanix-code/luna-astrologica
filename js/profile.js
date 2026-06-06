@@ -1,7 +1,7 @@
 // ============================================================
 // PROFILE.JS — Gestione profilo, tema natale, compatibilità
 // Step C: calcolo reale con Swiss Ephemeris via API
-// FIX v4: preserva dati natali quando si chiude modal affinità
+// FIX: geocoding partner + formato data corretto + pulsanti corretti
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -27,10 +27,8 @@ export function closeCompatModal() {
     const modal = document.getElementById("compatModal");
     if (modal) {
         modal.classList.remove("active");
+        document.body.style.overflow = "";
     }
-    // FIX: NON resettare overflow qui — potrebbe esserci un altro modal aperto
-    // document.body.style.overflow = "";
-
     // Resetta il form alla chiusura
     const form = document.getElementById("compatForm");
     if (form) form.reset();
@@ -60,7 +58,6 @@ export async function handleCompatSubmit(e) {
     e.preventDefault();
 
     const name = document.getElementById('compatName')?.value?.trim();
-    const gender = document.getElementById('compatGender')?.value;
     const birthDateRaw = document.getElementById('compatBirthDate')?.value;
     const birthTime = document.getElementById('compatBirthTime')?.value;
     const city = document.getElementById('compatBirthCity')?.value?.trim();
@@ -71,9 +68,10 @@ export async function handleCompatSubmit(e) {
         return;
     }
 
+    // Recupera user_id dal profilo loggato
     const userId = window.app?.getCurrentProfile?.()?.id;
     if (!userId) {
-        alert('Devi essere loggato per calcolare l'affinità');
+        alert('Devi essere loggato per calcolare l\'affinità');
         return;
     }
 
@@ -109,7 +107,6 @@ export async function handleCompatSubmit(e) {
             body: JSON.stringify({
                 user_id: userId,
                 partner_name: name,
-                partner_gender: gender || null,
                 partner_birthDate: birthDate,
                 partner_birthTime: birthTime || '12:00',
                 partner_lat: geo.lat,
@@ -131,7 +128,7 @@ export async function handleCompatSubmit(e) {
         if (resultDiv) {
             resultDiv.innerHTML = `
                 <div style="text-align:center; padding:1rem; color:var(--danger);">
-                    <p>⚠️ ${err.message || 'Errore nel calcolo dell'affinità'}</p>
+                    <p>⚠️ ${err.message || 'Errore nel calcolo dell\'affinità'}</p>
                     <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="window.app.closeCompatModal()">Chiudi</button>
                 </div>
             `;
@@ -223,30 +220,10 @@ function renderCompatResult(data, partnerName) {
         </div>
 
         <div style="display:flex; gap:0.75rem; margin-top:1rem;">
-            <button type="button" class="btn-gold btn-full" onclick="window.app.openLunaFromCompat('amore')">💬 Chiedi a Luna</button>
-            <button type="button" class="btn-gold btn-full btn-gold-outline" onclick="window.app.resetCompatForm()">Nuovo calcolo</button>
+            <button class="btn-gold btn-full" onclick="window.app.showServiceChoice('amore')">💬 Chiedi a Luna</button>
+            <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.resetCompatForm()">Nuovo calcolo</button>
         </div>
     `;
-}
-
-// ===== APRI LUNA DALLA COMPATIBILITÀ =====
-// Chiude il modal affinità, POI apre il box scelta chat/voce
-export function openLunaFromCompat(category) {
-    // Chiudi il modal affinità
-    const compatModal = document.getElementById('compatModal');
-    if (compatModal) compatModal.classList.remove('active');
-
-    // Resetta form
-    const form = document.getElementById('compatForm');
-    if (form) form.reset();
-    const resultDiv = document.getElementById('compatResult');
-    if (resultDiv) {
-        resultDiv.style.display = 'none';
-        resultDiv.innerHTML = '';
-    }
-
-    // Apri il box scelta chat/voce
-    window.app.showServiceChoice(category);
 }
 
 // ===== RESET FORM SENZA CHIUDERE MODAL =====
