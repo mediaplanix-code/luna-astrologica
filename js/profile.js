@@ -255,3 +255,5 @@ export function toggleAccordion(header, bodyId) {
     body.classList.toggle("open", !isOpen);
     header.classList.toggle("open", !isOpen);
 }
+
+export { openLunaFromCompat, resetCompatForm };
