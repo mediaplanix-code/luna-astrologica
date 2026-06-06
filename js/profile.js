@@ -29,6 +29,30 @@ export function closeCompatModal() {
         modal.classList.remove("active");
         document.body.style.overflow = "";
     }
+    // ===== APRI LUNA DALLA COMPATIBILITÀ =====
+export function openLunaFromCompat(category) {
+    const compatModal = document.getElementById('compatModal');
+    if (compatModal) compatModal.classList.remove('active');
+    const form = document.getElementById('compatForm');
+    if (form) form.reset();
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+    }
+    window.app.showServiceChoice(category);
+}
+
+// ===== RESET FORM SENZA CHIUDERE MODAL =====
+export function resetCompatForm() {
+    const form = document.getElementById('compatForm');
+    if (form) form.reset();
+    const resultDiv = document.getElementById('compatResult');
+    if (resultDiv) {
+        resultDiv.style.display = 'none';
+        resultDiv.innerHTML = '';
+    }
+}
     // Resetta il form alla chiusura
     const form = document.getElementById("compatForm");
     if (form) form.reset();
