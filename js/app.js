@@ -1,11 +1,11 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v3: re-render personalized page on navigation + refresh
-// FIX: ensureGeocodingAndChart re-renders after async load
-// FIX: onAuthStateChange no longer double-renders
+// FIX v4: NON sovrascrivere DOM se già popolato. 
+// renderPersonalizedPage solo su container vuoto.
+// updateNatalChartUI ripopolato dopo ogni render.
 // ============================================================
 
-import { loadNatalChart } from './natal.js';
+import { loadNatalChart, updateNatalChartUI } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -71,11 +71,6 @@ function loadNatalChartFromStorage() {
     }
 }
 
-// Popola cachedNatalChart dai dati di loadNatalChart
-function setCachedNatalChart(chartData) {
-    cachedNatalChart = chartData;
-}
-
 document.addEventListener("DOMContentLoaded", async () => {
     renderAuthModal();
     renderCompatModal();
@@ -86,7 +81,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const isVerified = urlParams.get("verified");
 
     // FIX: recupera chart da localStorage PRIMA di qualsiasi render
-    // così al refresh la pagina personalized ha già i dati
     cachedNatalChart = loadNatalChartFromStorage();
 
     await initAuth(onAuthStateChange);
@@ -113,10 +107,6 @@ function onAuthStateChange(authState) {
 
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
-        // FIX: rimosso renderPersonalizedPage ridondante.
-        // Il primo render è gestito da DOMContentLoaded -> showPage.
-        // Se l'auth cambia dopo (es. login da modal), handleLogin in auth.js
-        // chiama già window.app.showPage("personalized").
         if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
 
         setTimeout(async () => {
@@ -153,14 +143,8 @@ async function ensureGeocodingAndChart() {
     console.log('🌙 Avvio caricamento transiti...');
     await loadTransits();
 
-    // FIX: se l'utente è ancora sulla pagina personalized, re-renderizza
-    // con i dati appena caricati (ruota SVG, pianeti, case, aspetti)
-    if (state.currentPage === "personalized") {
-        const user = getCurrentUser();
-        const freshProfile = getCurrentProfile();
-        renderPersonalizedPage(freshProfile, user, cachedNatalChart);
-        console.log('🎨 Re-render personalized dopo caricamento dati');
-    }
+    // FIX: NON re-renderizzare la pagina qui — loadNatalChart e loadTransits
+    // hanno già popolato il DOM esistente. renderPersonalizedPage sovrascriverebbe tutto.
 }
 
 function updateUI(authState) {
@@ -187,12 +171,23 @@ function showPage(pageId) {
     if (pageId !== "chat") state.lastPage = pageId;
     state.currentPage = pageId;
 
-    // FIX: se navighi su personalized, re-renderizza SEMPRE con i dati
-    // più aggiornati. Risolve il "vuoto" quando torni da Chat/Affinità/refresh.
+    // FIX: per personalized, renderizza il template SOLO se il container è vuoto
+    // (prima volta o dopo refresh). Se il DOM esiste già, usa updateNatalChartUI
+    // per ripopolare i dati senza sovrascrivere la struttura.
     if (pageId === "personalized") {
+        const container = document.getElementById("page-personalized");
         const profile = getCurrentProfile();
         const user = getCurrentUser();
-        renderPersonalizedPage(profile, user, cachedNatalChart);
+
+        if (!container || container.innerHTML.trim() === "") {
+            renderPersonalizedPage(profile, user, cachedNatalChart);
+        }
+
+        // Se abbiamo dati in cache, ripopola sempre il DOM 
+        // (copre sia primo render che ritorno da navigazione)
+        if (cachedNatalChart) {
+            updateNatalChartUI(cachedNatalChart);
+        }
     }
 
     uiShowPage(pageId, state.lastPage);
@@ -215,7 +210,6 @@ function goHome() {
 function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
-        // FIX: delega il render a showPage, che gestisce il re-render
         showPage("personalized");
     } else {
         openAuthModal();
