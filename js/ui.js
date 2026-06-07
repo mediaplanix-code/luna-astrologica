@@ -406,11 +406,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
 
         <!-- TELEGRAM CONNECT -->
         ${!profile?.telegram_chat_id ? `
-        <div style="position: fixed; bottom: 80px; right: 20px; z-index: 100;">
+        <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
             <a href="https://t.me/LunastrologicaBot?start=${profile?.id || ''}" 
                target="_blank" 
-               style="display: inline-block; width: 48px; height: 48px; background: #0088cc; border-radius: 50%; text-align: center; line-height: 48px; text-decoration: none; color: white; font-size: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
-                ✈️
+               style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #0088cc; border-radius: 50%; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.61c-.23.18-.42.33-.76.33z"/>
+                </svg>
             </a>
         </div>
         ` : ''}
