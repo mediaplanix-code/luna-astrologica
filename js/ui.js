@@ -405,26 +405,16 @@ export function renderPersonalizedPage(profile, user, natalData) {
         </div>
 
         <!-- TELEGRAM CONNECT -->
-        ${!profile?.telegram_chat_id ? `
-        <div style="margin: 1rem; padding: 1rem; background: linear-gradient(135deg, rgba(0,136,204,0.1), rgba(0,136,204,0.05)); border: 1px solid #0088cc; border-radius: 0.75rem; text-align: center;">
-            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✈️</div>
-            <h3 style="color: #0088cc; margin-bottom: 0.5rem;">Ricevi le tue stelle su Telegram</h3>
-            <p style="font-size: 0.875rem; color: var(--text-dim); margin-bottom: 1rem;">
-                Luna ti invierà ogni giorno il tuo oroscopo personale, gli eventi importanti del mese e gli auguri di compleanno. 
-                Clicca e inizia a ricevere i messaggi cosmici direttamente sul tuo telefono.
-            </p>
+         ${!profile?.telegram_chat_id ? `
+        <div style="text-align: center; margin: 1rem 0;">
             <a href="https://t.me/LunastrologicaBot?start=${profile?.id || ''}" 
                target="_blank" 
-               style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; background: #0088cc; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
-                <span>✈️</span>
-                <span>Collega Telegram</span>
+               style="display: inline-block; width: 48px; height: 48px; background: #0088cc; border-radius: 50%; text-align: center; line-height: 48px; text-decoration: none; color: white; font-size: 1.5rem;">
+                ⬆️
             </a>
-            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.75rem;">
-                Una volta collegato, questo pulsante sparirà automaticamente.
-            </p>
         </div>
         ` : ''}
-
+        
         <div style="padding: 0 1rem; margin-top:1rem;">
             <div class="section-title" style="margin-top:0;">✨ IL TUO OROSCOPO PERSONALIZZATO</div>
             <div class="horo-tabs" style="margin-bottom:0.75rem;">
