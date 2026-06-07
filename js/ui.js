@@ -405,12 +405,12 @@ export function renderPersonalizedPage(profile, user, natalData) {
         </div>
 
         <!-- TELEGRAM CONNECT -->
-         ${!profile?.telegram_chat_id ? `
-        <div style="text-align: center; margin: 1rem 0;">
+        ${!profile?.telegram_chat_id ? `
+        <div style="position: fixed; bottom: 80px; right: 20px; z-index: 100;">
             <a href="https://t.me/LunastrologicaBot?start=${profile?.id || ''}" 
                target="_blank" 
-               style="display: inline-block; width: 48px; height: 48px; background: #0088cc; border-radius: 50%; text-align: center; line-height: 48px; text-decoration: none; color: white; font-size: 1.5rem;">
-                ⬆️
+               style="display: inline-block; width: 48px; height: 48px; background: #0088cc; border-radius: 50%; text-align: center; line-height: 48px; text-decoration: none; color: white; font-size: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">
+                ✈️
             </a>
         </div>
         ` : ''}
