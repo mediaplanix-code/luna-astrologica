@@ -404,6 +404,18 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
+ ${!profile?.telegram_chat_id ? `
+        <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
+            <a href="https://t.me/LunastrologicaBot?start=${profile?.id || ''}" 
+               target="_blank" 
+               style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #0088cc; border-radius: 50%; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
+                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.61c-.23.18-.42.33-.76.33z"/>
+                </svg>
+            </a>
+        </div>
+        ` : ''}
+
         <div style="padding: 0 1rem; margin-top:1rem;">
             <div class="section-title" style="margin-top:0;">✨ IL TUO OROSCOPO PERSONALIZZATO</div>
             <div class="horo-tabs" style="margin-bottom:0.75rem;">
