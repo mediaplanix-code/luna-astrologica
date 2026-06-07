@@ -1,7 +1,10 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v5: aggiorna dati personali (nome, data, crediti) senza
-// sovrascrivere la ruota natale. Carica transiti ad ogni ingresso.
+// FIX v6: tornato all'originale. Modifiche minime:
+// 1. Carica cachedNatalChart da localStorage prima del primo render
+// 2. onAuthStateChange NON sovrascrive più il DOM (no doppio render)
+// 3. ensureGeocodingAndChart ripopola UI via updateNatalChartUI dopo load
+// 4. showPage per personalized NON re-renderizza (usa DOM esistente)
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -70,74 +73,9 @@ function loadNatalChartFromStorage() {
     }
 }
 
-// ============================================================
-// REFRESH DATI PERSONALI — senza toccare la ruota natale
-// ============================================================
-function refreshPersonalizedData() {
-    const profile = getCurrentProfile();
-    const user = getCurrentUser();
-    if (!profile && !user) return;
-
-    // Nome: profilo → metadati auth → email → default
-    const name = profile?.full_name
-        || user?.user_metadata?.full_name
-        || user?.email?.split("@")[0]
-        || "Utente";
-
-    const nameEl = document.getElementById('personalName');
-    if (nameEl) {
-        nameEl.textContent = `Benvenuto, ${name}`;
-    }
-
-    // Aggiorna anche il nome nelle pillole oroscopo
-    document.querySelectorAll('.ph-sign-name').forEach(el => {
-        if (cachedNatalChart?.planets) {
-            const sun = cachedNatalChart.planets.find(p => p.key === 'sun');
-            if (sun) el.textContent = sun.sign;
-        }
-    });
-
-    // Dettagli nascita
-    const bd = profile?.birth_date
-        ? new Date(profile.birth_date).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"})
-        : "--";
-    const bt = profile?.birth_time || "--";
-    const bc = profile?.birth_city || "--";
-    const bco = profile?.birth_country || "";
-    const detailsEl = document.getElementById('personalDetails');
-    if (detailsEl) {
-        detailsEl.textContent = `Nato il ${bd} • ${bt} • ${bc}${bco ? ", " + bco : ""}`;
-    }
-
-    // Header: avatar, crediti, bottoni
-    const credits = getCredits();
-    const creditsVal = $("creditsVal");
-    if (creditsVal) creditsVal.textContent = credits;
-
-    const creditsDot = $("creditsDot");
-    if (creditsDot) {
-        creditsDot.className = "credits-dot";
-        if (credits <= 0) creditsDot.classList.add("danger");
-        else if (credits <= 3) creditsDot.classList.add("warning");
-    }
-
-    const avatar = $("userAvatar");
-    if (avatar) {
-        const initial = profile?.full_name
-            ? profile.full_name.charAt(0).toUpperCase()
-            : user?.email?.charAt(0).toUpperCase() || "?";
-        avatar.textContent = initial;
-        avatar.classList.add("active");
-    }
-
-    const creditsPill = $("creditsPill");
-    if (creditsPill) creditsPill.classList.add("active");
-
-    const loginBtn = $("loginBtn");
-    if (loginBtn) loginBtn.classList.add("hidden");
-
-    const logoutBtn = $("logoutBtn");
-    if (logoutBtn) logoutBtn.classList.remove("hidden");
+// Popola cachedNatalChart dai dati di loadNatalChart
+function setCachedNatalChart(chartData) {
+    cachedNatalChart = chartData;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -149,6 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isVerified = urlParams.get("verified");
 
+    // FIX: recupera chart da localStorage PRIMA di qualsiasi render
     cachedNatalChart = loadNatalChartFromStorage();
 
     await initAuth(onAuthStateChange);
@@ -158,10 +97,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (isVerified === "true" && user && profile?.id) {
         window.history.replaceState({}, document.title, window.location.pathname);
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
     } else if (user && profile?.id) {
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
     } else {
         showPage("home");
@@ -173,16 +114,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
-    // FIX: se siamo su personalized e i dati auth arrivano/aggiornano,
-    // refresha nome, data, crediti senza toccare la ruota.
-    if (state.currentPage === "personalized" && authState.isLoggedIn) {
-        refreshPersonalizedData();
-    }
-
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
-
+        // FIX: NON chiamare renderPersonalizedPage qui — già fatto in DOMContentLoaded
+        // o verrà fatto da ensureGeocodingAndChart che popola i dati via updateNatalChartUI
         setTimeout(async () => {
             await ensureGeocodingAndChart();
         }, 500);
@@ -217,9 +153,11 @@ async function ensureGeocodingAndChart() {
     console.log('🌙 Avvio caricamento transiti...');
     await loadTransits();
 
-    // FIX: dopo caricamento dati, refresha la UI se siamo ancora su personalized
-    if (state.currentPage === "personalized") {
-        refreshPersonalizedData();
+    // FIX: se abbiamo un chart (cache o appena calcolato), ripopola la UI
+    // senza ricostruire il DOM da zero
+    if (cachedNatalChart && state.currentPage === "personalized") {
+        updateNatalChartUI(cachedNatalChart);
+        console.log('🎨 UI natale aggiornata');
     }
 }
 
@@ -246,29 +184,6 @@ function updateUI(authState) {
 function showPage(pageId) {
     if (pageId !== "chat") state.lastPage = pageId;
     state.currentPage = pageId;
-
-    if (pageId === "personalized") {
-        const container = document.getElementById("page-personalized");
-        const profile = getCurrentProfile();
-        const user = getCurrentUser();
-
-        if (!container || container.innerHTML.trim() === "") {
-            // Primo render: genera il template completo
-            renderPersonalizedPage(profile, user, cachedNatalChart);
-        } else {
-            // Re-ingresso: aggiorna solo dati personali (nome, data, crediti)
-            refreshPersonalizedData();
-        }
-
-        // Ripopola sempre i dati natale se in cache
-        if (cachedNatalChart) {
-            updateNatalChartUI(cachedNatalChart);
-        }
-
-        // FIX: carica transiti ogni volta che si entra nella pagina personalized
-        loadTransits();
-    }
-
     uiShowPage(pageId, state.lastPage);
     renderNav(pageId);
 
@@ -289,7 +204,19 @@ function goHome() {
 function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
+        const profile = getCurrentProfile();
+        // FIX: se il container personalized è vuoto, renderizza; altrimenti mostra solo
+        const container = document.getElementById("page-personalized");
+        if (!container || container.innerHTML.trim() === "") {
+            renderPersonalizedPage(profile, user, cachedNatalChart);
+        }
         showPage("personalized");
+        // Se abbiamo dati in cache, ripopola (copre il caso "torno da chat")
+        if (cachedNatalChart) {
+            updateNatalChartUI(cachedNatalChart);
+        }
+        // FIX: ricarica transiti ogni volta che si entra in personalized
+        loadTransits();
     } else {
         openAuthModal();
     }
