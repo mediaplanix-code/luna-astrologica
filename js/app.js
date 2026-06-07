@@ -80,6 +80,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     renderHomePage();
     renderChatPage();
 
+    // FIX: carica cache tema natale prima del primo render
+    cachedNatalChart = loadNatalChartFromStorage();
+
     const urlParams = new URLSearchParams(window.location.search);
     const isVerified = urlParams.get("verified");
 
@@ -176,6 +179,22 @@ function showPage(pageId) {
 
     const user = getCurrentUser();
     const profile = getCurrentProfile();
+
+    // FIX: se torniamo su personalized, assicurati che i dati siano caricati
+    if (pageId === "personalized" && user && profile?.id) {
+        if (!cachedNatalChart) {
+            cachedNatalChart = loadNatalChartFromStorage();
+        }
+        if (!cachedNatalChart) {
+            ensureGeocodingAndChart().then(() => {
+                renderPersonalizedPage(getCurrentProfile(), user, cachedNatalChart);
+            });
+            renderPersonalizedPage(profile, user, null);
+        } else {
+            renderPersonalizedPage(profile, user, cachedNatalChart);
+        }
+    }
+
     updateUI({
         isLoggedIn: !!user,
         user: user,
