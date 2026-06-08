@@ -1,15 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// VERSIONE FINALE CORRETTA
-// FIX: logout pulisce stato + cache + DOM, nome con triple fallback
-//
-// Funzionamento:
-// 1. handleRegister legge i campi del form
-// 2. Invia email, password + METADATI (nome, data, ora, città, nazione) a Supabase Auth
-// 3. Il trigger handle_new_user() nel DB crea automaticamente profilo e crediti
-// 4. Dopo conferma email, loadUserData carica il profilo creato dal trigger
-//
-// NON crea profilo manualmente — lascia fare al trigger!
+// FIX v5: backup profilo in localStorage, getCurrentProfile con fallback,
+//         logout pulizia completa, triple fallback nome
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -19,6 +11,8 @@ let currentUser = null;
 let currentProfile = null;
 let credits = 0;
 let onAuthChange = null;
+
+const PROFILE_BACKUP_KEY = 'luna_profile_backup';
 
 // ============================================================
 // INIT
@@ -63,7 +57,7 @@ export async function initAuth(callback) {
 }
 
 // ============================================================
-// HANDLE REGISTER — INVIA METADATI AL SIGNUP
+// HANDLE REGISTER
 // ============================================================
 export async function handleRegister(e) {
  e.preventDefault();
@@ -77,7 +71,6 @@ export async function handleRegister(e) {
 
  hideAlerts();
 
- // ─── LEGGI I VALORI DEL FORM ───
  const fullName = document.getElementById("regName")?.value?.trim();
  const email = document.getElementById("regEmail")?.value?.trim();
  const password = document.getElementById("regPassword")?.value;
@@ -87,12 +80,10 @@ export async function handleRegister(e) {
  const birthCity = document.getElementById("regBirthCity")?.value?.trim();
  const birthCountry = document.getElementById("regBirthCountry")?.value;
 
- // DEBUG — guarda in F12 Console cosa legge
  console.log("📋 [handleRegister] Form letto:", {
  fullName, email, birthDate, birthTime, birthCity, birthCountry, gender
  });
 
- // Validazione
  if (!fullName || !email || !password || !birthDate || !birthCity || !birthCountry) {
  showAlert("auth", "error", "Compila tutti i campi obbligatori (*)");
  if (btn) { btn.innerHTML = orig; btn.disabled = false; }
@@ -105,7 +96,6 @@ export async function handleRegister(e) {
  }
 
  try {
- // ─── SIGNUP CON METADATI ───
  const { data: authData, error: authErr } = await supabase.auth.signUp({
  email: email,
  password: password,
@@ -130,7 +120,6 @@ export async function handleRegister(e) {
  showAlert("auth", "success",
  "🌙 Account creato! Controlla la tua email e clicca il link di conferma.");
 
- // Pulisci form e nascondi
  const regForm = document.getElementById("registerForm");
  if (regForm) regForm.reset();
 
@@ -190,12 +179,11 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT — PULIZIA AGGRESSIVA
+// HANDLE LOGOUT — PULIZIA COMPLETA
 // ============================================================
 export async function handleLogout() {
  console.log('🚪 Avvio logout...');
 
- // 1. SignOut da Supabase
  if (supabase) {
  try {
  await supabase.auth.signOut();
@@ -205,25 +193,22 @@ export async function handleLogout() {
  }
  }
 
- // 2. Reset variabili interne
  currentUser = null;
  currentProfile = null;
  credits = 0;
 
- // 3. Pulisci cache locale
+ // Pulisci tutto il localStorage relativo a Luna
  localStorage.removeItem('luna_natal_chart');
  localStorage.removeItem('luna_natal_chart_ts');
+ localStorage.removeItem(PROFILE_BACKUP_KEY);
  console.log('🧹 Cache localStorage pulita');
 
- // 4. Notifica cambio stato (aggiorna header, nav, etc)
  notifyChange();
 
- // 5. Reset stato app e DOM
  if (window.app && window.app._resetState) {
  window.app._resetState();
  }
 
- // 6. Naviga a home
  if (window.app) {
  window.app.showPage("home");
  console.log('🏠 Redirect a home');
@@ -231,11 +216,15 @@ export async function handleLogout() {
 }
 
 // ============================================================
-// LOAD USER DATA — TRIPLE FALLBACK NOME
+// LOAD USER DATA — BACKUP IN LOCALSTORAGE
 // ============================================================
 export async function loadUserData() {
- if (!currentUser || !supabase) return;
+ if (!currentUser || !supabase) {
+ console.warn('⏳ loadUserData: nessun user o supabase');
+ return;
+ }
 
+ try {
  const { data: profile, error } = await supabase
  .from("profiles")
  .select("*")
@@ -247,21 +236,26 @@ export async function loadUserData() {
  if (error.code === "PGRST116") {
  console.warn("⚠️ Profilo non trovato per utente:", currentUser.id);
  }
+ // Prova a recuperare dal backup
+ const backup = loadProfileBackup();
+ if (backup && backup.id === currentUser.id) {
+ console.log('📦 Profilo recuperato da backup localStorage');
+ currentProfile = backup;
+ credits = backup.credits || 0;
+ notifyChange();
+ return;
+ }
  currentProfile = null;
  credits = 0;
  notifyChange();
  return;
  }
 
- // TRIPLE FALLBACK per full_name:
- // 1. DB profiles.full_name
- // 2. auth.users.user_metadata.full_name
- // 3. email.split('@')[0]
+ // TRIPLE FALLBACK per full_name
  let displayName = profile.full_name;
  if (!displayName) {
  displayName = currentUser.user_metadata?.full_name;
  if (displayName) {
- // Sincronizza silenziosamente nel DB
  await supabase.from("profiles")
  .update({ full_name: displayName, updated_at: new Date().toISOString() })
  .eq("id", currentUser.id);
@@ -277,6 +271,9 @@ export async function loadUserData() {
  currentProfile = profile;
  credits = profile?.credits || 0;
 
+ // Salva backup in localStorage
+ saveProfileBackup(profile);
+
  console.log("✅ [loadUserData] Profilo caricato:", {
  nome: profile?.full_name,
  data: profile?.birth_date,
@@ -285,6 +282,37 @@ export async function loadUserData() {
  });
 
  notifyChange();
+ } catch (err) {
+ console.error('❌ [loadUserData] Eccezione:', err);
+ // Fallback backup
+ const backup = loadProfileBackup();
+ if (backup && backup.id === currentUser?.id) {
+ currentProfile = backup;
+ credits = backup.credits || 0;
+ notifyChange();
+ }
+ }
+}
+
+// ============================================================
+// BACKUP / RESTORE PROFILO
+// ============================================================
+function saveProfileBackup(profile) {
+ if (!profile) return;
+ try {
+ localStorage.setItem(PROFILE_BACKUP_KEY, JSON.stringify(profile));
+ } catch (e) {
+ console.warn('Errore backup profilo:', e);
+ }
+}
+
+function loadProfileBackup() {
+ try {
+ const saved = localStorage.getItem(PROFILE_BACKUP_KEY);
+ return saved ? JSON.parse(saved) : null;
+ } catch (e) {
+ return null;
+ }
 }
 
 // ============================================================
@@ -306,6 +334,10 @@ export async function updateCredits(delta) {
  }
 
  credits = newCredits;
+ if (currentProfile) {
+ currentProfile.credits = newCredits;
+ saveProfileBackup(currentProfile);
+ }
  notifyChange();
  return true;
 }
@@ -391,10 +423,22 @@ function hideAlerts() {
 }
 
 // ============================================================
-// EXPORT
+// EXPORT — getCurrentProfile CON FALLBACK BACKUP
 // ============================================================
 export function getCurrentUser() { return currentUser; }
-export function getCurrentProfile() { return currentProfile; }
+
+export function getCurrentProfile() {
+ if (currentProfile) return currentProfile;
+ // Fallback: recupera dal backup se memoria è stata persa
+ const backup = loadProfileBackup();
+ if (backup && currentUser && backup.id === currentUser.id) {
+ console.log('📦 getCurrentProfile: recuperato da backup');
+ currentProfile = backup;
+ return currentProfile;
+ }
+ return null;
+}
+
 export function getCredits() { return credits; }
 export function getSupabase() { return supabase; }
 export function getUserId() { return currentUser?.id || null; }
