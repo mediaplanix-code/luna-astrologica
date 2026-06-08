@@ -1,6 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v6: crediti nel backup, logout con reload pagina, triple fallback nome
+// FIX v7: getCredits con fallback da profile e backup, log espliciti,
+//         logout con reload pagina, triple fallback nome
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -267,7 +268,10 @@ export async function loadUserData() {
  }
 
  currentProfile = profile;
- credits = profile?.credits || 0;
+ // FIX v7: log esplicito per crediti
+ const dbCredits = profile?.credits;
+ credits = (dbCredits !== undefined && dbCredits !== null) ? dbCredits : 0;
+ console.log('💰 [loadUserData] Crediti caricati dal DB:', credits, '(raw:', dbCredits, ')');
 
  // Salva backup in localStorage (con crediti aggiornati)
  saveProfileBackup(profile);
@@ -436,6 +440,14 @@ export function getCurrentProfile() {
  return null;
 }
 
-export function getCredits() { return credits; }
+// FIX v7: getCredits con fallback da profile e backup
+export function getCredits() {
+ if (credits > 0) return credits;
+ if (currentProfile?.credits > 0) return currentProfile.credits;
+ const backup = loadProfileBackup();
+ if (backup?.credits > 0) return backup.credits;
+ return credits;
+}
+
 export function getSupabase() { return supabase; }
 export function getUserId() { return currentUser?.id || null; }
