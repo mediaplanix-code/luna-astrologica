@@ -1,7 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
 // VERSIONE FINALE CORRETTA
-// FIX: fallback full_name dai metadati + pulizia cache al logout
+// FIX: logout pulisce stato + cache + DOM, nome con triple fallback
 //
 // Funzionamento:
 // 1. handleRegister legge i campi del form
@@ -106,8 +106,6 @@ export async function handleRegister(e) {
 
  try {
  // ─── SIGNUP CON METADATI ───
- // Questi dati vanno in auth.users.raw_user_meta_data
- // Il trigger handle_new_user() nel DB li legge e crea il profilo
  const { data: authData, error: authErr } = await supabase.auth.signUp({
  email: email,
  password: password,
@@ -192,29 +190,48 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT
+// HANDLE LOGOUT — PULIZIA AGGRESSIVA
 // ============================================================
 export async function handleLogout() {
- if (!supabase) return;
+ console.log('🚪 Avvio logout...');
+
+ // 1. SignOut da Supabase
+ if (supabase) {
  try {
  await supabase.auth.signOut();
+ console.log('✅ SignOut Supabase completato');
  } catch (e) {
  console.error("Logout error:", e);
  }
+ }
+
+ // 2. Reset variabili interne
  currentUser = null;
  currentProfile = null;
  credits = 0;
 
- // FIX: pulisci cache locale del tema natale
+ // 3. Pulisci cache locale
  localStorage.removeItem('luna_natal_chart');
  localStorage.removeItem('luna_natal_chart_ts');
+ console.log('🧹 Cache localStorage pulita');
 
+ // 4. Notifica cambio stato (aggiorna header, nav, etc)
  notifyChange();
- if (window.app) window.app.showPage("home");
+
+ // 5. Reset stato app e DOM
+ if (window.app && window.app._resetState) {
+ window.app._resetState();
+ }
+
+ // 6. Naviga a home
+ if (window.app) {
+ window.app.showPage("home");
+ console.log('🏠 Redirect a home');
+ }
 }
 
 // ============================================================
-// LOAD USER DATA
+// LOAD USER DATA — TRIPLE FALLBACK NOME
 // ============================================================
 export async function loadUserData() {
  if (!currentUser || !supabase) return;
@@ -236,13 +253,25 @@ export async function loadUserData() {
  return;
  }
 
- // FIX: se il DB non ha il nome, recupera dai metadati di registrazione
- if (!profile.full_name && currentUser.user_metadata?.full_name) {
- profile.full_name = currentUser.user_metadata.full_name;
- // Sincronizza silenziosamente nel DB per i prossimi refresh
+ // TRIPLE FALLBACK per full_name:
+ // 1. DB profiles.full_name
+ // 2. auth.users.user_metadata.full_name
+ // 3. email.split('@')[0]
+ let displayName = profile.full_name;
+ if (!displayName) {
+ displayName = currentUser.user_metadata?.full_name;
+ if (displayName) {
+ // Sincronizza silenziosamente nel DB
  await supabase.from("profiles")
- .update({ full_name: profile.full_name, updated_at: new Date().toISOString() })
+ .update({ full_name: displayName, updated_at: new Date().toISOString() })
  .eq("id", currentUser.id);
+ profile.full_name = displayName;
+ console.log('📝 Nome recuperato dai metadati e sincronizzato nel DB');
+ } else {
+ displayName = currentUser.email?.split("@")[0] || "Utente";
+ profile.full_name = displayName;
+ console.log('📝 Nome fallback da email');
+ }
  }
 
  currentProfile = profile;
