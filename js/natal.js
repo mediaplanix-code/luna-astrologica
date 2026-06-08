@@ -1,7 +1,6 @@
 // ============================================================
 // NATAL.JS — Calcolo tema natale + disegno ruota SVG lato client
-// Swiss Ephemeris calcola (server), browser disegna (SVG)
-// Nessuna modifica al server Render necessaria
+// FIX v6: SVG tag complete, stili CSS variabili, viewBox corretto
 // ============================================================
 
 import { getCurrentUser, getCurrentProfile } from './auth.js';
@@ -43,12 +42,8 @@ const COMPAT_MAP = {
  'Pesci': ['Cancro', 'Scorpione', 'Capricorno']
 };
 
-// Colori per elemento
 const ELEMENT_COLORS = {
- fire: '#FF6B6B', // Ariete, Leone, Sagittario
- earth: '#4ECDC4', // Toro, Vergine, Capricorno
- air: '#FFE66D', // Gemelli, Bilancia, Acquario
- water: '#45B7D1' // Cancro, Scorpione, Pesci
+ fire: '#FF6B6B', earth: '#4ECDC4', air: '#FFE66D', water: '#45B7D1'
 };
 
 const SIGN_ELEMENTS = ['fire','earth','air','water','fire','earth','air','water','fire','earth','air','water'];
@@ -214,13 +209,6 @@ function drawWheelSVG(chart, container) {
  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
  }
 
- function arc(r, start, end) {
- const s = polar(r, end);
- const e = polar(r, start);
- const large = end - start <= 180 ? 0 : 1;
- return "M " + s.x + " " + s.y + " A " + r + " " + r + " 0 " + large + " 0 " + e.x + " " + e.y;
- }
-
  const houseLongs = chart.houses.map(h => {
  return (SIGN_LONGITUDE[h.name] || 0) + (h.degree || 0) + ((h.minutes || 0) / 60);
  });
@@ -233,14 +221,13 @@ function drawWheelSVG(chart, container) {
  fire: '#FF6B6B', earth: '#4ECDC4', air: '#FFE66D', water: '#45B7D1'
  };
 
- var svgHTML = '';
-
- svgHTML += '<svg viewBox="0 0 ' + size + ' ' + size + '" style="width:100%;height:auto;max-width:900px;">';
- svgHTML += '<defs><filter id="glow"><feGaussianBlur stdDeviation="2.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
- svgHTML += '<rect width="' + size + '" height="' + size + '" fill="transparent"/>';
+ // FIX v6: SVG tag complete, viewBox corretto, stili CSS variabili
+ let svgHTML = `<svg viewBox="0 0 ${size} ${size}" style="width:100%;height:auto;max-width:900px;" xmlns="http://www.w3.org/2000/svg">`;
+ svgHTML += `<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
+ svgHTML += `<rect width="${size}" height="${size}" fill="transparent"/>`;
 
  // Cerchio esterno
- svgHTML += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rOuter + '" fill="none" stroke="#333" stroke-width="1"/>';
+ svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rOuter}" fill="none" stroke="#333" stroke-width="1"/>`;
 
  // 12 linee divisorie
  for (let i = 0; i < 12; i++) {
@@ -248,16 +235,15 @@ function drawWheelSVG(chart, container) {
  const signIdx = Math.floor(start / 30) % 12;
  const element = SIGN_ELEMENTS[signIdx];
  const color = lineColors[element];
-
  const o = polar(rOuter, start);
  const inn = polar(rCenter, start);
- svgHTML += '<line x1="' + o.x + '" y1="' + o.y + '" x2="' + inn.x + '" y2="' + inn.y + '" stroke="' + color + '" stroke-width="1.5" opacity="0.7"/>';
+ svgHTML += `<line x1="${o.x}" y1="${o.y}" x2="${inn.x}" y2="${inn.y}" stroke="${color}" stroke-width="1.5" opacity="0.7"/>`;
  }
 
  // Cerchi interni
- svgHTML += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rSign + '" fill="none" stroke="#444" stroke-width="1"/>';
- svgHTML += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rPlanet + '" fill="none" stroke="#555" stroke-width="1"/>';
- svgHTML += '<circle cx="' + cx + '" cy="' + cy + '" r="' + rCenter + '" fill="none" stroke="#666" stroke-width="1"/>';
+ svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rSign}" fill="none" stroke="#444" stroke-width="1"/>`;
+ svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rPlanet}" fill="none" stroke="#555" stroke-width="1"/>`;
+ svgHTML += `<circle cx="${cx}" cy="${cy}" r="${rCenter}" fill="none" stroke="#666" stroke-width="1"/>`;
 
  // 12 sezioni: numero casa + SIMBOLO
  for (let i = 0; i < 12; i++) {
@@ -267,11 +253,11 @@ function drawWheelSVG(chart, container) {
  const signIdx = Math.floor(start / 30) % 12;
 
  const n = polar(rCenter + 35, mid);
- svgHTML += '<text x="' + n.x + '" y="' + n.y + '" text-anchor="middle" dominant-baseline="middle" fill="var(--text-dim)" font-size="14" font-weight="bold">' + (i + 1) + '</text>';
+ svgHTML += `<text x="${n.x}" y="${n.y}" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="14" font-weight="bold">${i + 1}</text>`;
 
  const s = polar((rSign + rOuter) / 2, mid);
  const sym = SIGN_SYMBOLS[SIGNS[signIdx]] || '?';
- svgHTML += '<text x="' + s.x + '" y="' + s.y + '" text-anchor="middle" dominant-baseline="middle" fill="var(--gold)" font-size="22" filter="url(#glow)">' + sym + '</text>';
+ svgHTML += `<text x="${s.x}" y="${s.y}" text-anchor="middle" dominant-baseline="middle" fill="#d4af37" font-size="22" filter="url(#glow)">${sym}</text>`;
  }
 
  // Pianeti
@@ -284,13 +270,13 @@ function drawWheelSVG(chart, container) {
  const sym = planetSymbols[p.key] || '●';
  const col = planetColors[p.key] || '#fff';
 
- svgHTML += '<circle cx="' + pt.x + '" cy="' + pt.y + '" r="12" fill="#1a1a2e" stroke="' + col + '" stroke-width="2"/>';
- svgHTML += '<text x="' + pt.x + '" y="' + pt.y + '" text-anchor="middle" dominant-baseline="middle" fill="' + col + '" font-size="14" font-weight="bold">' + sym + '</text>';
+ svgHTML += `<circle cx="${pt.x}" cy="${pt.y}" r="12" fill="#1a1a2e" stroke="${col}" stroke-width="2"/>`;
+ svgHTML += `<text x="${pt.x}" y="${pt.y}" text-anchor="middle" dominant-baseline="middle" fill="${col}" font-size="14" font-weight="bold">${sym}</text>`;
 
  const dpt = polar(rPlanet + 40, lon);
  const deg = Math.floor(lon % 30);
  const min = Math.floor((lon % 30 - deg) * 60);
- svgHTML += '<text x="' + dpt.x + '" y="' + dpt.y + '" text-anchor="middle" dominant-baseline="middle" fill="var(--text-dim)" font-size="11">' + deg + '°' + min + '\'' + '</text>';
+ svgHTML += `<text x="${dpt.x}" y="${dpt.y}" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="11">${deg}°${min}'</text>`;
  });
 
  // Linee aspetti
@@ -309,18 +295,18 @@ function drawWheelSVG(chart, container) {
  else if (asp.type === 'quadratura') color = '#FF6B6B';
  else if (asp.type === 'opposizione') color = '#FF6B6B';
  else if (asp.type === 'sestile') color = '#FFE66D';
- svgHTML += '<line x1="' + pt1.x + '" y1="' + pt1.y + '" x2="' + pt2.x + '" y2="' + pt2.y + '" stroke="' + color + '" stroke-width="1" opacity="0.6"/>';
+ svgHTML += `<line x1="${pt1.x}" y1="${pt1.y}" x2="${pt2.x}" y2="${pt2.y}" stroke="${color}" stroke-width="1" opacity="0.6"/>`;
  }
  });
 
  // Centro
  const asc = chart.ascendant;
  const ascSym = SIGN_SYMBOLS[asc?.name] || '?';
- svgHTML += '<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" dominant-baseline="middle" fill="var(--gold)" font-size="18" font-weight="bold" filter="url(#glow)">' + ascSym + ' Ascendente</text>';
- svgHTML += '<text x="' + cx + '" y="' + (cy + 10) + '" text-anchor="middle" dominant-baseline="middle" fill="var(--text-dim)" font-size="12">' + (asc?.name || '?') + ' ' + (asc?.degree !== undefined ? asc.degree + '°' : '') + '</text>';
- svgHTML += '<text x="' + cx + '" y="' + (cy + 28) + '" text-anchor="middle" dominant-baseline="middle" fill="var(--text-dim)" font-size="11">MC: ' + (chart.mc?.name || '?') + ' ' + (chart.mc?.degree !== undefined ? chart.mc.degree + '°' : '') + '</text>';
+ svgHTML += `<text x="${cx}" y="${cy - 10}" text-anchor="middle" dominant-baseline="middle" fill="#d4af37" font-size="18" font-weight="bold" filter="url(#glow)">${ascSym} Ascendente</text>`;
+ svgHTML += `<text x="${cx}" y="${cy + 10}" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="12">${asc?.name || '?'} ${asc?.degree !== undefined ? asc.degree + '°' : ''}</text>`;
+ svgHTML += `<text x="${cx}" y="${cy + 28}" text-anchor="middle" dominant-baseline="middle" fill="#888" font-size="11">MC: ${chart.mc?.name || '?'} ${chart.mc?.degree !== undefined ? chart.mc.degree + '°' : ''}</text>`;
 
- svgHTML += '</svg>';
+ svgHTML += `</svg>`;
  container.innerHTML = svgHTML;
 }
 
@@ -365,10 +351,9 @@ export function updateNatalChartUI(chart) {
  nameEl.parentElement.appendChild(extra);
  }
 
- // 6. RUOTA SVG — disegnata lato client con dati dal server
+ // 6. RUOTA SVG
  const wheel = document.getElementById('natalWheel');
  if (wheel && chart.houses && chart.houses.length === 12) {
- // Forza container grande
  wheel.style.width = '100%';
  wheel.style.minHeight = '400px';
  wheel.style.display = 'flex';
