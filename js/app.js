@@ -1,13 +1,11 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v6: tornato all'originale. Modifiche minime:
-// 1. Carica cachedNatalChart da localStorage prima del primo render
-// 2. onAuthStateChange NON sovrascrive più il DOM (no doppio render)
-// 3. ensureGeocodingAndChart ripopola UI via updateNatalChartUI dopo load
-// 4. showPage per personalized NON re-renderizza (usa DOM esistente)
+// FIX: rimosso calculateSynastry finta, usa profile.js reale
+// FIX v2: aggiunte openLunaFromCompat e resetCompatForm in window.app
+// FIX v3: cache chart prima di initAuth, no doppio render, re-ingresso protetto
 // ============================================================
 
-import { loadNatalChart, updateNatalChartUI } from './natal.js';
+import { loadNatalChart } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -40,7 +38,6 @@ let state = {
 
 let isFirstAuthCheck = true;
 let cachedNatalChart = null;
-
 // ===== LOCALSTORAGE PER DATI NATALI (24h) =====
 const NATAL_CHART_KEY = 'luna_natal_chart';
 const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
@@ -87,7 +84,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isVerified = urlParams.get("verified");
 
-    // FIX: recupera chart da localStorage PRIMA di qualsiasi render
+    // FIX v3: carica cache PRIMA di initAuth, così il primo render ha già i dati
     cachedNatalChart = loadNatalChartFromStorage();
 
     await initAuth(onAuthStateChange);
@@ -117,8 +114,8 @@ function onAuthStateChange(authState) {
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
-        // FIX: NON chiamare renderPersonalizedPage qui — già fatto in DOMContentLoaded
-        // o verrà fatto da ensureGeocodingAndChart che popola i dati via updateNatalChartUI
+        // FIX v3: RIMOSSO renderPersonalizedPage e showPage ridondanti
+        // Il primo render è già gestito da DOMContentLoaded
         setTimeout(async () => {
             await ensureGeocodingAndChart();
         }, 500);
@@ -152,13 +149,6 @@ async function ensureGeocodingAndChart() {
 
     console.log('🌙 Avvio caricamento transiti...');
     await loadTransits();
-
-    // FIX: se abbiamo un chart (cache o appena calcolato), ripopola la UI
-    // senza ricostruire il DOM da zero
-    if (cachedNatalChart && state.currentPage === "personalized") {
-        updateNatalChartUI(cachedNatalChart);
-        console.log('🎨 UI natale aggiornata');
-    }
 }
 
 function updateUI(authState) {
@@ -205,18 +195,17 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
-        // FIX: se il container personalized è vuoto, renderizza; altrimenti mostra solo
+        // FIX v3: renderizza template SOLO se il container è vuoto (prima volta)
+        // altrimenti usa il DOM esistente e ricarica solo i dati
         const container = document.getElementById("page-personalized");
         if (!container || container.innerHTML.trim() === "") {
             renderPersonalizedPage(profile, user, cachedNatalChart);
         }
         showPage("personalized");
-        // Se abbiamo dati in cache, ripopola (copre il caso "torno da chat")
-        if (cachedNatalChart) {
-            updateNatalChartUI(cachedNatalChart);
-        }
-        // FIX: ricarica transiti ogni volta che si entra in personalized
-        loadTransits();
+        // FIX v3: ricarica sempre transiti al re-ingresso nella pagina
+        setTimeout(() => {
+            loadTransits();
+        }, 100);
     } else {
         openAuthModal();
     }
