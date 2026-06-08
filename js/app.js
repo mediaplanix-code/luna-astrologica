@@ -1,9 +1,7 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX: rimosso calculateSynastry finta, usa profile.js reale
-// FIX v2: aggiunte openLunaFromCompat e resetCompatForm in window.app
-// FIX v3: reload pagina — aggiunto ensureGeocodingAndChart() nel branch else if
-// FIX v4: flag hasRenderedPersonalized + re-hydration tema natale al ritorno
+// FIX v4: logica init semplificata, DOM costruito una sola volta,
+//         dati natal ridisegnati al ritorno, stato resettato al logout
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -37,10 +35,7 @@ let state = {
  chatMode: "chat",
 };
 
-let isFirstAuthCheck = true;
-let hasRenderedPersonalized = false;  // ← FIX v4: blocca doppio render
 let cachedNatalChart = null;
-// ===== LOCALSTORAGE PER DATI NATALI (24h) =====
 const NATAL_CHART_KEY = 'luna_natal_chart';
 const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -72,11 +67,7 @@ function loadNatalChartFromStorage() {
  }
 }
 
-// Popola cachedNatalChart dai dati di loadNatalChart
-function setCachedNatalChart(chartData) {
- cachedNatalChart = chartData;
-}
-
+// ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
  renderAuthModal();
  renderCompatModal();
@@ -88,70 +79,69 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  await initAuth(onAuthStateChange);
 
- // FIX v4: se onAuthStateChange ha già renderizzato, non ricostruire il DOM
- if (hasRenderedPersonalized) {
- console.log("🌙 UI già inizializzata da auth");
- return;
- }
-
  const user = getCurrentUser();
  const profile = getCurrentProfile();
 
- if (isVerified === "true" && user && profile?.id) {
+ if (user && profile?.id) {
+ if (isVerified === "true") {
  window.history.replaceState({}, document.title, window.location.pathname);
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
- renderPersonalizedPage(profile, user, cachedNatalChart);
- showPage("personalized");
- isFirstAuthCheck = false;
- hasRenderedPersonalized = true;  // ← FIX v4
- setTimeout(() => ensureGeocodingAndChart(), 500);
- console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
- } else if (user && profile?.id) {
- // Utente già loggato (reload pagina): carica tutto come al primo accesso
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
- renderPersonalizedPage(profile, user, cachedNatalChart);
- showPage("personalized");
- isFirstAuthCheck = false;
- hasRenderedPersonalized = true;  // ← FIX v4
- setTimeout(() => ensureGeocodingAndChart(), 500);
- console.log("🌙 Reload con sessione attiva — dati ricaricati");
- } else {
- showPage("home");
  }
 
- console.log("🌙 Luna Astrologica avviata");
+ // Carica cache natal
+ if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
+
+ // Costruisci DOM personalized SOLO se vuoto (evita sovrascrittura)
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPersonalizedPage(profile, user, cachedNatalChart);
+ console.log('🎨 DOM personalized costruito');
+ } else if (cachedNatalChart) {
+ // Se DOM esiste ma abbiamo dati in cache, ridipingi subito
+ updateNatalChartUI(cachedNatalChart);
+ console.log('🎨 DOM personalized aggiornato da cache');
+ }
+
+ showPage("personalized");
+ setTimeout(() => ensureGeocodingAndChart(), 500);
+ console.log("🌙 Sessione attiva — personalized caricata");
+ } else {
+ showPage("home");
+ console.log("🌙 Nessuna sessione — home caricata");
+ }
 });
 
+// ===== AUTH STATE =====
 function onAuthStateChange(authState) {
  updateUI(authState);
 
- // Entra solo se DOMContentLoaded non ha già gestito il caso (es. login fresco)
- if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
- isFirstAuthCheck = false;
- hasRenderedPersonalized = true;  // ← FIX v4: blocca doppio render
+ // Se utente logga mentre app è aperta (es. da modal)
+ if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
  renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
+ }
  showPage("personalized");
-
- setTimeout(async () => {
- await ensureGeocodingAndChart();
- }, 500);
+ setTimeout(() => ensureGeocodingAndChart(), 500);
  }
 }
 
+// ===== GEO + CHART =====
 async function ensureGeocodingAndChart() {
  const profile = getCurrentProfile();
- if (!profile) return;
+ if (!profile) {
+ console.warn('❌ ensureGeocodingAndChart: nessun profilo');
+ return;
+ }
 
  if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
  console.log('🌍 Geocoding necessario per:', profile.birth_city);
  const geoOk = await geocodeProfileIfNeeded();
- if (geoOk) {
- console.log('✅ Geocoding completato');
- } else {
+ if (!geoOk) {
  console.warn('❌ Geocoding fallito');
  return;
  }
+ console.log('✅ Geocoding completato');
  }
 
  console.log('🔮 Avvio calcolo tema natale...');
@@ -159,7 +149,7 @@ async function ensureGeocodingAndChart() {
  if (chart) {
  cachedNatalChart = chart;
  saveNatalChartToStorage(chart);
- console.log('✅ Tema natale calcolato:', chart.moonSign, chart.ascendant?.sign);
+ console.log('✅ Tema natale calcolato');
  } else {
  console.warn('❌ Tema natale non calcolato');
  }
@@ -168,6 +158,7 @@ async function ensureGeocodingAndChart() {
  await loadTransits();
 }
 
+// ===== UI =====
 function updateUI(authState) {
  const isLoggedIn = authState?.isLoggedIn || false;
  const profile = authState?.profile || null;
@@ -203,9 +194,15 @@ function showPage(pageId) {
  credits: getCredits()
  });
 
- // FIX v4: se torniamo su personalized e abbiamo i dati in cache, ridipingi il DOM
- if (pageId === "personalized" && cachedNatalChart) {
+ // FIX CRITICO: ogni volta che torniamo su personalized, ridipingi i dati
+ if (pageId === "personalized") {
+ if (cachedNatalChart) {
  updateNatalChartUI(cachedNatalChart);
+ console.log('🎨 Dati natal ridisegnati su personalized');
+ } else {
+ console.log('⏳ Dati natal mancanti, avvio caricamento...');
+ setTimeout(() => ensureGeocodingAndChart(), 100);
+ }
  }
 }
 
@@ -217,7 +214,10 @@ function requireAuthOrModal() {
  const user = getCurrentUser();
  if (user) {
  const profile = getCurrentProfile();
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
  renderPersonalizedPage(profile, user, cachedNatalChart);
+ }
  showPage("personalized");
  } else {
  openAuthModal();
@@ -406,4 +406,13 @@ window.app = {
  resultDiv.innerHTML = "";
  }
  },
+ // FIX: funzione di reset chiamata dal logout
+ _resetState: function() {
+ cachedNatalChart = null;
+ state.currentPage = "home";
+ state.lastPage = "home";
+ const page = document.getElementById('page-personalized');
+ if (page) page.innerHTML = '';
+ console.log('🔄 Stato app resettato');
+ }
 };
