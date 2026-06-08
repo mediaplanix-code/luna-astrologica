@@ -1,7 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v7: getCredits con fallback da profile e backup, log espliciti,
-//         logout con reload pagina, triple fallback nome
+// FIX v8: logout senza reload (pulizia manuale SPA), getCredits robusto,
+//         triple fallback nome, backup profilo in localStorage
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -179,39 +179,48 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT — PULIZIA COMPLETA + RELOAD
+// HANDLE LOGOUT — PULIZIA MANUALE SPA (senza reload)
 // ============================================================
 export async function handleLogout() {
  console.log('🚪 Avvio logout...');
 
+ // 1. SignOut da Supabase
  if (supabase) {
  try {
  await supabase.auth.signOut();
  console.log('✅ SignOut Supabase completato');
  } catch (e) {
- console.error("Logout error:", e);
+ console.error("Logout Supabase error:", e);
  }
  }
 
+ // 2. Reset variabili interne
  currentUser = null;
  currentProfile = null;
  credits = 0;
+ console.log('🧹 Variabili interne resettate');
 
- // Pulisci tutto il localStorage relativo a Luna
+ // 3. Pulisci cache locale
  localStorage.removeItem('luna_natal_chart');
  localStorage.removeItem('luna_natal_chart_ts');
  localStorage.removeItem(PROFILE_BACKUP_KEY);
  console.log('🧹 Cache localStorage pulita');
 
+ // 4. Notifica cambio stato (aggiorna header, nav, etc)
  notifyChange();
 
+ // 5. Reset stato app e DOM
  if (window.app && window.app._resetState) {
  window.app._resetState();
  }
 
- // FIX: reload pagina per pulire completamente lo stato SPA
- console.log('🔄 Reload pagina per pulizia completa');
- window.location.href = window.location.origin + '/';
+ // 6. Ricostruisci UI per utente non loggato
+ if (window.app) {
+ window.app.showPage("home");
+ console.log('🏠 Home mostrata per utente non loggato');
+ }
+
+ console.log('✅ Logout completato');
 }
 
 // ============================================================
@@ -268,7 +277,7 @@ export async function loadUserData() {
  }
 
  currentProfile = profile;
- // FIX v7: log esplicito per crediti
+ // FIX v8: crediti con controllo esplicito per undefined/null
  const dbCredits = profile?.credits;
  credits = (dbCredits !== undefined && dbCredits !== null) ? dbCredits : 0;
  console.log('💰 [loadUserData] Crediti caricati dal DB:', credits, '(raw:', dbCredits, ')');
@@ -425,7 +434,7 @@ function hideAlerts() {
 }
 
 // ============================================================
-// EXPORT — getCurrentProfile CON FALLBACK BACKUP
+// EXPORT
 // ============================================================
 export function getCurrentUser() { return currentUser; }
 
@@ -440,7 +449,7 @@ export function getCurrentProfile() {
  return null;
 }
 
-// FIX v7: getCredits con fallback da profile e backup
+// FIX v8: getCredits con triple fallback robusto
 export function getCredits() {
  if (credits > 0) return credits;
  if (currentProfile?.credits > 0) return currentProfile.credits;
