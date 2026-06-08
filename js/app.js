@@ -1,7 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v4: logica init semplificata, DOM costruito una sola volta,
-//         dati natal ridisegnati al ritorno, stato resettato al logout
+// FIX v5: profilo passato esplicitamente, retry se latente, flag caricamento
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -36,6 +35,8 @@ let state = {
 };
 
 let cachedNatalChart = null;
+let isLoadingChart = false;
+
 const NATAL_CHART_KEY = 'luna_natal_chart';
 const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -46,7 +47,7 @@ function saveNatalChartToStorage(chartData) {
  localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chartData));
  localStorage.setItem(NATAL_CHART_TIMESTAMP_KEY, Date.now().toString());
  } catch (err) {
- console.warn('Errore salvataggio:', err);
+ console.warn('Errore salvataggio chart:', err);
  }
 }
 
@@ -76,33 +77,40 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  const urlParams = new URLSearchParams(window.location.search);
  const isVerified = urlParams.get("verified");
-
- await initAuth(onAuthStateChange);
-
- const user = getCurrentUser();
- const profile = getCurrentProfile();
-
- if (user && profile?.id) {
  if (isVerified === "true") {
  window.history.replaceState({}, document.title, window.location.pathname);
  }
 
- // Carica cache natal
+ await initAuth(onAuthStateChange);
+
+ let user = getCurrentUser();
+ let profile = getCurrentProfile();
+
+ // Retry esplicito se abbiamo user ma profilo latente (race condition initAuth)
+ let attempts = 0;
+ while (user && !profile && attempts < 5) {
+ console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
+ await new Promise(r => setTimeout(r, 400));
+ await loadUserData();
+ user = getCurrentUser();
+ profile = getCurrentProfile();
+ attempts++;
+ }
+
+ if (user && profile?.id) {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
 
- // Costruisci DOM personalized SOLO se vuoto (evita sovrascrittura)
  const page = document.getElementById('page-personalized');
  if (!page || page.innerHTML.trim() === '') {
  renderPersonalizedPage(profile, user, cachedNatalChart);
  console.log('🎨 DOM personalized costruito');
  } else if (cachedNatalChart) {
- // Se DOM esiste ma abbiamo dati in cache, ridipingi subito
  updateNatalChartUI(cachedNatalChart);
  console.log('🎨 DOM personalized aggiornato da cache');
  }
 
  showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(), 500);
+ setTimeout(() => ensureGeocodingAndChart(profile), 600);
  console.log("🌙 Sessione attiva — personalized caricata");
  } else {
  showPage("home");
@@ -122,18 +130,23 @@ function onAuthStateChange(authState) {
  renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
  }
  showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(), 500);
+ setTimeout(() => ensureGeocodingAndChart(authState.profile), 600);
  }
 }
 
-// ===== GEO + CHART =====
-async function ensureGeocodingAndChart() {
- const profile = getCurrentProfile();
+// ===== GEO + CHART (profilo passato esplicitamente) =====
+async function ensureGeocodingAndChart(profile) {
+ if (isLoadingChart) {
+ console.log('⏳ Calcolo tema già in corso, skip');
+ return;
+ }
  if (!profile) {
- console.warn('❌ ensureGeocodingAndChart: nessun profilo');
+ console.warn('❌ ensureGeocodingAndChart: profilo non fornito');
  return;
  }
 
+ isLoadingChart = true;
+ try {
  if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
  console.log('🌍 Geocoding necessario per:', profile.birth_city);
  const geoOk = await geocodeProfileIfNeeded();
@@ -142,6 +155,8 @@ async function ensureGeocodingAndChart() {
  return;
  }
  console.log('✅ Geocoding completato');
+ // Ricarica profilo dopo geocoding
+ profile = getCurrentProfile() || profile;
  }
 
  console.log('🔮 Avvio calcolo tema natale...');
@@ -149,13 +164,18 @@ async function ensureGeocodingAndChart() {
  if (chart) {
  cachedNatalChart = chart;
  saveNatalChartToStorage(chart);
- console.log('✅ Tema natale calcolato');
+ console.log('✅ Tema natale calcolato e salvato');
  } else {
  console.warn('❌ Tema natale non calcolato');
  }
 
  console.log('🌙 Avvio caricamento transiti...');
  await loadTransits();
+ } catch (err) {
+ console.error('❌ Errore ensureGeocodingAndChart:', err);
+ } finally {
+ isLoadingChart = false;
+ }
 }
 
 // ===== UI =====
@@ -194,14 +214,16 @@ function showPage(pageId) {
  credits: getCredits()
  });
 
- // FIX CRITICO: ogni volta che torniamo su personalized, ridipingi i dati
+ // Ogni volta che torniamo su personalized, ridipingi i dati se li abbiamo
  if (pageId === "personalized") {
  if (cachedNatalChart) {
  updateNatalChartUI(cachedNatalChart);
  console.log('🎨 Dati natal ridisegnati su personalized');
- } else {
+ } else if (profile) {
  console.log('⏳ Dati natal mancanti, avvio caricamento...');
- setTimeout(() => ensureGeocodingAndChart(), 100);
+ setTimeout(() => ensureGeocodingAndChart(profile), 100);
+ } else {
+ console.log('⏳ Profilo non disponibile per caricamento dati');
  }
  }
 }
@@ -406,9 +428,10 @@ window.app = {
  resultDiv.innerHTML = "";
  }
  },
- // FIX: funzione di reset chiamata dal logout
+ // Reset completo stato + DOM
  _resetState: function() {
  cachedNatalChart = null;
+ isLoadingChart = false;
  state.currentPage = "home";
  state.lastPage = "home";
  const page = document.getElementById('page-personalized');
