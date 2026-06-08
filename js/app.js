@@ -1,6 +1,7 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v5: profilo passato esplicitamente, retry se latente, flag caricamento
+// FIX v6: crediti sincronizzati dopo refresh, logout pulisce tutto,
+//         profilo passato esplicitamente a ensureGeocodingAndChart
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -86,7 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
  let user = getCurrentUser();
  let profile = getCurrentProfile();
 
- // Retry esplicito se abbiamo user ma profilo latente (race condition initAuth)
+ // Retry esplicito se abbiamo user ma profilo latente
  let attempts = 0;
  while (user && !profile && attempts < 5) {
  console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
@@ -109,6 +110,14 @@ document.addEventListener("DOMContentLoaded", async () => {
  console.log('🎨 DOM personalized aggiornato da cache');
  }
 
+ // FIX: aggiorna crediti subito dopo render
+ updateUI({
+ isLoggedIn: true,
+ user: user,
+ profile: profile,
+ credits: getCredits()
+ });
+
  showPage("personalized");
  setTimeout(() => ensureGeocodingAndChart(profile), 600);
  console.log("🌙 Sessione attiva — personalized caricata");
@@ -122,7 +131,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
  updateUI(authState);
 
- // Se utente logga mentre app è aperta (es. da modal)
  if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
  const page = document.getElementById('page-personalized');
@@ -155,7 +163,6 @@ async function ensureGeocodingAndChart(profile) {
  return;
  }
  console.log('✅ Geocoding completato');
- // Ricarica profilo dopo geocoding
  profile = getCurrentProfile() || profile;
  }
 
@@ -214,7 +221,6 @@ function showPage(pageId) {
  credits: getCredits()
  });
 
- // Ogni volta che torniamo su personalized, ridipingi i dati se li abbiamo
  if (pageId === "personalized") {
  if (cachedNatalChart) {
  updateNatalChartUI(cachedNatalChart);
@@ -222,8 +228,6 @@ function showPage(pageId) {
  } else if (profile) {
  console.log('⏳ Dati natal mancanti, avvio caricamento...');
  setTimeout(() => ensureGeocodingAndChart(profile), 100);
- } else {
- console.log('⏳ Profilo non disponibile per caricamento dati');
  }
  }
 }
