@@ -2,7 +2,6 @@
 // APP.JS — Orchestratore principale
 // FIX: rimosso calculateSynastry finta, usa profile.js reale
 // FIX v2: aggiunte openLunaFromCompat e resetCompatForm in window.app
-// FIX v3: cache chart prima di initAuth, no doppio render, re-ingresso protetto
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -84,9 +83,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isVerified = urlParams.get("verified");
 
-    // FIX v3: carica cache PRIMA di initAuth, così il primo render ha già i dati
-    cachedNatalChart = loadNatalChartFromStorage();
-
     await initAuth(onAuthStateChange);
 
     const user = getCurrentUser();
@@ -114,8 +110,9 @@ function onAuthStateChange(authState) {
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
-        // FIX v3: RIMOSSO renderPersonalizedPage e showPage ridondanti
-        // Il primo render è già gestito da DOMContentLoaded
+        renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
+        showPage("personalized");
+
         setTimeout(async () => {
             await ensureGeocodingAndChart();
         }, 500);
@@ -195,17 +192,8 @@ function requireAuthOrModal() {
     const user = getCurrentUser();
     if (user) {
         const profile = getCurrentProfile();
-        // FIX v3: renderizza template SOLO se il container è vuoto (prima volta)
-        // altrimenti usa il DOM esistente e ricarica solo i dati
-        const container = document.getElementById("page-personalized");
-        if (!container || container.innerHTML.trim() === "") {
-            renderPersonalizedPage(profile, user, cachedNatalChart);
-        }
+        renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
-        // FIX v3: ricarica sempre transiti al re-ingresso nella pagina
-        setTimeout(() => {
-            loadTransits();
-        }, 100);
     } else {
         openAuthModal();
     }
