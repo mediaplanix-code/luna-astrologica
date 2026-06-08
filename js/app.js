@@ -1,6 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v6: crediti sincronizzati dopo refresh, logout pulisce tutto,
+// FIX v7: crediti con fallback da profile.credits, log espliciti,
 //         profilo passato esplicitamente a ensureGeocodingAndChart
 // ============================================================
 
@@ -110,12 +110,15 @@ document.addEventListener("DOMContentLoaded", async () => {
  console.log('🎨 DOM personalized aggiornato da cache');
  }
 
- // FIX: aggiorna crediti subito dopo render
+ // FIX v7: crediti con fallback da profile.credits
+ const creditsValue = getCredits() || profile?.credits || 0;
+ console.log('💰 Crediti inizializzati:', creditsValue, '(getCredits:', getCredits(), ', profile.credits:', profile?.credits, ')');
+
  updateUI({
  isLoggedIn: true,
  user: user,
  profile: profile,
- credits: getCredits()
+ credits: creditsValue
  });
 
  showPage("personalized");
@@ -190,7 +193,8 @@ function updateUI(authState) {
  const isLoggedIn = authState?.isLoggedIn || false;
  const profile = authState?.profile || null;
  const user = authState?.user || null;
- const credits = authState?.credits || 0;
+ // FIX v7: fallback da profile.credits se getCredits ritorna 0
+ const credits = authState?.credits || profile?.credits || 0;
 
  renderHeader(isLoggedIn, profile || user);
  renderNav(state.currentPage);
@@ -214,11 +218,14 @@ function showPage(pageId) {
 
  const user = getCurrentUser();
  const profile = getCurrentProfile();
+ // FIX v7: fallback da profile.credits
+ const creditsValue = getCredits() || profile?.credits || 0;
+
  updateUI({
  isLoggedIn: !!user,
  user: user,
  profile: profile,
- credits: getCredits()
+ credits: creditsValue
  });
 
  if (pageId === "personalized") {
