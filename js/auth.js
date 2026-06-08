@@ -1,7 +1,6 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v5: backup profilo in localStorage, getCurrentProfile con fallback,
-//         logout pulizia completa, triple fallback nome
+// FIX v6: crediti nel backup, logout con reload pagina, triple fallback nome
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -179,7 +178,7 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT — PULIZIA COMPLETA
+// HANDLE LOGOUT — PULIZIA COMPLETA + RELOAD
 // ============================================================
 export async function handleLogout() {
  console.log('🚪 Avvio logout...');
@@ -209,14 +208,13 @@ export async function handleLogout() {
  window.app._resetState();
  }
 
- if (window.app) {
- window.app.showPage("home");
- console.log('🏠 Redirect a home');
- }
+ // FIX: reload pagina per pulire completamente lo stato SPA
+ console.log('🔄 Reload pagina per pulizia completa');
+ window.location.href = window.location.origin + '/';
 }
 
 // ============================================================
-// LOAD USER DATA — BACKUP IN LOCALSTORAGE
+// LOAD USER DATA — BACKUP CON CREDITI
 // ============================================================
 export async function loadUserData() {
  if (!currentUser || !supabase) {
@@ -271,7 +269,7 @@ export async function loadUserData() {
  currentProfile = profile;
  credits = profile?.credits || 0;
 
- // Salva backup in localStorage
+ // Salva backup in localStorage (con crediti aggiornati)
  saveProfileBackup(profile);
 
  console.log("✅ [loadUserData] Profilo caricato:", {
@@ -429,7 +427,6 @@ export function getCurrentUser() { return currentUser; }
 
 export function getCurrentProfile() {
  if (currentProfile) return currentProfile;
- // Fallback: recupera dal backup se memoria è stata persa
  const backup = loadProfileBackup();
  if (backup && currentUser && backup.id === currentUser.id) {
  console.log('📦 getCurrentProfile: recuperato da backup');
