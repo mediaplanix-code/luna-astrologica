@@ -1,7 +1,7 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v7: crediti con fallback da profile.credits, log espliciti,
-//         profilo passato esplicitamente a ensureGeocodingAndChart
+// FIX v8: logout senza reload (pulizia manuale), renderHeader robusto,
+//         crediti triple fallback, profilo passato esplicitamente
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -110,9 +110,8 @@ document.addEventListener("DOMContentLoaded", async () => {
  console.log('🎨 DOM personalized aggiornato da cache');
  }
 
- // FIX v7: crediti con fallback da profile.credits
  const creditsValue = getCredits() || profile?.credits || 0;
- console.log('💰 Crediti inizializzati:', creditsValue, '(getCredits:', getCredits(), ', profile.credits:', profile?.credits, ')');
+ console.log('💰 Crediti inizializzati:', creditsValue);
 
  updateUI({
  isLoggedIn: true,
@@ -125,6 +124,8 @@ document.addEventListener("DOMContentLoaded", async () => {
  setTimeout(() => ensureGeocodingAndChart(profile), 600);
  console.log("🌙 Sessione attiva — personalized caricata");
  } else {
+ // FIX v8: assicurati che l'header sia pulito per utente non loggato
+ updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
  showPage("home");
  console.log("🌙 Nessuna sessione — home caricata");
  }
@@ -145,7 +146,7 @@ function onAuthStateChange(authState) {
  }
 }
 
-// ===== GEO + CHART (profilo passato esplicitamente) =====
+// ===== GEO + CHART =====
 async function ensureGeocodingAndChart(profile) {
  if (isLoadingChart) {
  console.log('⏳ Calcolo tema già in corso, skip');
@@ -193,10 +194,10 @@ function updateUI(authState) {
  const isLoggedIn = authState?.isLoggedIn || false;
  const profile = authState?.profile || null;
  const user = authState?.user || null;
- // FIX v7: fallback da profile.credits se getCredits ritorna 0
  const credits = authState?.credits || profile?.credits || 0;
 
- renderHeader(isLoggedIn, profile || user);
+ // FIX v8: renderHeader con userData corretto (profile o user o null)
+ renderHeader(isLoggedIn, profile || user || null);
  renderNav(state.currentPage);
 
  const creditsVal = $("creditsVal");
@@ -218,7 +219,6 @@ function showPage(pageId) {
 
  const user = getCurrentUser();
  const profile = getCurrentProfile();
- // FIX v7: fallback da profile.credits
  const creditsValue = getCredits() || profile?.credits || 0;
 
  updateUI({
@@ -439,7 +439,7 @@ window.app = {
  resultDiv.innerHTML = "";
  }
  },
- // Reset completo stato + DOM
+ // Reset completo stato + DOM (senza reload)
  _resetState: function() {
  cachedNatalChart = null;
  isLoadingChart = false;
