@@ -2,6 +2,7 @@
 // APP.JS — Orchestratore principale
 // FIX: rimosso calculateSynastry finta, usa profile.js reale
 // FIX v2: aggiunte openLunaFromCompat e resetCompatForm in window.app
+// FIX v3: reload pagina — aggiunto ensureGeocodingAndChart() nel branch else if
 // ============================================================
 
 import { loadNatalChart } from './natal.js';
@@ -92,11 +93,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.history.replaceState({}, document.title, window.location.pathname);
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
+        isFirstAuthCheck = false; // evita doppia chiamata da onAuthStateChange
         setTimeout(() => ensureGeocodingAndChart(), 500);
         console.log("🌙 Arrivo da verifica email — pagina personalizzata caricata");
     } else if (user && profile?.id) {
+        // Utente già loggato (reload pagina): carica tutto come al primo accesso
+        if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
         renderPersonalizedPage(profile, user, cachedNatalChart);
         showPage("personalized");
+        isFirstAuthCheck = false; // evita doppia chiamata da onAuthStateChange
+        setTimeout(() => ensureGeocodingAndChart(), 500);
+        console.log("🌙 Reload con sessione attiva — dati ricaricati");
     } else {
         showPage("home");
     }
@@ -107,6 +114,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function onAuthStateChange(authState) {
     updateUI(authState);
 
+    // Entra solo se DOMContentLoaded non ha già gestito il caso (es. login fresco)
     if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
         isFirstAuthCheck = false;
         if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
