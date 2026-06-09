@@ -1,6 +1,6 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v9: logout fire-and-forget (no await su signOut), pulizia immediata SPA
+// FIX v9: aggiunte funzioni link/unlink Telegram
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -178,12 +178,11 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT — FIRE-AND-FORGET (no await), pulizia immediata
+// HANDLE LOGOUT — FIRE-AND-FORGET
 // ============================================================
 export function handleLogout() {
  console.log('🚪 Avvio logout...');
 
- // 1. SignOut da Supabase in background (fire-and-forget, NON aspettare)
  if (supabase) {
  supabase.auth.signOut().then(() => {
  console.log('✅ SignOut Supabase completato (background)');
@@ -192,33 +191,84 @@ export function handleLogout() {
  });
  }
 
- // 2. Reset variabili interne IMMEDIATAMENTE
  currentUser = null;
  currentProfile = null;
  credits = 0;
  console.log('🧹 Variabili interne resettate');
 
- // 3. Pulisci cache locale
  localStorage.removeItem('luna_natal_chart');
  localStorage.removeItem('luna_natal_chart_ts');
  localStorage.removeItem(PROFILE_BACKUP_KEY);
  console.log('🧹 Cache localStorage pulita');
 
- // 4. Notifica cambio stato (aggiorna header, nav, etc)
  notifyChange();
 
- // 5. Reset stato app e DOM
  if (window.app && window.app._resetState) {
  window.app._resetState();
  }
 
- // 6. Ricostruisci UI per utente non loggato
  if (window.app) {
  window.app.showPage("home");
  console.log('🏠 Home mostrata per utente non loggato');
  }
 
  console.log('✅ Logout completato');
+}
+
+// ============================================================
+// TELEGRAM LINK / UNLINK
+// ============================================================
+export async function linkTelegram(chatId) {
+ if (!supabase || !currentUser) {
+ console.warn('linkTelegram: no supabase or user');
+ return { error: 'Non autenticato' };
+ }
+
+ try {
+ const { error } = await supabase
+ .from('profiles')
+ .update({
+ telegram_chat_id: chatId,
+ daily_horoscope_enabled: true,
+ updated_at: new Date().toISOString()
+ })
+ .eq('id', currentUser.id);
+
+ if (error) throw error;
+
+ await loadUserData();
+ console.log('✅ Telegram collegato:', chatId);
+ return { success: true };
+ } catch (err) {
+ console.error('❌ Errore collegamento Telegram:', err);
+ return { error: err.message };
+ }
+}
+
+export async function unlinkTelegram() {
+ if (!supabase || !currentUser) {
+ return { error: 'Non autenticato' };
+ }
+
+ try {
+ const { error } = await supabase
+ .from('profiles')
+ .update({
+ telegram_chat_id: null,
+ daily_horoscope_enabled: false,
+ updated_at: new Date().toISOString()
+ })
+ .eq('id', currentUser.id);
+
+ if (error) throw error;
+
+ await loadUserData();
+ console.log('✅ Telegram scollegato');
+ return { success: true };
+ } catch (err) {
+ console.error('❌ Errore scollegamento Telegram:', err);
+ return { error: err.message };
+ }
 }
 
 // ============================================================
@@ -242,7 +292,6 @@ export async function loadUserData() {
  if (error.code === "PGRST116") {
  console.warn("⚠️ Profilo non trovato per utente:", currentUser.id);
  }
- // Prova a recuperare dal backup
  const backup = loadProfileBackup();
  if (backup && backup.id === currentUser.id) {
  console.log('📦 Profilo recuperato da backup localStorage');
@@ -257,7 +306,6 @@ export async function loadUserData() {
  return;
  }
 
- // TRIPLE FALLBACK per full_name
  let displayName = profile.full_name;
  if (!displayName) {
  displayName = currentUser.user_metadata?.full_name;
@@ -279,7 +327,6 @@ export async function loadUserData() {
  credits = (dbCredits !== undefined && dbCredits !== null) ? dbCredits : 0;
  console.log('💰 [loadUserData] Crediti caricati dal DB:', credits, '(raw:', dbCredits, ')');
 
- // Salva backup in localStorage
  saveProfileBackup(profile);
 
  console.log("✅ [loadUserData] Profilo caricato:", {
@@ -302,7 +349,7 @@ export async function loadUserData() {
 }
 
 // ============================================================
-// BACKUP / RESTORE PROFILO
+// BACKUP / RESTORE
 // ============================================================
 function saveProfileBackup(profile) {
  if (!profile) return;
