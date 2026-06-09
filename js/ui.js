@@ -389,11 +389,11 @@ export function renderPersonalizedPage(profile, user, natalData) {
         </div>
 
         <div class="personal-astro-line">
-            <span>🌙 Luna in <span class="astro-gold">${moonSign}</span></span>
+            <span id="astro-luna">🌙 Luna in <span class="astro-gold" id="astro-moon-sign">${moonSign}</span></span>
             <span class="astro-sep">|</span>
-            <span>⬆️ Ascendente <span class="astro-gold">${ascSign} ${ascDeg}</span></span>
+            <span id="astro-asc">⬆️ Ascendente <span class="astro-gold" id="astro-asc-sign">${ascSign} ${ascDeg}</span></span>
             <span class="astro-sep">|</span>
-            <span>🏠 MC <span class="astro-gold">${mcSign} ${mcDeg}</span></span>
+            <span id="astro-mc">🏠 MC <span class="astro-gold" id="astro-mc-sign">${mcSign} ${mcDeg}</span></span>
         </div>
 
         <div class="compat-row">
