@@ -339,17 +339,32 @@ export function updateNatalChartUI(chart) {
  });
  }
 
- // 5. Info extra
- const nameEl = document.getElementById('personalName');
- if (nameEl && chart.moonSign) {
- const old = document.getElementById('natalExtra');
- if (old) old.remove();
- const extra = document.createElement('div');
- extra.style.cssText = 'font-size:0.75rem;color:var(--gold);margin-top:0.25rem;';
- extra.id = 'natalExtra';
- extra.innerHTML = `🌙 Luna in <strong>${chart.moonSign}</strong>  |  ⬆️ Ascendente <strong>${chart.ascendant?.name || '?'}</strong> ${chart.ascendant?.degree !== undefined ? chart.ascendant.degree + '°' : ''}`;
- nameEl.parentElement.appendChild(extra);
+ // 5. Aggiorna .personal-astro-line (FIX: no duplicati, aggiorna placeholder esistente)
+ const astroLine = document.querySelector('.personal-astro-line');
+ if (astroLine) {
+ const spans = astroLine.querySelectorAll(':scope > span');
+ // spans[0] = Luna, spans[2] = Ascendente, spans[4] = MC
+ const moonGold = spans[0]?.querySelector('.astro-gold');
+ if (moonGold && chart.moonSign) moonGold.textContent = chart.moonSign;
+
+ const ascGold = spans[2]?.querySelector('.astro-gold');
+ if (ascGold && chart.ascendant) {
+ const deg = chart.ascendant.degree !== undefined ? chart.ascendant.degree + '°' : '';
+ const min = chart.ascendant.minutes !== undefined ? chart.ascendant.minutes + "'" : '';
+ ascGold.textContent = `${chart.ascendant.name} ${deg}${min}`;
  }
+
+ const mcGold = spans[4]?.querySelector('.astro-gold');
+ if (mcGold && chart.mc) {
+ const deg = chart.mc.degree !== undefined ? chart.mc.degree + '°' : '';
+ const min = chart.mc.minutes !== undefined ? chart.mc.minutes + "'" : '';
+ mcGold.textContent = `${chart.mc.name} ${deg}${min}`;
+ }
+ }
+
+ // Rimuovi eventuale natalExtra duplicato da versioni precedenti
+ const oldExtra = document.getElementById('natalExtra');
+ if (oldExtra) oldExtra.remove();
 
  // 6. RUOTA SVG
  const wheel = document.getElementById('natalWheel');
