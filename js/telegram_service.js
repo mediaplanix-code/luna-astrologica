@@ -1,6 +1,5 @@
 // ============================================================
-// services/telegram.js v2 — Bot Telegram Push-Only
-// FIX: nome personalizzato, no comandi utente, link login automatico
+// services/telegram.js v2.1 — FIX: const -> let in welcome message
 // ============================================================
 
 const supabase = require('../config/supabase');
@@ -370,7 +369,7 @@ async function handleTelegramWebhook(update) {
 
  // Solo /start per il primo collegamento — nessun altro comando
  if (text === '/start') {
- const welcome = `<b>🌙 Benvenuto in Luna Astrologica, ${username}!</b>\n\n`;
+ let welcome = `<b>🌙 Benvenuto in Luna Astrologica, ${username}!</b>\n\n`;
  welcome += `Sono Luna, la tua astrologa personale.\n`;
  welcome += `Per ricevere i miei messaggi quotidiani, collega il tuo account Telegram dal sito.\n\n`;
  welcome += `🔗 <a href="${SITE_URL}">Entra nel sito</a>`;
