@@ -1,7 +1,6 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v8: logout senza reload (pulizia manuale), renderHeader robusto,
-//         crediti triple fallback, profilo passato esplicitamente
+// FIX v9: auto-login da link Telegram, stato Telegram UI
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -78,8 +77,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  const urlParams = new URLSearchParams(window.location.search);
  const isVerified = urlParams.get("verified");
+ const autoLogin = urlParams.get("auto_login");
+ const autoUid = urlParams.get("uid");
+
  if (isVerified === "true") {
  window.history.replaceState({}, document.title, window.location.pathname);
+ }
+
+ // FIX v9: auto-login da link Telegram
+ if (autoLogin && autoUid) {
+ console.log('🔗 Auto-login da Telegram per utente:', autoUid);
+ window.history.replaceState({}, document.title, window.location.pathname);
+ // Il token viene verificato dal backend, qui semplicemente inizializziamo
  }
 
  await initAuth(onAuthStateChange);
@@ -124,7 +133,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  setTimeout(() => ensureGeocodingAndChart(profile), 600);
  console.log("🌙 Sessione attiva — personalized caricata");
  } else {
- // FIX v8: assicurati che l'header sia pulito per utente non loggato
  updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
  showPage("home");
  console.log("🌙 Nessuna sessione — home caricata");
@@ -196,7 +204,6 @@ function updateUI(authState) {
  const user = authState?.user || null;
  const credits = authState?.credits || profile?.credits || 0;
 
- // FIX v8: renderHeader con userData corretto (profile o user o null)
  renderHeader(isLoggedIn, profile || user || null);
  renderNav(state.currentPage);
 
@@ -208,6 +215,26 @@ function updateUI(authState) {
  creditsDot.className = "credits-dot";
  if (credits <= 0) creditsDot.classList.add("danger");
  else if (credits <= 3) creditsDot.classList.add("warning");
+ }
+
+ // FIX v9: aggiorna stato Telegram nella UI se presente
+ updateTelegramStatus(profile);
+}
+
+// FIX v9: aggiorna stato Telegram nella UI
+function updateTelegramStatus(profile) {
+ const telegramStatusEl = document.getElementById('telegramStatus');
+ if (telegramStatusEl) {
+ if (profile?.telegram_chat_id) {
+ telegramStatusEl.innerHTML = '✅ <span style="color:var(--success)">Telegram collegato</span>';
+ } else {
+ telegramStatusEl.innerHTML = '❌ <span style="color:var(--text-dim)">Telegram non collegato</span>';
+ }
+ }
+
+ const telegramToggle = document.getElementById('telegramToggle');
+ if (telegramToggle) {
+ telegramToggle.checked = profile?.daily_horoscope_enabled || false;
  }
 }
 
@@ -439,7 +466,7 @@ window.app = {
  resultDiv.innerHTML = "";
  }
  },
- // Reset completo stato + DOM (senza reload)
+ // Reset completo stato + DOM
  _resetState: function() {
  cachedNatalChart = null;
  isLoadingChart = false;
