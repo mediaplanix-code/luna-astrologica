@@ -1,7 +1,6 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v8: logout senza reload (pulizia manuale SPA), getCredits robusto,
-//         triple fallback nome, backup profilo in localStorage
+// FIX v9: logout fire-and-forget (no await su signOut), pulizia immediata SPA
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -179,22 +178,21 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT — PULIZIA MANUALE SPA (senza reload)
+// HANDLE LOGOUT — FIRE-AND-FORGET (no await), pulizia immediata
 // ============================================================
-export async function handleLogout() {
+export function handleLogout() {
  console.log('🚪 Avvio logout...');
 
- // 1. SignOut da Supabase
+ // 1. SignOut da Supabase in background (fire-and-forget, NON aspettare)
  if (supabase) {
- try {
- await supabase.auth.signOut();
- console.log('✅ SignOut Supabase completato');
- } catch (e) {
- console.error("Logout Supabase error:", e);
- }
+ supabase.auth.signOut().then(() => {
+ console.log('✅ SignOut Supabase completato (background)');
+ }).catch((e) => {
+ console.error("Logout Supabase error (background):", e);
+ });
  }
 
- // 2. Reset variabili interne
+ // 2. Reset variabili interne IMMEDIATAMENTE
  currentUser = null;
  currentProfile = null;
  credits = 0;
@@ -224,7 +222,7 @@ export async function handleLogout() {
 }
 
 // ============================================================
-// LOAD USER DATA — BACKUP CON CREDITI
+// LOAD USER DATA
 // ============================================================
 export async function loadUserData() {
  if (!currentUser || !supabase) {
@@ -277,12 +275,11 @@ export async function loadUserData() {
  }
 
  currentProfile = profile;
- // FIX v8: crediti con controllo esplicito per undefined/null
  const dbCredits = profile?.credits;
  credits = (dbCredits !== undefined && dbCredits !== null) ? dbCredits : 0;
  console.log('💰 [loadUserData] Crediti caricati dal DB:', credits, '(raw:', dbCredits, ')');
 
- // Salva backup in localStorage (con crediti aggiornati)
+ // Salva backup in localStorage
  saveProfileBackup(profile);
 
  console.log("✅ [loadUserData] Profilo caricato:", {
@@ -295,7 +292,6 @@ export async function loadUserData() {
  notifyChange();
  } catch (err) {
  console.error('❌ [loadUserData] Eccezione:', err);
- // Fallback backup
  const backup = loadProfileBackup();
  if (backup && backup.id === currentUser?.id) {
  currentProfile = backup;
@@ -449,7 +445,6 @@ export function getCurrentProfile() {
  return null;
 }
 
-// FIX v8: getCredits con triple fallback robusto
 export function getCredits() {
  if (credits > 0) return credits;
  if (currentProfile?.credits > 0) return currentProfile.credits;
