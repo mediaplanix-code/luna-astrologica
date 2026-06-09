@@ -70,11 +70,11 @@ function generateDailyHoroscope(sign, transits) {
     'Cancro': 'La Luna ti avvolge. Ascolta le tue emozioni, sono la tua bussola.',
     'Leone': 'Il Sole illumina il tuo settore creativo. Brilla senza paura.',
     'Vergine': 'La precisione di oggi costruisce il successo di domani.',
-    'Bilancia': 'L'armonia è il tuo superpotere. Cerca equilibrio in ogni scelta.',
+    'Bilancia': 'L\'armonia è il tuo superpotere. Cerca equilibrio in ogni scelta.',
     'Scorpione': 'Profondità e intuizione ti guidano. Non temere di scavare.',
-    'Sagittario': 'L'orizzonte chiama. Un'avventura ti aspetta dietro l'angolo.',
+    'Sagittario': 'L\'orizzonte chiama. Un\'avventura ti aspetta dietro l\'angolo.',
     'Capricorno': 'La disciplina oggi è investimento per il futuro.',
-    'Acquario': 'L'innovazione è nel tuo DNA. Sfida le convenzioni.',
+    'Acquario': 'L\'innovazione è nel tuo DNA. Sfida le convenzioni.',
     'Pesci': 'La creatività scorre come un fiume. Lasciala fluire.'
   };
 
@@ -293,7 +293,7 @@ async function handleTelegramWebhook(update) {
 
   // Comando /start
   if (text === '/start') {
-    const welcome = `<b>🌙 Benvenuto in Luna Astrologica!</b>\n\n`;
+    let welcome = `<b>🌙 Benvenuto in Luna Astrologica!</b>\n\n`;
     welcome += `Sono Luna, la tua astrologa personale.\n`;
     welcome += `Per ricevere i miei messaggi, collega il tuo account Telegram dal sito.\n\n`;
     welcome += `<a href="${SITE_URL}">Entra nel tuo universo →</a>`;
