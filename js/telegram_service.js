@@ -302,11 +302,17 @@ async function handleTelegramWebhook(update) {
     return;
   }
 
-  // Comando /oroscopo
+    // Comando /oroscopo
   if (text === '/oroscopo') {
+    // SOSTITUISCI queste due righe con le tue variabili reali
+    const userName = msg.from.first_name || msg.from.username || 'Utente';
+    const userHoroscope = await getHoroscopeForUser(chatId); // o la tua funzione/variabile
+
     await sendTelegramMessage(chatId,
-      `<b>🌟 Il tuo oroscopo ti aspetta sul sito!</b>\n\n` +
-      `<a href="${SITE_URL}">Scopri le previsioni complete →</a>`
+      `<b>Benvenuto ${userName}</b>\n\n` +
+      `<b>Il tuo oroscopo di oggi:</b>\n\n` +
+      `${userHoroscope}\n\n` +
+      `<a href="${SITE_URL}">Approfondisci sul sito →</a>`
     );
     return;
   }
