@@ -321,21 +321,12 @@ async function handleTelegramWebhook(update) {
     welcome += `Sono Luna, la tua astrologa personale.\n`;
     welcome += `Da oggi riceverai il tuo oroscopo quotidiano e gli eventi speciali del cielo.\n\n`;
     welcome += `<b>🔮 Approfondisci sul sito →</b>\n`;
-    welcome += `<a href="${SITE_URL}">Entra nel tuo universo personale</a>`;
-
+    
     await sendTelegramMessage(chatId, welcome);
     return;
   }
 
-  // Nessun altro comando — l'utente non deve interagire
-  // Rispondi solo con un messaggio neutro che reindirizza al sito
-  await sendTelegramMessage(chatId,
-    `<b>🌙 Ciao!</b>\n\n` +
-    `Non è necessario scrivermi, ti invierò io gli aggiornamenti del tuo cielo.\n\n` +
-    `<b>🔮 Approfondisci sul sito →</b>\n` +
-    `<a href="${SITE_URL}">Entra nel tuo universo personale</a>`
-  );
-}
+ }
 
 module.exports = {
   sendTelegramMessage,
