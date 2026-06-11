@@ -326,7 +326,9 @@ async function handleTelegramWebhook(update) {
     return;
   }
 
- }
+  // Tutti gli altri messaggi: SILENZIO ASSOLUTO. Nessuna risposta.
+
+}
 
 module.exports = {
   sendTelegramMessage,
