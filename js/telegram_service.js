@@ -2,6 +2,7 @@
 // services/telegram.js — Integrazione Bot Telegram
 // Invia: oroscopo giornaliero, eventi, auguri compleanno
 // Gancio al sito in ogni messaggio
+// Nessuna interazione utente — solo push informativi
 // ============================================================
 
 const supabase = require('../config/supabase');
@@ -53,7 +54,7 @@ async function sendTelegramMessage(chatId, text, options = {}) {
 }
 
 // ===== GENERA OROSCOPO GIORNALIERO =====
-function generateDailyHoroscope(sign, transits, userName = '') {
+function generateDailyHoroscope(sign, transits, userName) {
   const emoji = SIGN_EMOJI[sign] || '✨';
   const today = new Date().toLocaleDateString('it-IT', {
     weekday: 'long', day: 'numeric', month: 'long'
@@ -63,11 +64,9 @@ function generateDailyHoroscope(sign, transits, userName = '') {
   
   if (userName) {
     text += `<b>Ciao ${userName}!</b> 🌙\n\n`;
-  } else {
-    text += `<b>Ciao!</b> 🌙\n\n`;
   }
 
-  // Testo base (placeholder — in futuro verrà generato da AI con transiti reali)
+  // Testo base placeholder — in futuro generato da AI con transiti reali
   const horoscopes = {
     'Ariete': 'Oggi Marte ti dà energia. È il momento di agire sui progetti rimandati.',
     'Toro': 'Venere sorride alla tua stabilità. Un gesto dolce riscalderà la giornata.',
@@ -85,7 +84,6 @@ function generateDailyHoroscope(sign, transits, userName = '') {
 
   text += horoscopes[sign] || 'Il cielo oggi ha un messaggio per te. Apri il cuore e ascolta.';
 
-  // Aggiungi transiti se presenti
   if (transits && transits.length > 0) {
     text += `\n\n<b>🌟 Transiti di oggi:</b>\n`;
     transits.slice(0, 3).forEach(t => {
@@ -93,15 +91,13 @@ function generateDailyHoroscope(sign, transits, userName = '') {
     });
   }
 
-  // Gancio al sito
-  text += `\n\n<b>🔮 Approfondisci sul sito →</b>\n`;
-  text += `<a href="${SITE_URL}">Entra nel tuo universo personale</a>`;
+  text += `\n\n<a href="${SITE_URL}"><b>🔮 Approfondisci sul sito →</b></a>`;
 
   return text;
 }
 
 // ===== GENERA EVENTI IMPORTANTI =====
-function generateEventsMessage(events, sign, userName = '') {
+function generateEventsMessage(events, sign, userName) {
   const emoji = SIGN_EMOJI[sign] || '✨';
   let text = `<b>${emoji} Eventi importanti in arrivo</b>\n\n`;
 
@@ -118,8 +114,7 @@ function generateEventsMessage(events, sign, userName = '') {
     text += `${e.description}\n\n`;
   });
 
-  text += `<b>🔮 Approfondisci sul sito →</b>\n`;
-  text += `<a href="${SITE_URL}">Scopri cosa ti riserva il cielo</a>`;
+  text += `<a href="${SITE_URL}"><b>🔮 Approfondisci sul sito →</b></a>`;
 
   return text;
 }
@@ -131,8 +126,7 @@ function generateBirthdayMessage(name, sign, age) {
   text += `Oggi il Sole torna esattamente dove era quando sei nato. `;
   text += `È il tuo <b>ritorno solare</b> — un nuovo anno astrologico che inizia.\n\n`;
   text += `🎁 <b>Regalo di Luna:</b> 5 crediti bonus per il tuo nuovo anno!\n\n`;
-  text += `<b>🔮 Approfondisci sul sito →</b>\n`;
-  text += `<a href="${SITE_URL}">Entra nel tuo universo</a>`;
+  text += `<a href="${SITE_URL}"><b>🔮 Approfondisci sul sito →</b></a>`;
 
   return text;
 }
@@ -145,7 +139,6 @@ async function sendDailyHoroscopes() {
   }
 
   try {
-    // Recupera utenti con telegram_chat_id e daily_horoscope_enabled
     const { data: users, error } = await supabase
       .from('profiles')
       .select('id, full_name, sun_sign, telegram_chat_id, daily_horoscope_enabled')
@@ -162,7 +155,6 @@ async function sendDailyHoroscopes() {
     for (const user of users || []) {
       if (!user.sun_sign || !user.telegram_chat_id) continue;
 
-      // Recupera transiti di oggi per l'utente
       const today = new Date().toISOString().split('T')[0];
       const { data: daily } = await supabase
         .from('daily_transits')
@@ -194,7 +186,6 @@ async function sendUpcomingEvents() {
     const nextMonth = new Date();
     nextMonth.setDate(nextMonth.getDate() + 30);
 
-    // Recupera eventi futuri non ancora notificati
     const { data: events, error } = await supabase
       .from('upcoming_events')
       .select('*')
@@ -208,7 +199,6 @@ async function sendUpcomingEvents() {
       return;
     }
 
-    // Raggruppa per utente
     const byUser = {};
     for (const e of events || []) {
       if (!byUser[e.user_id]) byUser[e.user_id] = [];
@@ -216,13 +206,11 @@ async function sendUpcomingEvents() {
     }
 
     for (const [userId, userEvents] of Object.entries(byUser)) {
-      // Prendi max 3 eventi per utente
       const topEvents = userEvents.slice(0, 3);
 
-      // Recupera profilo utente
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, sun_sign, telegram_chat_id')
+        .select('id, full_name, sun_sign, telegram_chat_id')
         .eq('id', userId)
         .single();
 
@@ -232,7 +220,6 @@ async function sendUpcomingEvents() {
       const result = await sendTelegramMessage(profile.telegram_chat_id, text);
 
       if (result.success) {
-        // Marca eventi come inviati
         for (const e of topEvents) {
           await supabase
             .from('upcoming_events')
@@ -276,7 +263,6 @@ async function sendBirthdayWishes() {
       const result = await sendTelegramMessage(user.telegram_chat_id, text);
 
       if (result.success) {
-        // Aggiungi 5 crediti bonus
         await supabase
           .from('profiles')
           .update({ credits: (user.credits || 0) + 5 })
@@ -290,7 +276,7 @@ async function sendBirthdayWishes() {
   }
 }
 
-// ===== WEBHOOK TELEGRAM (per ricevere messaggi) =====
+// ===== WEBHOOK TELEGRAM — SOLO /start, NESSUNA ALTRA INTERAZIONE =====
 async function handleTelegramWebhook(update) {
   if (!update.message) return;
 
@@ -299,35 +285,78 @@ async function handleTelegramWebhook(update) {
 
   console.log('Telegram message:', { chatId, text });
 
-  // Comando /start — saluto iniziale con nome utente
-  if (text === '/start') {
-    // Recupera profilo utente dal chat_id
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name, sun_sign')
-      .eq('telegram_chat_id', chatId)
-      .single();
+  // Solo /start — saluto iniziale + oroscopo immediato
+  if (text.startsWith('/start')) {
+    // Estrai user_id dal parametro /start USER_ID
+    const parts = text.split(' ');
+    const userId = parts[1] || null;
+
+    let profile = null;
+
+    if (userId) {
+      // Recupera profilo dall'user_id passato nel link
+      const { data: p, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, sun_sign, gender')
+        .eq('id', userId)
+        .single();
+
+      if (!error && p) {
+        profile = p;
+
+        // Salva il telegram_chat_id nel profilo (prima volta)
+        await supabase
+          .from('profiles')
+          .update({ telegram_chat_id: chatId })
+          .eq('id', userId);
+      }
+    }
+
+    // Fallback: cerca per chat_id già salvato
+    if (!profile) {
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('id, full_name, sun_sign, gender')
+        .eq('telegram_chat_id', chatId)
+        .single();
+      profile = p;
+    }
 
     const userName = profile?.full_name || '';
     const sign = profile?.sun_sign || '';
+    const gender = profile?.gender || '';
     const emoji = SIGN_EMOJI[sign] || '🌙';
 
-    let welcome = `<b>${emoji} Benvenuto in Luna Astrologica!</b>\n\n`;
+    // === MESSAGGIO 1: BENVENUTO ===
+    // Benvenuto/Benvenuta in base al gender
+    const benvenuto = (gender === 'F') ? 'Benvenuta' : 'Benvenuto';
     
-    if (userName) {
-      welcome += `<b>Ciao ${userName}!</b>\n`;
-    }
-    
+    let welcome = `<b>${emoji} ${benvenuto} in Luna Astrologica!</b>\n\n`;
+    if (userName) welcome += `<b>Ciao ${userName}!</b>\n`;
     welcome += `Sono Luna, la tua astrologa personale.\n`;
-    welcome += `Da oggi riceverai il tuo oroscopo quotidiano e gli eventi speciali del cielo.\n\n`;
-    welcome += `<b>🔮 Approfondisci sul sito →</b>\n`;
-    
+    welcome += `Da oggi riceverai il tuo oroscopo quotidiano e gli eventi speciali del cielo.`;
+
     await sendTelegramMessage(chatId, welcome);
+
+    // === MESSAGGIO 2: OROSCOPO GIORNALIERO IMMEDIATO ===
+    if (profile && sign) {
+      const today = new Date().toISOString().split('T')[0];
+      const { data: daily } = await supabase
+        .from('daily_transits')
+        .select('transit_planets')
+        .eq('user_id', profile.id)
+        .eq('transit_date', today)
+        .single();
+
+      const horoscopeText = generateDailyHoroscope(sign, daily?.transit_planets, userName);
+      await sendTelegramMessage(chatId, horoscopeText);
+    }
+
     return;
   }
 
-  // Tutti gli altri messaggi: SILENZIO ASSOLUTO. Nessuna risposta.
-
+  // Nessun altro comando — silenzio assoluto
+  // L'utente non deve interagire, riceve solo push dal sistema
 }
 
 module.exports = {
