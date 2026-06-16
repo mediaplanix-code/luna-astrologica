@@ -355,8 +355,9 @@ function handleGoBackFromChat() {
  goBackFromChat(state.lastPage);
 }
 
-function showPaymentsPage() {
- alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
+function showCreditsPage() {
+  renderCreditsPage();
+  showPage("credits");
 }
 
 function toggleLang() {
