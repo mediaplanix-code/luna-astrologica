@@ -4,7 +4,6 @@
 //         crediti triple fallback, profilo passato esplicitamente
 // ============================================================
 
-import { initCreditsPage, renderCreditsPage } from './credits-page.js';
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
@@ -355,9 +354,8 @@ function handleGoBackFromChat() {
  goBackFromChat(state.lastPage);
 }
 
-function showCreditsPage() {
-  renderCreditsPage();
-  showPage("credits");
+function showPaymentsPage() {
+ alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
 }
 
 function toggleLang() {
