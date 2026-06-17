@@ -1,14 +1,15 @@
 // ============================================================
-// UI.JS — Renderizza tutti i componenti UI
+// UI.JS v3.0 — Renderizza tutti i componenti UI
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
-//         9 categorie complete
+// FIX v3: Carrello al posto crediti, spazio voce dedicato
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
 import { $, setText, setHTML } from './utils.js';
 
 // ===== RENDER HEADER =====
+// FIX v3: Carrello 🛒 al posto del numero crediti
 export function renderHeader(isLoggedIn, userData) {
     const avatarInitial = userData?.full_name
         ? userData.full_name.charAt(0).toUpperCase()
@@ -33,10 +34,12 @@ export function renderHeader(isLoggedIn, userData) {
                     <button class="lang-option" onclick="window.app.setLang('es')" data-lang="es"><span>🇪🇸</span> Español</button>
                 </div>
             </div>
-            <div class="credits-pill ${isLoggedIn ? 'active' : ''}" id="creditsPill" onclick="window.app.showPaymentsPage()" style="cursor:pointer;">
-                <div class="credits-dot" id="creditsDot"></div>
-                <span id="creditsVal">${userData?.credits || 0}</span>
+
+            <!-- FIX v3: Carrello al posto del pill crediti -->
+            <div class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn" onclick="window.app.showPaymentsPage()" style="cursor:pointer;" title="Carrello servizi">
+                <span style="font-size:1.25rem;">🛒</span>
             </div>
+
             <div class="user-avatar-sm ${isLoggedIn ? 'active' : ''}" id="userAvatar" onclick="window.app.showPage('personalized')">${avatarInitial}</div>
             <button class="btn-header ${isLoggedIn ? 'hidden' : ''}" id="loginBtn" onclick="window.app.openAuthModal()">LOGIN</button>
             <button class="btn-header ${isLoggedIn ? '' : 'hidden'}" id="logoutBtn" onclick="window.app.handleLogout()">Esci</button>
@@ -51,7 +54,7 @@ export function renderNav(activePage) {
 }
 
 // ===== RENDER HOME PAGE =====
-// FIX: Tolta scelta chat/voce, apertura diretta voce
+// FIX v3: Categorie aprono direttamente spazio voce (non chat)
 export function renderHomePage() {
     const signs = Object.entries(ZODIAC_SIGNS).map(([name, data]) => `
         <div class="card" onclick="window.app.showHoroscopePage('${name}')">
@@ -71,7 +74,7 @@ export function renderHomePage() {
         { key: "partner", icon: "💑", cls: "cat-partner" },
         { key: "carriera", icon: "📈", cls: "cat-career" },
     ].map(c => `
-        <div class="card ${c.cls}" onclick="window.app.requireAuthOrModalForChat('voice')">
+        <div class="card ${c.cls}" onclick="window.app.startVoiceSession('${c.key}')">
             <div class="card-icon">${c.icon}</div>
             <div class="card-label">${CATEGORY_LABELS[c.key]}</div>
         </div>
@@ -89,7 +92,7 @@ export function renderHomePage() {
         <div class="section-title">Categorie</div>
         <div class="grid">${categories}</div>
         <div class="banner-cta">
-            <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
+            <button class="btn-gold" onclick="window.app.startVoiceSession('generale')">🎙️ PARLA CON LE TUE STELLE</button>
         </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
@@ -156,14 +159,14 @@ export function renderHoroscopePage(signName) {
             </div>
             <div class="grid" style="padding: 0;">
                 ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.requireAuthOrModalForChat('voice')">
+                    <div class="card cat-${key}" onclick="window.app.startVoiceSession('${key}')">
                         <div class="card-icon">${getCategoryIcon(key)}</div>
                         <div class="card-label">${label}</div>
                     </div>
                 `).join("")}
             </div>
             <div class="banner-cta" style="margin: 0.75rem 0 0;">
-                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.startVoiceSession('generale')">🎙️ PARLA CON LE TUE STELLE</button>
             </div>
         </div>
         <footer class="footer">
@@ -195,6 +198,44 @@ export function renderChatPage() {
         </div>
     `;
     setHTML("page-chat", html);
+}
+
+// ===== RENDER VOICE PAGE (NUOVO) =====
+// FIX v3: Spazio dedicato per la voce
+export function renderVoicePage() {
+    const html = `
+        <div class="chat-header">
+            <button class="chat-back" onclick="window.app.goBackFromVoice()">🔙</button>
+            <div class="chat-title">🎙️ Luna Astrologica — Voce</div>
+        </div>
+        <div class="voice-container" style="padding: 2rem 1rem; text-align: center; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🎙️</div>
+            <h2 style="color: var(--gold); margin-bottom: 0.5rem;">Modalità Voce</h2>
+            <p style="color: var(--text-dim); margin-bottom: 2rem; max-width: 300px;">
+                Parla direttamente con Luna. Il consulto vocale dura 18 minuti.
+            </p>
+            <div class="voice-wave" style="display: flex; gap: 0.25rem; align-items: center; height: 40px; margin-bottom: 2rem;">
+                <div style="width: 4px; height: 20px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out infinite;"></div>
+                <div style="width: 4px; height: 30px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.1s infinite;"></div>
+                <div style="width: 4px; height: 25px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.2s infinite;"></div>
+                <div style="width: 4px; height: 35px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.3s infinite;"></div>
+                <div style="width: 4px; height: 20px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.4s infinite;"></div>
+            </div>
+            <button class="btn-gold" style="max-width: 250px; margin-bottom: 1rem;" onclick="window.app.startVoiceRecording()">
+                🎤 Inizia a parlare
+            </button>
+            <p style="font-size: 0.75rem; color: var(--text-dim);">
+                Costo: €45 per 18 minuti di consulto
+            </p>
+        </div>
+        <style>
+            @keyframes voiceWave {
+                0%, 100% { transform: scaleY(0.5); }
+                50% { transform: scaleY(1); }
+            }
+        </style>
+    `;
+    setHTML("page-voice", html);
 }
 
 // ===== RENDER AUTH MODAL =====
@@ -574,12 +615,12 @@ export function renderPersonalizedPage(profile, user, natalData) {
 
         <div style="padding: 0 1rem; margin-top:1.5rem;">
             <div class="banner-cta" style="margin: 0 0 0.75rem;">
-                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.startVoiceSession('generale')">🎙️ PARLA CON LE TUE STELLE</button>
             </div>
             <div class="section-title">Categorie</div>
             <div class="grid">
                 ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.requireAuthOrModalForChat('voice')">
+                    <div class="card cat-${key}" onclick="window.app.startVoiceSession('${key}')">
                         <div class="card-icon">${getCategoryIcon(key)}</div>
                         <div class="card-label">${label}</div>
                     </div>
@@ -597,14 +638,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
     setHTML("page-personalized", html);
 }
 
-// ===== SERVICE CHOICE MODAL =====
-// FIX: Ora apre direttamente voce, senza chiedere chat/voce
+// ===== SERVICE CHOICE MODAL — DISABILITATO =====
+// FIX v3: Ora le categorie vanno direttamente alla pagina voce
 let serviceChoiceCategory = null;
 
 export function showServiceChoice(category) {
     serviceChoiceCategory = category;
-    // Apertura diretta in modalità voce, senza modale di scelta
-    window.app.chooseService('voice');
+    // Non fa più nulla — le categorie vanno direttamente a startVoiceSession
 }
 
 export function closeServiceChoice() {
