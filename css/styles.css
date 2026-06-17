@@ -1312,3 +1312,440 @@ html, body {
     gap: 0.25rem;
   }
 }
+
+/* ============================================================
+   STILI PAGINA PAGAMENTI — Luna Astrologica
+   ============================================================ */
+
+.payments-page {
+    padding: 1rem;
+    padding-bottom: 3rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.payments-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+.payments-header h2 {
+    color: var(--gold);
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+.payments-header p {
+    color: var(--text-dim);
+    font-size: 0.875rem;
+}
+
+/* ===== SEZIONE ABBONAMENTO ===== */
+.sub-card {
+    background: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(139,92,246,0.08) 100%);
+    border: 1.5px solid var(--gold);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+}
+.sub-card::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%);
+    pointer-events: none;
+}
+.sub-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+.sub-status.active {
+    background: rgba(34,197,94,0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34,197,94,0.25);
+}
+.sub-status.expired {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+    border: 1px solid rgba(239,68,68,0.25);
+}
+.sub-status::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+}
+.sub-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+.sub-price {
+    font-size: 2.25rem;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+    margin: 0.5rem 0;
+}
+.sub-price span {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--text-dim);
+}
+.sub-features {
+    margin: 1rem 0;
+    list-style: none;
+    padding: 0;
+}
+.sub-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+}
+.sub-features li::before {
+    content: "✓";
+    color: var(--gold);
+    font-weight: 700;
+    min-width: 1rem;
+}
+.sub-features li.locked::before {
+    content: "✕";
+    color: #ef4444;
+}
+.sub-features li.locked {
+    opacity: 0.5;
+}
+.sub-btn {
+    width: 100%;
+    padding: 0.875rem;
+    border-radius: 0.75rem;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.5rem;
+    font-family: inherit;
+}
+.sub-btn.primary {
+    background: linear-gradient(135deg, var(--gold), #d97706);
+    color: #1a0b2e;
+}
+.sub-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245,158,11,0.3);
+}
+.sub-btn.secondary {
+    background: transparent;
+    border: 1.5px solid var(--gold);
+    color: var(--gold);
+}
+.sub-btn.secondary:hover {
+    background: rgba(245,158,11,0.1);
+    transform: translateY(-1px);
+}
+.sub-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ===== PROGRESSO SPESA ===== */
+.spending-tracker {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.875rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+.spending-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.spending-label {
+    font-size: 0.875rem;
+    color: var(--text-dim);
+}
+.spending-amount {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gold);
+}
+.spending-bar {
+    width: 100%;
+    height: 10px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+.spending-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--gold), #d97706);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.spending-fill::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 20px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2));
+    border-radius: 0 999px 999px 0;
+}
+.spending-fill.complete {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+.spending-note {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
+    margin-top: 0.5rem;
+}
+.spending-note.complete {
+    color: #4ade80;
+    font-weight: 600;
+}
+
+/* ===== PACCHETTI SERVIZI ===== */
+.packages-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+@media (min-width: 480px) {
+    .packages-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+.package-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 0.875rem;
+    padding: 1rem 0.75rem;
+    text-align: center;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    position: relative;
+}
+.package-card:hover {
+    border-color: var(--gold);
+    background: rgba(245,158,11,0.06);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.package-card.featured {
+    border-color: var(--gold);
+    background: rgba(245,158,11,0.1);
+}
+.package-card.featured::after {
+    content: "POPOLARE";
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gold);
+    color: #1a0b2e;
+    font-size: 0.5625rem;
+    font-weight: 800;
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+.package-icon {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    line-height: 1;
+}
+.package-name {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+.package-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+}
+.package-duration {
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    margin-top: 0.375rem;
+}
+
+/* ===== CHAT AI CARD ===== */
+.chat-ai-card {
+    background: linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(245,158,11,0.06) 100%);
+    border: 1.5px solid rgba(139,92,246,0.25);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.chat-ai-card:hover {
+    border-color: rgba(139,92,246,0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(139,92,246,0.15);
+}
+.chat-ai-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.chat-ai-info {
+    flex: 1;
+    min-width: 0;
+}
+.chat-ai-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+.chat-ai-desc {
+    font-size: 0.8125rem;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+.chat-ai-price {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #a78bfa;
+}
+.chat-ai-limit {
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    background: rgba(139,92,246,0.12);
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    display: inline-block;
+    margin-top: 0.375rem;
+    font-weight: 500;
+}
+
+/* ===== STORICO ===== */
+.history-section {
+    margin-top: 1rem;
+}
+.history-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.history-item:last-child {
+    border-bottom: none;
+}
+.history-desc {
+    font-size: 0.8125rem;
+    color: var(--text);
+}
+.history-date {
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    margin-top: 0.125rem;
+}
+.history-amount {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gold);
+    white-space: nowrap;
+}
+.history-amount.negative {
+    color: #ef4444;
+}
+.history-amount.free {
+    color: #4ade80;
+}
+
+/* ===== OFFUSCAMENTO PAGINA PERSONALIZZATA ===== */
+.blur-section {
+    position: relative;
+    filter: blur(8px);
+    user-select: none;
+    pointer-events: none;
+    opacity: 0.4;
+}
+.blur-section::after {
+    content: "🔒 Abbonamento richiesto";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(26, 11, 46, 0.95);
+    border: 1px solid var(--gold);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--gold);
+    white-space: nowrap;
+    z-index: 10;
+    filter: none;
+    pointer-events: auto;
+    cursor: pointer;
+}
+.blur-section::after:hover {
+    background: rgba(245, 158, 11, 0.15);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 360px) {
+    .packages-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .package-card {
+        padding: 0.75rem 0.5rem;
+    }
+    .chat-ai-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.75rem;
+    }
+    .sub-price {
+        font-size: 1.75rem;
+    }
+}
