@@ -1,6 +1,8 @@
 // ============================================================
 // UI.JS — Renderizza tutti i componenti UI
 // FIX: compat modal con reset e struttura per risultato reale
+// FIX v2: Home senza scelta chat/voce, apertura diretta voce
+//         9 categorie complete
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -49,6 +51,7 @@ export function renderNav(activePage) {
 }
 
 // ===== RENDER HOME PAGE =====
+// FIX: Tolta scelta chat/voce, apertura diretta voce
 export function renderHomePage() {
     const signs = Object.entries(ZODIAC_SIGNS).map(([name, data]) => `
         <div class="card" onclick="window.app.showHoroscopePage('${name}')">
@@ -68,7 +71,7 @@ export function renderHomePage() {
         { key: "partner", icon: "💑", cls: "cat-partner" },
         { key: "carriera", icon: "📈", cls: "cat-career" },
     ].map(c => `
-        <div class="card ${c.cls}" onclick="window.app.showServiceChoice('${c.key}')">
+        <div class="card ${c.cls}" onclick="window.app.requireAuthOrModalForChat('voice')">
             <div class="card-icon">${c.icon}</div>
             <div class="card-label">${CATEGORY_LABELS[c.key]}</div>
         </div>
@@ -78,10 +81,6 @@ export function renderHomePage() {
         <div class="banner-cta">
             <button class="btn-gold" onclick="window.app.requireAuthOrModal()">PERSONALIZZA</button>
         </div>
-        <div class="mode-toggle">
-            <button class="mode-btn active" id="mode-chat" onclick="window.app.requireAuthOrModalForChat('chat')">💬 Chat</button>
-            <button class="mode-btn" id="mode-voice" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ Voce</button>
-        </div>
         <div class="section-title">Segni Zodiacali</div>
         <div class="grid">${signs}</div>
         <div class="banner-cta">
@@ -90,7 +89,7 @@ export function renderHomePage() {
         <div class="section-title">Categorie</div>
         <div class="grid">${categories}</div>
         <div class="banner-cta">
-            <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">PARLA CON LE TUE STELLE</button>
+            <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
         </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
@@ -155,20 +154,16 @@ export function renderHoroscopePage(signName) {
             <div class="banner-cta" style="margin: 0 0 0.75rem;">
                 <button class="btn-gold" onclick="window.app.requireAuthOrModal()">PERSONALIZZA</button>
             </div>
-            <div class="mode-toggle" style="margin: 0 0 0.75rem;">
-                <button class="mode-btn active" onclick="window.app.requireAuthOrModalForChat('chat')">💬 Chat</button>
-                <button class="mode-btn" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ Voce</button>
-            </div>
             <div class="grid" style="padding: 0;">
                 ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.showServiceChoice('${key}')">
+                    <div class="card cat-${key}" onclick="window.app.requireAuthOrModalForChat('voice')">
                         <div class="card-icon">${getCategoryIcon(key)}</div>
                         <div class="card-label">${label}</div>
                     </div>
                 `).join("")}
             </div>
             <div class="banner-cta" style="margin: 0.75rem 0 0;">
-                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
             </div>
         </div>
         <footer class="footer">
@@ -579,12 +574,12 @@ export function renderPersonalizedPage(profile, user, natalData) {
 
         <div style="padding: 0 1rem; margin-top:1.5rem;">
             <div class="banner-cta" style="margin: 0 0 0.75rem;">
-                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('chat')">💬 PARLA CON LE TUE STELLE</button>
+                <button class="btn-gold" onclick="window.app.requireAuthOrModalForChat('voice')">🎙️ PARLA CON LE TUE STELLE</button>
             </div>
             <div class="section-title">Categorie</div>
             <div class="grid">
                 ${Object.entries(CATEGORY_LABELS).map(([key, label]) => `
-                    <div class="card cat-${key}" onclick="window.app.showServiceChoice('${key}')">
+                    <div class="card cat-${key}" onclick="window.app.requireAuthOrModalForChat('voice')">
                         <div class="card-icon">${getCategoryIcon(key)}</div>
                         <div class="card-label">${label}</div>
                     </div>
@@ -603,36 +598,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
 }
 
 // ===== SERVICE CHOICE MODAL =====
+// FIX: Ora apre direttamente voce, senza chiedere chat/voce
 let serviceChoiceCategory = null;
 
 export function showServiceChoice(category) {
     serviceChoiceCategory = category;
-    const label = CATEGORY_LABELS[category] || category;
-
-    let modal = document.getElementById("serviceChoiceModal");
-    if (!modal) {
-        modal = document.createElement("div");
-        modal.id = "serviceChoiceModal";
-        modal.className = "modal-overlay";
-        modal.style.zIndex = "250";
-        modal.innerHTML = `
-            <div class="modal" style="max-width:320px;">
-                <button class="modal-close" onclick="window.app.closeServiceChoice()">✕</button>
-                <div class="modal-title">Scegli come consultare Luna</div>
-                <div class="modal-subtitle" id="scSubtitle">Argomento</div>
-                <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
-                    <button class="btn-gold btn-full" onclick="window.app.chooseService('chat')">💬 Chat Testuale</button>
-                    <button class="btn-gold btn-full btn-gold-outline" onclick="window.app.chooseService('voice')">🎙️ Modalità Voce</button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-
-    const sub = document.getElementById("scSubtitle");
-    if (sub) sub.textContent = `Argomento: ${label}`;
-    modal.classList.add("active");
-    document.body.style.overflow = "hidden";
+    // Apertura diretta in modalità voce, senza modale di scelta
+    window.app.chooseService('voice');
 }
 
 export function closeServiceChoice() {
