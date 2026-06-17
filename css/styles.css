@@ -1749,3 +1749,32 @@ html, body {
         font-size: 1.75rem;
     }
 }
+
+/* ===== CART BUTTON (nuovo, sostituisce credits-pill) ===== */
+.cart-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cart-btn.active {
+    display: flex;
+}
+
+.cart-btn:hover {
+    background: rgba(245, 158, 11, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+/* Nascondi il vecchio credits-pill (se ancora presente nel CSS) */
+.credits-pill {
+    display: none !important;
+}
