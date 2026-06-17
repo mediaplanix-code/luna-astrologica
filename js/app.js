@@ -1,8 +1,9 @@
 // ============================================================
-// APP.JS — Orchestratore principale
+// APP.JS v10.0 — Orchestratore principale
 // FIX v8: logout senza reload, renderHeader robusto,
 //         crediti triple fallback, profilo passato esplicitamente
 // FIX v9: Pagina Crediti/Abbonamento integrata
+// FIX v10: Logout corretto, spazio voce dedicato, carrello header
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -11,7 +12,7 @@ import { $, hideAlerts } from './utils.js';
 import {
  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
  renderChatPage, renderAuthModal, renderCompatModal,
- renderPersonalizedPage, showPage as uiShowPage,
+ renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
  showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
 import {
@@ -84,6 +85,7 @@ document.addEventListener("DOMContentLoaded", async () => {
  renderCompatModal();
  renderHomePage();
  renderChatPage();
+ renderVoicePage();
 
  const urlParams = new URLSearchParams(window.location.search);
  const isVerified = urlParams.get("verified");
@@ -219,36 +221,22 @@ function updateUI(authState) {
  // FIX v8: renderHeader con userData corretto (profile o user o null)
  renderHeader(isLoggedIn, profile || user || null);
  renderNav(state.currentPage);
-
- const creditsVal = $("creditsVal");
- if (creditsVal) creditsVal.textContent = credits;
-
- const creditsDot = $("creditsDot");
- if (creditsDot) {
- creditsDot.className = "credits-dot";
- if (credits <= 0) creditsDot.classList.add("danger");
- else if (credits <= 3) creditsDot.classList.add("warning");
- }
-
- // Aggiorna indicatore abbonamento
- updatePaymentsUI();
 }
 
 function showPage(pageId) {
- if (pageId !== "chat") state.lastPage = pageId;
+ if (pageId !== "chat" && pageId !== "voice") state.lastPage = pageId;
  state.currentPage = pageId;
  uiShowPage(pageId, state.lastPage);
  renderNav(pageId);
 
  const user = getCurrentUser();
  const profile = getCurrentProfile();
- const creditsValue = getCredits() || profile?.credits || 0;
 
  updateUI({
  isLoggedIn: !!user,
  user: user,
  profile: profile,
- credits: creditsValue
+ credits: getCredits()
  });
 
  if (pageId === "personalized") {
@@ -357,6 +345,28 @@ function requireAuthOrModal() {
  }
 }
 
+// FIX v10: Spazio voce dedicato
+function startVoiceSession(category) {
+ const user = getCurrentUser();
+ if (!user) {
+ openAuthModal();
+ return;
+ }
+
+ // Imposta la categoria per la sessione voce
+ state.voiceCategory = category;
+
+ // Mostra la pagina voce
+ showPage("voice");
+
+ // Avvia la sessione voce (placeholder per futura integrazione)
+ console.log(`🎙️ Sessione voce avviata per categoria: ${category}`);
+}
+
+function goBackFromVoice() {
+ showPage(state.lastPage || "home");
+}
+
 function requireAuthOrModalForChat(mode) {
  state.chatMode = mode;
  setChatMode(mode);
@@ -410,7 +420,8 @@ function handleShowServiceChoice(category) {
  openAuthModal();
  return;
  }
- showServiceChoice(category);
+ // FIX v10: Vai direttamente alla voce
+ startVoiceSession(category);
 }
 
 function handleChooseService(mode) {
@@ -489,6 +500,40 @@ document.addEventListener("click", (e) => {
  }
 });
 
+// ===== LOGOUT CORRETTO =====
+// FIX v10: Logout gestito correttamente con pulizia completa
+async function handleLogoutClick() {
+ console.log('🚪 Logout richiesto...');
+
+ try {
+ // Chiama handleLogout da auth.js
+ await handleLogout();
+
+ // Pulizia aggiuntiva stato app
+ cachedNatalChart = null;
+ isLoadingChart = false;
+ state.currentPage = "home";
+ state.lastPage = "home";
+
+ // Pulisci DOM pagine
+ const personalized = document.getElementById('page-personalized');
+ if (personalized) personalized.innerHTML = '';
+
+ const payments = document.getElementById('page-payments');
+ if (payments) payments.innerHTML = '';
+
+ // Ricostruisci home
+ renderHomePage();
+
+ // Mostra home
+ showPage("home");
+
+ console.log('✅ Logout completato con successo');
+ } catch (err) {
+ console.error('❌ Errore durante logout:', err);
+ }
+}
+
 window.app = {
  showPage,
  goHome,
@@ -499,7 +544,7 @@ window.app = {
  switchAuthTab,
  handleRegister,
  handleLogin,
- handleLogout,
+ handleLogout: handleLogoutClick,
  showHoroscopePage: handleShowHoroscopePage,
  switchHoroTab,
  openProfileEdit,
@@ -533,9 +578,15 @@ window.app = {
  loadNatalChart,
  geocodeProfileIfNeeded,
  startStripeCheckout,
+ // FIX v10: Nuove funzioni voce
+ startVoiceSession,
+ goBackFromVoice,
+ startVoiceRecording: () => {
+ alert('🎙️ Funzione voce in preparazione. Il consulto vocale sarà disponibile a breve!');
+ },
  openLunaFromCompat: function(category) {
  window.app.closeCompatModal();
- window.app.showServiceChoice(category);
+ window.app.startVoiceSession(category);
  },
  resetCompatForm: function() {
  var form = document.getElementById("compatForm");
