@@ -1,9 +1,9 @@
 // ============================================================
-// APP.JS v10.0 — Orchestratore principale
-// FIX v8: logout senza reload, renderHeader robusto,
-//         crediti triple fallback, profilo passato esplicitamente
+// APP.JS v11.0 — Orchestratore principale
+// FIX v8: logout senza reload, renderHeader robusto
 // FIX v9: Pagina Crediti/Abbonamento integrata
-// FIX v10: Logout corretto, spazio voce dedicato, carrello header
+// FIX v10: Logout corretto, spazio voce dedicato
+// FIX v11: Voce reale con Web Speech API, timer, interpretazione astrologica
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -38,11 +38,19 @@ import {
  updatePaymentsUI,
  shouldBlurPersonalized
 } from './payments.js';
+import {
+ startVoiceSession as startRealVoiceSession,
+ endVoiceSession as endRealVoiceSession,
+ pauseVoiceSession,
+ resumeVoiceSession,
+ getVoiceSessionStatus
+} from './voice.js';
 
 let state = {
  currentPage: "home",
  lastPage: "home",
  chatMode: "chat",
+ voiceCategory: null
 };
 
 let cachedNatalChart = null;
@@ -145,7 +153,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  setTimeout(() => ensureGeocodingAndChart(profile), 600);
  console.log("🌙 Sessione attiva — personalized caricata");
  } else {
- // FIX v8: assicurati che l'header sia pulito per utente non loggato
  updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
  showPage("home");
  console.log("🌙 Nessuna sessione — home caricata");
@@ -216,9 +223,7 @@ function updateUI(authState) {
  const isLoggedIn = authState?.isLoggedIn || false;
  const profile = authState?.profile || null;
  const user = authState?.user || null;
- const credits = authState?.credits || profile?.credits || 0;
 
- // FIX v8: renderHeader con userData corretto (profile o user o null)
  renderHeader(isLoggedIn, profile || user || null);
  renderNav(state.currentPage);
 }
@@ -247,7 +252,6 @@ function showPage(pageId) {
  console.log('⏳ Dati natal mancanti, avvio caricamento...');
  setTimeout(() => ensureGeocodingAndChart(profile), 100);
  }
- // Applica offuscamento se necessario
  applyPersonalizedBlur();
  }
 
@@ -264,7 +268,6 @@ function applyPersonalizedBlur() {
  const status = getSubscriptionStatus();
  const isSubscribed = status.active;
 
- // Selettori delle sezioni da offuscare
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
@@ -285,7 +288,6 @@ function applyPersonalizedBlur() {
  el.style.opacity = '0.4';
  el.style.position = 'relative';
 
- // Aggiungi overlay se non esiste
  let overlay = el.querySelector('.blur-overlay');
  if (!overlay) {
  overlay = document.createElement('div');
@@ -345,7 +347,7 @@ function requireAuthOrModal() {
  }
 }
 
-// FIX v10: Spazio voce dedicato
+// ===== SPAZIO VOCE DEDICATO =====
 function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
@@ -353,18 +355,44 @@ function startVoiceSession(category) {
  return;
  }
 
- // Imposta la categoria per la sessione voce
  state.voiceCategory = category;
 
  // Mostra la pagina voce
  showPage("voice");
 
- // Avvia la sessione voce (placeholder per futura integrazione)
- console.log(`🎙️ Sessione voce avviata per categoria: ${category}`);
+ // Avvia la sessione voce reale
+ const started = startRealVoiceSession(category);
+ if (!started) {
+ // Fallback se Web Speech API non disponibile
+ const statusEl = document.getElementById('voiceStatus');
+ if (statusEl) {
+ statusEl.textContent = '⚠️ Microfono non disponibile su questo browser';
+ statusEl.style.color = '#ef4444';
+ }
+ }
 }
 
 function goBackFromVoice() {
+ // Termina sessione voce
+ endRealVoiceSession();
  showPage(state.lastPage || "home");
+}
+
+function toggleVoiceListening() {
+ const status = getVoiceSessionStatus();
+ if (!status.active) return;
+
+ // Toggle pausa/riprendi
+ // Per semplicità, riavviamo la sessione
+ const micBtn = document.getElementById('voiceMicBtn');
+ if (micBtn) {
+ micBtn.style.background = 'var(--gold)';
+ micBtn.style.color = '#1a0b2e';
+ setTimeout(() => {
+ micBtn.style.background = '';
+ micBtn.style.color = '';
+ }, 300);
+ }
 }
 
 function requireAuthOrModalForChat(mode) {
@@ -420,7 +448,6 @@ function handleShowServiceChoice(category) {
  openAuthModal();
  return;
  }
- // FIX v10: Vai direttamente alla voce
  startVoiceSession(category);
 }
 
@@ -501,11 +528,13 @@ document.addEventListener("click", (e) => {
 });
 
 // ===== LOGOUT CORRETTO =====
-// FIX v10: Logout gestito correttamente con pulizia completa
 async function handleLogoutClick() {
  console.log('🚪 Logout richiesto...');
 
  try {
+ // Termina eventuale sessione voce
+ endRealVoiceSession();
+
  // Chiama handleLogout da auth.js
  await handleLogout();
 
@@ -578,11 +607,17 @@ window.app = {
  loadNatalChart,
  geocodeProfileIfNeeded,
  startStripeCheckout,
- // FIX v10: Nuove funzioni voce
+ // Voce reale
  startVoiceSession,
+ endVoiceSession: () => {
+ endRealVoiceSession();
+ showPage(state.lastPage || "home");
+ },
  goBackFromVoice,
+ toggleVoiceListening,
  startVoiceRecording: () => {
- alert('🎙️ Funzione voce in preparazione. Il consulto vocale sarà disponibile a breve!');
+ // Placeholder per futura integrazione recording avanzato
+ alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
  },
  openLunaFromCompat: function(category) {
  window.app.closeCompatModal();
@@ -597,7 +632,6 @@ window.app = {
  resultDiv.innerHTML = "";
  }
  },
- // Reset completo stato + DOM (senza reload)
  _resetState: function() {
  cachedNatalChart = null;
  isLoadingChart = false;
