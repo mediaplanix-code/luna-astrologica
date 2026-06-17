@@ -1,5 +1,6 @@
 // ============================================================
-// CONFIG.JS — Unico punto di configurazione
+// CONFIG.JS v2.0 — Unico punto di configurazione
+// Aggiunti: feature flags abbonamento, pacchetti prezzi
 // ============================================================
 
 export const CONFIG = {
@@ -20,16 +21,26 @@ export const CONFIG = {
   STRIPE_PUBLISHABLE_KEY: "pk_test_YOUR_KEY",
   STRIPE_PRICE_ID: "price_YOUR_PRICE_ID",
 
-  // Worker API → AGGIORNATO a Render
+  // Worker API → Render
   WORKER_URL: "https://luna-astrologica-api-render.onrender.com",
 
   // Feature flags
   FEATURES: {
     REAL_NATAL_CHART: false,
     AI_CHAT: false,
-    STRIPE_PAYMENTS: false,
+    STRIPE_PAYMENTS: false,   // true quando avrai Stripe
     TELEGRAM_BOT: false,
     VOICE_MODE: false,
+    SUBSCRIPTION: true,        // NUOVO: sistema abbonamento attivo
+    BLUR_UNSUBSCRIBED: true,   // NUOVO: offusca pagina se non abbonato
+  },
+
+  // Pacchetti prezzi (referenza)
+  PRICING: {
+    SUBSCRIPTION: 15,          // €/trimestre
+    SPENDING_THRESHOLD: 49,    // € per rinnovo gratuito
+    SERVICE_PACKAGE: 45,       // € per pacchetto servizio (18 min AI Voice)
+    CHAT_AI: 25,               // € per sessione chat AI (12 min)
   }
 };
 
