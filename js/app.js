@@ -1,7 +1,8 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// FIX v8: logout senza reload (pulizia manuale), renderHeader robusto,
+// FIX v8: logout senza reload, renderHeader robusto,
 //         crediti triple fallback, profilo passato esplicitamente
+// FIX v9: Pagina Crediti/Abbonamento integrata
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -28,6 +29,14 @@ import {
  sendMessage, goBackFromChat
 } from './chat.js';
 import { loadTransits } from './transits.js';
+import {
+ renderPaymentsPage,
+ startStripeCheckout,
+ getSubscriptionStatus,
+ hasFullAccess,
+ updatePaymentsUI,
+ shouldBlurPersonalized
+} from './payments.js';
 
 let state = {
  currentPage: "home",
@@ -79,6 +88,16 @@ document.addEventListener("DOMContentLoaded", async () => {
  const urlParams = new URLSearchParams(window.location.search);
  const isVerified = urlParams.get("verified");
  if (isVerified === "true") {
+ window.history.replaceState({}, document.title, window.location.pathname);
+ }
+
+ // Gestione redirect da pagamento Stripe
+ const paymentStatus = urlParams.get("payment");
+ if (paymentStatus === "success") {
+ alert("✅ Pagamento completato con successo!");
+ window.history.replaceState({}, document.title, window.location.pathname);
+ } else if (paymentStatus === "cancel") {
+ alert("❌ Pagamento annullato.");
  window.history.replaceState({}, document.title, window.location.pathname);
  }
 
@@ -134,6 +153,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ===== AUTH STATE =====
 function onAuthStateChange(authState) {
  updateUI(authState);
+ updatePaymentsUI();
 
  if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
@@ -209,6 +229,9 @@ function updateUI(authState) {
  if (credits <= 0) creditsDot.classList.add("danger");
  else if (credits <= 3) creditsDot.classList.add("warning");
  }
+
+ // Aggiorna indicatore abbonamento
+ updatePaymentsUI();
 }
 
 function showPage(pageId) {
@@ -236,7 +259,84 @@ function showPage(pageId) {
  console.log('⏳ Dati natal mancanti, avvio caricamento...');
  setTimeout(() => ensureGeocodingAndChart(profile), 100);
  }
+ // Applica offuscamento se necessario
+ applyPersonalizedBlur();
  }
+
+ if (pageId === "payments") {
+ renderPaymentsPage();
+ updatePaymentsUI();
+ }
+}
+
+// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA =====
+function applyPersonalizedBlur() {
+ if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
+
+ const status = getSubscriptionStatus();
+ const isSubscribed = status.active;
+
+ // Selettori delle sezioni da offuscare
+ const blurSelectors = [
+ '#acc-wheel',
+ '#acc-planets',
+ '#acc-houses',
+ '#acc-aspects',
+ '#acc-transits'
+ ];
+
+ blurSelectors.forEach(selector => {
+ const el = document.querySelector(selector);
+ if (!el) return;
+
+ if (!isSubscribed) {
+ el.classList.add('blur-section');
+ el.style.filter = 'blur(8px)';
+ el.style.userSelect = 'none';
+ el.style.pointerEvents = 'none';
+ el.style.opacity = '0.4';
+ el.style.position = 'relative';
+
+ // Aggiungi overlay se non esiste
+ let overlay = el.querySelector('.blur-overlay');
+ if (!overlay) {
+ overlay = document.createElement('div');
+ overlay.className = 'blur-overlay';
+ overlay.innerHTML = `
+ <div style="
+   position: absolute;
+   top: 50%; left: 50%;
+   transform: translate(-50%, -50%);
+   background: rgba(26, 11, 46, 0.95);
+   border: 1.5px solid var(--gold);
+   border-radius: 0.75rem;
+   padding: 0.875rem 1.5rem;
+   font-size: 0.875rem;
+   font-weight: 600;
+   color: var(--gold);
+   white-space: nowrap;
+   z-index: 10;
+   cursor: pointer;
+   text-align: center;
+   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+ " onclick="window.app.showPaymentsPage()">
+   🔒 Abbonamento richiesto<br>
+   <span style="font-size:0.75rem;font-weight:400;color:var(--text-dim);">Sblocca per €15/trimestre</span>
+ </div>
+ `;
+ el.appendChild(overlay);
+ }
+ overlay.style.display = 'block';
+ } else {
+ el.classList.remove('blur-section');
+ el.style.filter = '';
+ el.style.userSelect = '';
+ el.style.pointerEvents = '';
+ el.style.opacity = '';
+ const overlay = el.querySelector('.blur-overlay');
+ if (overlay) overlay.style.display = 'none';
+ }
+ });
 }
 
 function goHome() {
@@ -289,7 +389,7 @@ function switchAuthTab(tab) {
  const loginTab = $("tab-login");
  const regTab = $("tab-register");
  const loginForm = $("loginForm");
- const regForm = $("registerForm");
+ const regForm = $("regForm");
 
  if (loginTab) loginTab.classList.toggle("active", tab === "login");
  if (regTab) regTab.classList.toggle("active", tab === "register");
@@ -354,8 +454,14 @@ function handleGoBackFromChat() {
  goBackFromChat(state.lastPage);
 }
 
+// ===== PAGINA CREDITI / ABBONAMENTO =====
 function showPaymentsPage() {
- alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
+ const page = document.getElementById('page-payments');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPaymentsPage();
+ }
+ showPage("payments");
+ updatePaymentsUI();
 }
 
 function toggleLang() {
@@ -426,6 +532,7 @@ window.app = {
  getCurrentUser,
  loadNatalChart,
  geocodeProfileIfNeeded,
+ startStripeCheckout,
  openLunaFromCompat: function(category) {
  window.app.closeCompatModal();
  window.app.showServiceChoice(category);
@@ -447,6 +554,8 @@ window.app = {
  state.lastPage = "home";
  const page = document.getElementById('page-personalized');
  if (page) page.innerHTML = '';
- console.log('🔄 Stato app resettato');
+ const payPage = document.getElementById('page-payments');
+ if (payPage) payPage.innerHTML = '';
+ console.log('🔁 Stato app resettato');
  }
 };
