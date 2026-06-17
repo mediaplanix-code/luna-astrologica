@@ -1,15 +1,15 @@
 // ============================================================
-// UI.JS v3.0 — Renderizza tutti i componenti UI
+// UI.JS v4.0 — Renderizza tutti i componenti UI
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
 // FIX v3: Carrello al posto crediti, spazio voce dedicato
+// FIX v4: Pagina voce con timer, stato, conversazione reale
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
 import { $, setText, setHTML } from './utils.js';
 
 // ===== RENDER HEADER =====
-// FIX v3: Carrello 🛒 al posto del numero crediti
 export function renderHeader(isLoggedIn, userData) {
     const avatarInitial = userData?.full_name
         ? userData.full_name.charAt(0).toUpperCase()
@@ -35,7 +35,7 @@ export function renderHeader(isLoggedIn, userData) {
                 </div>
             </div>
 
-            <!-- FIX v3: Carrello al posto del pill crediti -->
+            <!-- Carrello servizi -->
             <div class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn" onclick="window.app.showPaymentsPage()" style="cursor:pointer;" title="Carrello servizi">
                 <span style="font-size:1.25rem;">🛒</span>
             </div>
@@ -54,7 +54,6 @@ export function renderNav(activePage) {
 }
 
 // ===== RENDER HOME PAGE =====
-// FIX v3: Categorie aprono direttamente spazio voce (non chat)
 export function renderHomePage() {
     const signs = Object.entries(ZODIAC_SIGNS).map(([name, data]) => `
         <div class="card" onclick="window.app.showHoroscopePage('${name}')">
@@ -200,40 +199,57 @@ export function renderChatPage() {
     setHTML("page-chat", html);
 }
 
-// ===== RENDER VOICE PAGE (NUOVO) =====
-// FIX v3: Spazio dedicato per la voce
+// ===== RENDER VOICE PAGE (v4.0 — con timer e conversazione) =====
 export function renderVoicePage() {
     const html = `
-        <div class="chat-header">
-            <button class="chat-back" onclick="window.app.goBackFromVoice()">🔙</button>
-            <div class="chat-title">🎙️ Luna Astrologica — Voce</div>
+        <div class="voice-header">
+            <button class="voice-back" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">🔙</button>
+            <div class="voice-title">🎙️ Consulto Vocale con Luna</div>
         </div>
-        <div class="voice-container" style="padding: 2rem 1rem; text-align: center; min-height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-            <div style="font-size: 4rem; margin-bottom: 1rem;">🎙️</div>
-            <h2 style="color: var(--gold); margin-bottom: 0.5rem;">Modalità Voce</h2>
-            <p style="color: var(--text-dim); margin-bottom: 2rem; max-width: 300px;">
-                Parla direttamente con Luna. Il consulto vocale dura 18 minuti.
-            </p>
-            <div class="voice-wave" style="display: flex; gap: 0.25rem; align-items: center; height: 40px; margin-bottom: 2rem;">
-                <div style="width: 4px; height: 20px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out infinite;"></div>
-                <div style="width: 4px; height: 30px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.1s infinite;"></div>
-                <div style="width: 4px; height: 25px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.2s infinite;"></div>
-                <div style="width: 4px; height: 35px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.3s infinite;"></div>
-                <div style="width: 4px; height: 20px; background: var(--gold); border-radius: 2px; animation: voiceWave 1s ease-in-out 0.4s infinite;"></div>
+
+        <!-- Timer -->
+        <div class="voice-timer-wrap">
+            <div class="voice-timer-bar-container">
+                <div class="voice-timer-bar" id="voiceTimerBar" style="width: 0%;"></div>
             </div>
-            <button class="btn-gold" style="max-width: 250px; margin-bottom: 1rem;" onclick="window.app.startVoiceRecording()">
-                🎤 Inizia a parlare
-            </button>
-            <p style="font-size: 0.75rem; color: var(--text-dim);">
-                Costo: €45 per 18 minuti di consulto
-            </p>
+            <div class="voice-timer-text" id="voiceTimerText">18:00 rimanenti</div>
         </div>
-        <style>
-            @keyframes voiceWave {
-                0%, 100% { transform: scaleY(0.5); }
-                50% { transform: scaleY(1); }
-            }
-        </style>
+
+        <!-- Stato -->
+        <div class="voice-status" id="voiceStatus">⏸️ In attesa di inizio...</div>
+
+        <!-- Visualizzatore onde -->
+        <div class="voice-waves" id="voiceWaves">
+            <div class="voice-wave-bar"></div>
+            <div class="voice-wave-bar"></div>
+            <div class="voice-wave-bar"></div>
+            <div class="voice-wave-bar"></div>
+            <div class="voice-wave-bar"></div>
+        </div>
+
+        <!-- Conversazione -->
+        <div class="voice-conversation" id="voiceConversation">
+            <div class="voice-welcome">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🌙</div>
+                <h3 style="color: var(--gold); margin-bottom: 0.5rem;">Luna ti ascolta</h3>
+                <p style="color: var(--text-dim); font-size: 0.875rem;">Premi il microfono e parla. Luna risponderà interpretando il tuo tema natale.</p>
+            </div>
+        </div>
+
+        <!-- Controlli -->
+        <div class="voice-controls">
+            <button class="voice-btn voice-btn-mic" id="voiceMicBtn" onclick="window.app.toggleVoiceListening()">
+                <span style="font-size: 1.5rem;">🎤</span>
+            </button>
+            <button class="voice-btn voice-btn-end" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">
+                <span style="font-size: 1.25rem;">📞</span>
+            </button>
+        </div>
+
+        <!-- Info -->
+        <div class="voice-info">
+            <p>💰 Costo: €45 per 18 minuti • 🎙️ Interazione vocale reale</p>
+        </div>
     `;
     setHTML("page-voice", html);
 }
@@ -639,12 +655,10 @@ export function renderPersonalizedPage(profile, user, natalData) {
 }
 
 // ===== SERVICE CHOICE MODAL — DISABILITATO =====
-// FIX v3: Ora le categorie vanno direttamente alla pagina voce
 let serviceChoiceCategory = null;
 
 export function showServiceChoice(category) {
     serviceChoiceCategory = category;
-    // Non fa più nulla — le categorie vanno direttamente a startVoiceSession
 }
 
 export function closeServiceChoice() {
