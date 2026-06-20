@@ -1,12 +1,11 @@
 // ============================================================
-// VOICE.JS v5.0 — Interazione Vocale Pura con Luna
-// Modello: segreteria AI — parla, ascolta, interagisce, si ferma
-// Nessun testo visibile. Solo voce. Interazione umana e fluida.
+// VOICE.JS v5.1 — Interazione Vocale Pura con controllo manuale
+// FIX: Nessun loop. Utente preme mic → parla → rilascia → Luna risponde.
 // ============================================================
 
 import { getCurrentUser, getCurrentProfile } from './auth.js';
 
-// ===== STATO SESSIONE =====
+// ===== STATO =====
 let session = {
   active: false,
   category: null,
@@ -17,34 +16,31 @@ let session = {
   recognition: null,
   synthesis: null,
   isListening: false,
-  isSpeaking: false,
-  silenceTimer: null,
-  silenceThreshold: 2000,  // ms di silenzio prima di considerare frase finita
+  isSpeaking: false
 };
 
 // ===== INIZIALIZZA RICONOSCIMENTO =====
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
-    showStatus('⚠️ Microfono non disponibile su questo browser');
+    showStatus('⚠️ Microfono non disponibile');
     return null;
   }
 
   const rec = new SR();
   rec.lang = 'it-IT';
-  rec.continuous = true;      // Ascolta continuamente
-  rec.interimResults = true;  // Risultati parziali per fluidità
+  rec.continuous = false;      // UNA frase alla volta
+  rec.interimResults = true;   // Mostra mentre parli
   rec.maxAlternatives = 1;
 
-  // Quando inizia ad ascoltare
   rec.onstart = () => {
     session.isListening = true;
-    showStatus('🎤 In ascolto...');
+    showStatus('🎤 In ascolto... parla ora');
     setMicActive(true);
-    console.log('🎤 MICROFONO ATTIVO');
+    pulseWaves(true);
+    console.log('🎤 MIC ATTIVO');
   };
 
-  // Risultati parziali e finali
   rec.onresult = (event) => {
     let final = '';
     let interim = '';
@@ -58,118 +54,63 @@ function initRecognition() {
       }
     }
 
-    // Reset timer silenzio ogni volta che sente qualcosa
-    if (interim || final) {
-      clearTimeout(session.silenceTimer);
-
-      // Se c'è testo interim, l'utente sta parlando — mostra feedback visivo (senza testo)
-      if (interim) {
-        showStatus('🎤 ...');
-        pulseWaves(true);
-      }
+    if (interim) {
+      showStatus('🎤 ...');
     }
 
-    // Quando la frase è definitiva
     if (final) {
       console.log('🎤 UTENTE:', final);
-
-      // Breve pausa per naturalezza, poi Luna risponde
-      showStatus('💭 ...');
+      session.isListening = false;
+      setMicActive(false);
       pulseWaves(false);
 
+      // Breve pausa naturale, poi Luna risponde
+      showStatus('💭 ...');
       setTimeout(() => {
-        if (session.active) {
-          respondToUser(final);
-        }
-      }, 400);
+        if (session.active) respondToUser(final);
+      }, 300);
     }
   };
 
-  // Errore
   rec.onerror = (e) => {
     console.error('Errore mic:', e.error);
     session.isListening = false;
     setMicActive(false);
+    pulseWaves(false);
 
     if (e.error === 'no-speech') {
-      // Normale — l'utente non ha parlato, riavvia ascolto
-      if (session.active && !session.isSpeaking) {
-        restartListening();
-      }
+      showStatus('⏸️ Non ho sentito nulla. Premi di nuovo il microfono.');
     } else if (e.error === 'aborted') {
-      // Normale — sessione fermata
+      // Normale
     } else if (e.error === 'not-allowed') {
       showStatus('⚠️ Permesso microfono negato');
     } else {
-      showStatus('⚠️ Errore microfono, riprovo...');
-      setTimeout(() => restartListening(), 1000);
+      showStatus('⚠️ Errore microfono. Riprova.');
     }
   };
 
-  // Quando si ferma (per qualsiasi motivo)
   rec.onend = () => {
-    console.log('🎤 MICROFONO FERMO');
+    console.log('🎤 MIC FERMO');
     session.isListening = false;
     setMicActive(false);
     pulseWaves(false);
-
-    // Se sessione ancora attiva e Luna non sta parlando, riavvia
-    if (session.active && !session.isSpeaking) {
-      setTimeout(() => restartListening(), 300);
-    }
+    // NON riavvio automaticamente — aspetto che l'utente premi di nuovo
   };
 
   return rec;
-}
-
-// ===== RIAVVIA ASCOLTO =====
-function restartListening() {
-  if (!session.active || session.isSpeaking) return;
-
-  // Ricrea recognition se necessario (alcuni browser la invalidano)
-  if (!session.recognition) {
-    session.recognition = initRecognition();
-  }
-
-  if (session.recognition) {
-    try {
-      session.recognition.start();
-    } catch(e) {
-      console.log('Ricrea recognition...');
-      session.recognition = initRecognition();
-      if (session.recognition) {
-        try { session.recognition.start(); } catch(e2) {}
-      }
-    }
-  }
-}
-
-// ===== FERMA ASCOLTO TEMPORANEAMENTE =====
-function pauseListening() {
-  clearTimeout(session.silenceTimer);
-  if (session.recognition) {
-    try { session.recognition.stop(); } catch(e) {}
-  }
-  session.isListening = false;
-  setMicActive(false);
-  pulseWaves(false);
 }
 
 // ===== INIZIALIZZA SINTESI VOCE =====
 function initSynthesis() {
   const synth = window.speechSynthesis;
   if (!synth) return null;
-
-  // Pre-carica voci
   synth.getVoices();
   return synth;
 }
 
-// ===== TROVA VOCE ITALIANA FEMMINILE =====
+// ===== TROVA VOCE ITALIANA =====
 function getItalianVoice() {
   const voices = window.speechSynthesis.getVoices();
-
-  // Preferita: voce italiana femminile
   const preferred = voices.find(v =>
     v.lang.startsWith('it') &&
     (v.name.includes('Female') || v.name.includes('femmina') || 
@@ -179,60 +120,43 @@ function getItalianVoice() {
      v.name.includes('Elena') || v.name.includes('Laura'))
   );
   if (preferred) return preferred;
-
-  // Fallback: qualsiasi italiana
   const italian = voices.find(v => v.lang.startsWith('it'));
   if (italian) return italian;
-
-  // Ultimo fallback
   return voices[0];
 }
 
 // ===== LUNA PARLA =====
 function lunaSpeak(text, onDone) {
   const synth = session.synthesis;
-  if (!synth) {
-    if (onDone) onDone();
-    return;
-  }
-
-  // Ferma ascolto mentre parla (non puoi parlare sopra)
-  pauseListening();
+  if (!synth) { if (onDone) onDone(); return; }
 
   session.isSpeaking = true;
   showStatus('🔊 Luna sta parlando...');
   pulseWaves(true);
 
-  // Ferma eventuale parlata precedente
   synth.cancel();
 
   const u = new SpeechSynthesisUtterance(text);
   u.voice = getItalianVoice();
   u.lang = 'it-IT';
-  u.rate = 0.90;    // Leggermente lento, naturale
-  u.pitch = 1.02;   // Quasi neutro, leggermente caldo
+  u.rate = 0.90;
+  u.pitch = 1.02;
   u.volume = 1;
 
   u.onend = () => {
     console.log('🔊 LUNA HA FINITO');
     session.isSpeaking = false;
     pulseWaves(false);
-
+    showStatus('⏸️ Premi il microfono per parlare');
     if (onDone) onDone();
-
-    // Riavvia ascolto dopo breve pausa naturale
-    if (session.active) {
-      showStatus('🎤 In ascolto...');
-      setTimeout(() => restartListening(), 200);
-    }
   };
 
   u.onerror = (e) => {
     console.error('Errore TTS:', e);
     session.isSpeaking = false;
     pulseWaves(false);
+    showStatus('⏸️ Premi il microfono per parlare');
     if (onDone) onDone();
-    if (session.active) restartListening();
   };
 
   synth.speak(u);
@@ -247,7 +171,6 @@ function respondToUser(userText) {
     return;
   }
 
-  // Recupera dati tema natale
   let natal = null;
   try {
     const saved = localStorage.getItem('luna_natal_chart');
@@ -259,9 +182,7 @@ function respondToUser(userText) {
   const asc = profile.rising_sign || natal?.ascendant?.name || 'il tuo ascendente';
   const name = profile.full_name?.split(' ')[0] || '';
 
-  // Genera risposta basata su categoria e dati
   const response = buildResponse(userText, session.category, sun, moon, asc, name, natal);
-
   lunaSpeak(response);
 }
 
@@ -270,7 +191,6 @@ function buildResponse(input, category, sun, moon, asc, name, natal) {
   const today = new Date();
   const dayName = today.toLocaleDateString('it-IT', { weekday: 'long' });
 
-  // Risposte per categoria
   const readings = {
     amore: () => {
       const venus = natal?.planets?.find(p => p.key === 'venus');
@@ -521,7 +441,7 @@ export function startVoiceSession(category) {
   if (bar) { bar.style.width = '0%'; bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)'; }
   if (text) text.textContent = '18:00';
 
-  showStatus('⏸️ Pronta ad ascoltarti');
+  showStatus('⏸️ Pronta');
   setMicActive(false);
   pulseWaves(false);
 
@@ -531,13 +451,10 @@ export function startVoiceSession(category) {
 
   setTimeout(() => {
     const greeting = name 
-      ? `Ciao ${name}, sono Luna. Sono qui per te. Parla quando vuoi.`
-      : `Ciao, sono Luna. Sono qui per te. Parla quando vuoi.`;
+      ? `Ciao ${name}, sono Luna. Sono qui per te. Premi il microfono quando vuoi parlare.`
+      : `Ciao, sono Luna. Sono qui per te. Premi il microfono quando vuoi parlare.`;
 
-    lunaSpeak(greeting, () => {
-      // Dopo saluto, inizia ad ascoltare
-      restartListening();
-    });
+    lunaSpeak(greeting);
   }, 500);
 
   startTimer();
@@ -550,7 +467,6 @@ export function endSession() {
   session.isListening = false;
   session.isSpeaking = false;
 
-  clearTimeout(session.silenceTimer);
   clearInterval(session.timerInterval);
   session.timerInterval = null;
 
@@ -570,20 +486,46 @@ export function endSession() {
   console.log('🎙️ SESSIONE TERMINATA');
 }
 
-// ===== TOGGLE MANUALE (per bottone) =====
+// ===== TOGGLE MICROFONO (premi per parlare, premi per fermare) =====
 export function toggleListening() {
   if (!session.active) return;
 
+  // Se Luna sta parlando, non fare nulla
   if (session.isSpeaking) {
     showStatus('🔊 Attendi che Luna finisca...');
     return;
   }
 
   if (session.isListening) {
-    pauseListening();
-    showStatus('⏸️ In pausa');
+    // Ferma ascolto
+    if (session.recognition) {
+      try { session.recognition.stop(); } catch(e) {}
+    }
+    session.isListening = false;
+    setMicActive(false);
+    pulseWaves(false);
+    showStatus('⏸️ Premi il microfono per parlare');
   } else {
-    restartListening();
+    // Avvia ascolto
+    // Ricrea recognition se necessario
+    if (!session.recognition) {
+      session.recognition = initRecognition();
+    }
+
+    if (session.recognition) {
+      try {
+        session.recognition.start();
+      } catch(e) {
+        console.error('Errore avvio:', e);
+        // Ricrea e riprova
+        session.recognition = initRecognition();
+        if (session.recognition) {
+          try { session.recognition.start(); } catch(e2) {
+            showStatus('⚠️ Errore microfono. Ricarica la pagina.');
+          }
+        }
+      }
+    }
   }
 }
 
