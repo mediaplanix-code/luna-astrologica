@@ -1,5 +1,6 @@
 // ============================================================
-// UI.JS v4.0 — Renderizza tutti i componenti UI
+// UI.JS v4.1 — Renderizza tutti i componenti UI
+// FIX: voiceInterim aggiunto per voice.js v4.1
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
 // FIX v3: Carrello al posto crediti, spazio voce dedicato
@@ -217,6 +218,9 @@ export function renderVoicePage() {
 
         <!-- Stato -->
         <div class="voice-status" id="voiceStatus">⏸️ In attesa di inizio...</div>
+
+        <!-- Testo interim (mentre parli) -->
+        <div id="voiceInterim" style="text-align:center; color:var(--text-dim); font-style:italic; font-size:0.875rem; min-height:1.5rem; padding:0 1rem; display:none;"></div>
 
         <!-- Visualizzatore onde -->
         <div class="voice-waves" id="voiceWaves">
