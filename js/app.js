@@ -1,6 +1,6 @@
 // ============================================================
-// APP.JS v12.0 — Orchestratore principale
-// FIX v12: Compatibile con voice.js v5.0 (interazione vocale pura)
+// APP.JS v12.1 — Orchestratore principale
+// FIX v12.1: Compatibile con voice.js v5.1 (toggle manuale mic)
 // FIX v8: logout senza reload, renderHeader robusto
 // FIX v9: Pagina Crediti/Abbonamento integrata
 // FIX v10: Logout corretto, spazio voce dedicato
@@ -42,6 +42,7 @@ import {
 import {
  startVoiceSession as startRealVoiceSession,
  endSession as endRealVoiceSession,
+ toggleListening as toggleVoiceListeningReal,
  getStatus as getVoiceSessionStatus
 } from './voice.js';
 
@@ -364,9 +365,7 @@ function goBackFromVoice() {
 }
 
 function toggleVoiceListening() {
- // Il nuovo voice.js v5.0 gestisce automaticamente ascolto/parlata
- // Questa funzione è un placeholder per eventuali controlli manuali futuri
- console.log('🎤 toggleVoiceListening — gestito automaticamente da voice.js v5.0');
+ toggleVoiceListeningReal();
 }
 
 function requireAuthOrModalForChat(mode) {
