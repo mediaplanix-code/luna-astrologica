@@ -1,6 +1,6 @@
 // ============================================================
-// UI.JS v4.1 — Renderizza tutti i componenti UI
-// FIX: voiceInterim aggiunto per voice.js v4.1
+// UI.JS v5.0 — Renderizza tutti i componenti UI
+// FIX: Pagina voce senza conversazione testuale, solo voce pura
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
 // FIX v3: Carrello al posto crediti, spazio voce dedicato
@@ -200,12 +200,12 @@ export function renderChatPage() {
     setHTML("page-chat", html);
 }
 
-// ===== RENDER VOICE PAGE (v4.0 — con timer e conversazione) =====
+// ===== RENDER VOICE PAGE (v5.0 — solo voce, nessun testo) =====
 export function renderVoicePage() {
     const html = `
         <div class="voice-header">
             <button class="voice-back" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">🔙</button>
-            <div class="voice-title">🎙️ Consulto Vocale con Luna</div>
+            <div class="voice-title">🎙️ Luna</div>
         </div>
 
         <!-- Timer -->
@@ -213,16 +213,13 @@ export function renderVoicePage() {
             <div class="voice-timer-bar-container">
                 <div class="voice-timer-bar" id="voiceTimerBar" style="width: 0%;"></div>
             </div>
-            <div class="voice-timer-text" id="voiceTimerText">18:00 rimanenti</div>
+            <div class="voice-timer-text" id="voiceTimerText">18:00</div>
         </div>
 
-        <!-- Stato -->
-        <div class="voice-status" id="voiceStatus">⏸️ In attesa di inizio...</div>
+        <!-- Stato visivo (solo icona, nessun testo conversazione) -->
+        <div class="voice-status" id="voiceStatus">⏸️ Pronta</div>
 
-        <!-- Testo interim (mentre parli) -->
-        <div id="voiceInterim" style="text-align:center; color:var(--text-dim); font-style:italic; font-size:0.875rem; min-height:1.5rem; padding:0 1rem; display:none;"></div>
-
-        <!-- Visualizzatore onde -->
+        <!-- Onde animate (feedback visivo voce) -->
         <div class="voice-waves" id="voiceWaves">
             <div class="voice-wave-bar"></div>
             <div class="voice-wave-bar"></div>
@@ -231,28 +228,14 @@ export function renderVoicePage() {
             <div class="voice-wave-bar"></div>
         </div>
 
-        <!-- Conversazione -->
-        <div class="voice-conversation" id="voiceConversation">
-            <div class="voice-welcome">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">🌙</div>
-                <h3 style="color: var(--gold); margin-bottom: 0.5rem;">Luna ti ascolta</h3>
-                <p style="color: var(--text-dim); font-size: 0.875rem;">Premi il microfono e parla. Luna risponderà interpretando il tuo tema natale.</p>
-            </div>
-        </div>
-
         <!-- Controlli -->
         <div class="voice-controls">
             <button class="voice-btn voice-btn-mic" id="voiceMicBtn" onclick="window.app.toggleVoiceListening()">
                 <span style="font-size: 1.5rem;">🎤</span>
             </button>
             <button class="voice-btn voice-btn-end" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">
-                <span style="font-size: 1.25rem;">📞</span>
+                <span style="font-size: 1.25rem;">✕</span>
             </button>
-        </div>
-
-        <!-- Info -->
-        <div class="voice-info">
-            <p>💰 Costo: €45 per 18 minuti • 🎙️ Interazione vocale reale</p>
         </div>
     `;
     setHTML("page-voice", html);
