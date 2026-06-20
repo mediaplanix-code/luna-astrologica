@@ -1,5 +1,6 @@
 // ============================================================
-// APP.JS v11.0 — Orchestratore principale
+// APP.JS v12.0 — Orchestratore principale
+// FIX v12: Compatibile con voice.js v5.0 (interazione vocale pura)
 // FIX v8: logout senza reload, renderHeader robusto
 // FIX v9: Pagina Crediti/Abbonamento integrata
 // FIX v10: Logout corretto, spazio voce dedicato
@@ -40,10 +41,8 @@ import {
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
- endVoiceSession as endRealVoiceSession,
- pauseVoiceSession,
- resumeVoiceSession,
- getVoiceSessionStatus
+ endSession as endRealVoiceSession,
+ getStatus as getVoiceSessionStatus
 } from './voice.js';
 
 let state = {
@@ -293,25 +292,11 @@ function applyPersonalizedBlur() {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
  overlay.innerHTML = `
- <div style="
-   position: absolute;
-   top: 50%; left: 50%;
-   transform: translate(-50%, -50%);
-   background: rgba(26, 11, 46, 0.95);
-   border: 1.5px solid var(--gold);
-   border-radius: 0.75rem;
-   padding: 0.875rem 1.5rem;
-   font-size: 0.875rem;
-   font-weight: 600;
-   color: var(--gold);
-   white-space: nowrap;
-   z-index: 10;
-   cursor: pointer;
-   text-align: center;
-   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
- " onclick="window.app.showPaymentsPage()">
-   🔒 Abbonamento richiesto<br>
-   <span style="font-size:0.75rem;font-weight:400;color:var(--text-dim);">Sblocca per €15/trimestre</span>
+ <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;">
+ <span style="font-size:1.5rem;">🔒</span>
+ <span style="color:var(--gold);font-weight:600;font-size:0.9375rem;">Abbonamento richiesto</span>
+ <span style="color:var(--text-dim);font-size:0.8125rem;">Sblocca per €15/trimestre</span>
+ <button class="btn-gold" style="margin-top:0.5rem;padding:0.5rem 1.25rem;font-size:0.8125rem;" onclick="window.app.showPaymentsPage()">Abbonati ora</button>
  </div>
  `;
  el.appendChild(overlay);
@@ -379,20 +364,9 @@ function goBackFromVoice() {
 }
 
 function toggleVoiceListening() {
- const status = getVoiceSessionStatus();
- if (!status.active) return;
-
- // Toggle pausa/riprendi
- // Per semplicità, riavviamo la sessione
- const micBtn = document.getElementById('voiceMicBtn');
- if (micBtn) {
- micBtn.style.background = 'var(--gold)';
- micBtn.style.color = '#1a0b2e';
- setTimeout(() => {
- micBtn.style.background = '';
- micBtn.style.color = '';
- }, 300);
- }
+ // Il nuovo voice.js v5.0 gestisce automaticamente ascolto/parlata
+ // Questa funzione è un placeholder per eventuali controlli manuali futuri
+ console.log('🎤 toggleVoiceListening — gestito automaticamente da voice.js v5.0');
 }
 
 function requireAuthOrModalForChat(mode) {
