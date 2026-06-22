@@ -1,6 +1,6 @@
 // ============================================================
-// UI.JS v5.0 — Renderizza tutti i componenti UI
-// FIX: Pagina voce senza conversazione testuale, solo voce pura
+// UI.JS v6.0 — Renderizza tutti i componenti UI
+// FIX: Pagina voce con ElevenLabs Conversational AI Widget
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
 // FIX v3: Carrello al posto crediti, spazio voce dedicato
@@ -200,7 +200,7 @@ export function renderChatPage() {
     setHTML("page-chat", html);
 }
 
-// ===== RENDER VOICE PAGE (v5.0 — solo voce, nessun testo) =====
+// ===== RENDER VOICE PAGE (v6.0 — ElevenLabs Widget) =====
 export function renderVoicePage() {
     const html = `
         <div class="voice-header">
@@ -216,23 +216,16 @@ export function renderVoicePage() {
             <div class="voice-timer-text" id="voiceTimerText">18:00</div>
         </div>
 
-        <!-- Stato visivo (solo icona, nessun testo conversazione) -->
-        <div class="voice-status" id="voiceStatus">⏸️ Pronta</div>
+        <!-- Stato -->
+        <div class="voice-status" id="voiceStatus">⏳ Caricamento...</div>
 
-        <!-- Onde animate (feedback visivo voce) -->
-        <div class="voice-waves" id="voiceWaves">
-            <div class="voice-wave-bar"></div>
-            <div class="voice-wave-bar"></div>
-            <div class="voice-wave-bar"></div>
-            <div class="voice-wave-bar"></div>
-            <div class="voice-wave-bar"></div>
+        <!-- Container ElevenLabs Widget -->
+        <div id="elevenlabs-widget-container" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+            <!-- Widget inserito qui da voice.js -->
         </div>
 
         <!-- Controlli -->
         <div class="voice-controls">
-            <button class="voice-btn voice-btn-mic" id="voiceMicBtn" onclick="window.app.toggleVoiceListening()">
-                <span style="font-size: 1.5rem;">🎤</span>
-            </button>
             <button class="voice-btn voice-btn-end" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">
                 <span style="font-size: 1.25rem;">✕</span>
             </button>
