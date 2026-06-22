@@ -1,6 +1,6 @@
 // ============================================================
-// APP.JS v12.1 — Orchestratore principale
-// FIX v12.1: Compatibile con voice.js v5.1 (toggle manuale mic)
+// APP.JS v13.0 — Orchestratore principale
+// FIX v13: Integrazione ElevenLabs Conversational AI Widget
 // FIX v8: logout senza reload, renderHeader robusto
 // FIX v9: Pagina Crediti/Abbonamento integrata
 // FIX v10: Logout corretto, spazio voce dedicato
@@ -42,7 +42,6 @@ import {
 import {
  startVoiceSession as startRealVoiceSession,
  endSession as endRealVoiceSession,
- toggleListening as toggleVoiceListeningReal,
  getStatus as getVoiceSessionStatus
 } from './voice.js';
 
@@ -334,7 +333,7 @@ function requireAuthOrModal() {
 }
 
 // ===== SPAZIO VOCE DEDICATO =====
-function startVoiceSession(category) {
+async function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
@@ -346,13 +345,12 @@ function startVoiceSession(category) {
  // Mostra la pagina voce
  showPage("voice");
 
- // Avvia la sessione voce reale
- const started = startRealVoiceSession(category);
+ // Avvia la sessione voce con ElevenLabs
+ const started = await startRealVoiceSession(category);
  if (!started) {
- // Fallback se Web Speech API non disponibile
  const statusEl = document.getElementById('voiceStatus');
  if (statusEl) {
- statusEl.textContent = '⚠️ Microfono non disponibile su questo browser';
+ statusEl.textContent = '⚠️ Errore caricamento voce';
  statusEl.style.color = '#ef4444';
  }
  }
@@ -365,7 +363,8 @@ function goBackFromVoice() {
 }
 
 function toggleVoiceListening() {
- toggleVoiceListeningReal();
+ // Gestito automaticamente dal widget ElevenLabs
+ console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
 }
 
 function requireAuthOrModalForChat(mode) {
