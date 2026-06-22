@@ -25,7 +25,7 @@ function loadElevenLabsScript() {
       resolve();
       return;
     }
-    
+
     const script = document.createElement('script');
     script.id = 'elevenlabs-convai-script';
     script.src = 'https://elevenlabs.io/convai-widget/index.js';
@@ -52,7 +52,7 @@ function getNatalData() {
 // ===== COSTRUISCI DYNAMIC VARIABLES =====
 function buildDynamicVars(profile, natal, category) {
   const vars = {};
-  
+
   // Dati base
   vars.nome = profile?.full_name?.split(' ')[0] || 'amico';
   vars.segno_solare = profile?.sun_sign || natal?.planets?.find(p => p.key === 'sun')?.sign || 'sconosciuto';
@@ -61,20 +61,20 @@ function buildDynamicVars(profile, natal, category) {
   vars.data_nascita = profile?.birth_date || 'sconosciuta';
   vars.citta_nascita = profile?.birth_city || 'sconosciuta';
   vars.categoria = category || 'generale';
-  
+
   // Pianeti
   const planetKeys = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
   planetKeys.forEach(key => {
     const p = natal?.planets?.find(pl => pl.key === key);
     vars[`pianeta_${key}`] = p ? `${p.sign} ${p.degree}°` : 'sconosciuto';
   });
-  
+
   // Case
   for (let i = 1; i <= 12; i++) {
     const h = natal?.houses?.[i - 1];
     vars[`casa_${i}`] = h ? `${h.sign} ${h.degree}°` : 'sconosciuta';
   }
-  
+
   return vars;
 }
 
@@ -82,21 +82,21 @@ function buildDynamicVars(profile, natal, category) {
 function initWidget(category) {
   const container = document.getElementById('elevenlabs-widget-container');
   if (!container) return;
-  
+
   const profile = getCurrentProfile();
   const natal = getNatalData();
   const vars = buildDynamicVars(profile, natal, category);
-  
+
   // JSON string per dynamic-variables
   const varsJson = JSON.stringify(vars);
-  
+
   container.innerHTML = `
     <elevenlabs-convai 
       agent-id="${ELEVENLABS_AGENT_ID}"
       dynamic-variables='${varsJson}'
     ></elevenlabs-convai>
   `;
-  
+
   console.log('🎙️ Widget ElevenLabs inizializzato');
   console.log('📊 Dynamic variables:', vars);
 }
@@ -147,7 +147,7 @@ export async function startVoiceSession(category) {
   const bar = document.getElementById('voiceTimerBar');
   const text = document.getElementById('voiceTimerText');
   const status = document.getElementById('voiceStatus');
-  
+
   if (bar) { bar.style.width = '0%'; bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)'; }
   if (text) text.textContent = '18:00';
   if (status) status.textContent = '⏳ Caricamento...';
@@ -170,13 +170,13 @@ export function endSession() {
   session.active = false;
   clearInterval(session.timerInterval);
   session.timerInterval = null;
-  
+
   const container = document.getElementById('elevenlabs-widget-container');
   if (container) container.innerHTML = '';
-  
+
   const status = document.getElementById('voiceStatus');
   if (status) status.textContent = 'Sessione terminata';
-  
+
   console.log('🎙️ SESSIONE TERMINATA');
 }
 
