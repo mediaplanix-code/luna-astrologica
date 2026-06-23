@@ -1,10 +1,11 @@
 // ============================================================
-// UI.JS v6.0 — Renderizza tutti i componenti UI
+// UI.JS v6.1 — Renderizza tutti i componenti UI
 // FIX: Pagina voce con ElevenLabs Conversational AI Widget
 // FIX: compat modal con reset e struttura per risultato reale
 // FIX v2: Home senza scelta chat/voce, apertura diretta voce
 // FIX v3: Carrello al posto crediti, spazio voce dedicato
 // FIX v4: Pagina voce con timer, stato, conversazione reale
+// FIX v5: Eliminata chat testuale, solo microfono in fondo
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -177,27 +178,6 @@ export function renderHoroscopePage(signName) {
         </footer>
     `;
     setHTML("page-horoscope", html);
-}
-
-// ===== RENDER CHAT PAGE =====
-export function renderChatPage() {
-    const html = `
-        <div class="chat-header">
-            <button class="chat-back" onclick="window.app.goBackFromChat()">🔙</button>
-            <div class="chat-title">💬 Luna Astrologica</div>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="msg msg-ai" id="currentExchange">
-                <p>Ciao! Sono Luna, la tua astrologa personale. Come posso aiutarti oggi?</p>
-                <div class="msg-meta">Luna • ora</div>
-            </div>
-        </div>
-        <div class="chat-input-wrap">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Scrivi un messaggio..." onkeypress="if(event.key==='Enter')window.app.sendMessage()">
-            <button class="chat-send" onclick="window.app.sendMessage()">Invia</button>
-        </div>
-    `;
-    setHTML("page-chat", html);
 }
 
 // ===== RENDER VOICE PAGE (v6.0 — ElevenLabs Widget) =====
@@ -376,8 +356,7 @@ export function renderCompatModal() {
     setHTML("compatModal", html);
 }
 
-// ===== ICONS SVG =====
-const CHAT_ICON = `<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+// ===== ICONA MICROFONO =====
 const VOICE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
 
 // ===== RENDER PERSONALIZED PAGE =====
@@ -488,13 +467,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <div class="accordion-body" id="acc-wheel">
                 <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('ruota')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
                 <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">Tema natale calcolato con effemeridi svizzere</p>
@@ -520,13 +495,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('pianeti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -553,13 +524,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('case')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -575,13 +542,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('aspetti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -597,13 +560,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('transiti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
