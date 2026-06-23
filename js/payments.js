@@ -1,12 +1,10 @@
 // ============================================================
-// PAYMENTS.JS v2.0 — Abbonamento + Pacchetti + Chat AI
-// Modalità test finché Stripe non è attivo
+// PAYMENTS.JS v2.1 — Aggiunti: sogni, affinita, welcome gift, messaggio regalo overlay
 // ============================================================
 
 import { CONFIG } from './config.js';
 import { getCurrentUser, getCurrentProfile, updateCredits } from './auth.js';
 
-// ===== CONFIGURAZIONE PACCHETTI =====
 const PACKAGES = {
     subscription: {
         id: 'sub_trimestrale',
@@ -30,6 +28,10 @@ const PACKAGES = {
         { id: 'svc_salute', name: 'Salute', icon: '🏥', price: 45, duration: '18 min', category: 'salute', type: 'voice' },
         { id: 'svc_denaro', name: 'Denaro', icon: '💰', price: 45, duration: '18 min', category: 'denaro', type: 'voice' },
         { id: 'svc_famiglia', name: 'Famiglia', icon: '👨‍👩‍👧‍👦', price: 45, duration: '18 min', category: 'famiglia', type: 'voice' },
+        { id: 'svc_viaggi', name: 'Viaggi', icon: '✈️', price: 45, duration: '18 min', category: 'viaggi', type: 'voice' },
+        { id: 'svc_partner', name: 'Partner', icon: '💑', price: 45, duration: '18 min', category: 'partner', type: 'voice' },
+        { id: 'svc_sogni', name: 'Interpretazione Sogni', icon: '🌙', price: 45, duration: '18 min', category: 'sogni', type: 'voice' },
+        { id: 'svc_affinita', name: 'Affinità di Coppia', icon: '💞', price: 45, duration: '18 min', category: 'affinita', type: 'voice' },
     ],
     chat: {
         id: 'chat_ai',
@@ -42,11 +44,12 @@ const PACKAGES = {
     }
 };
 
-const SPENDING_THRESHOLD = 49; // € per rinnovo gratuito
+const SPENDING_THRESHOLD = 49;
 
-// ===== STATO ABBONAMENTO (localStorage finché non c'è DB) =====
 const SUB_KEY = 'luna_subscription';
 const TX_KEY = 'luna_transactions';
+const VOICE_PKG_KEY = 'luna_voice_package';
+const WELCOME_GIFT_KEY = 'luna_welcome_gift_shown';
 
 function getSubscription() {
     try {
@@ -75,20 +78,49 @@ function addTransaction(tx) {
     updateSpendingTracking();
 }
 
-// ===== CALCOLO STATO ABBONAMENTO =====
+// ===== STATO PACCHETTO VOCE ATTIVO =====
+export function getVoicePackage() {
+    try {
+        const raw = localStorage.getItem(VOICE_PKG_KEY);
+        if (!raw) return null;
+        const pkg = JSON.parse(raw);
+        // Verifica scadenza
+        if (pkg.expiresAt && Date.now() > pkg.expiresAt) {
+            localStorage.removeItem(VOICE_PKG_KEY);
+            return null;
+        }
+        return pkg;
+    } catch { return null; }
+}
+
+export function setVoicePackage(pkg) {
+    localStorage.setItem(VOICE_PKG_KEY, JSON.stringify(pkg));
+}
+
+export function hasVoicePackage() {
+    return !!getVoicePackage();
+}
+
+export function getVoicePackageMinutesRemaining() {
+    const pkg = getVoicePackage();
+    if (!pkg) return 0;
+    const elapsed = Math.floor((Date.now() - pkg.startedAt) / 1000 / 60);
+    return Math.max(0, pkg.durationMinutes - elapsed);
+}
+
+// ===== ABBONAMENTO =====
 export function getSubscriptionStatus() {
     const sub = getSubscription();
     const now = Date.now();
 
     if (!sub) {
-        return { active: false, expired: true, daysLeft: 0, canRenewFree: false };
+        return { active: false, expired: true, daysLeft: 0, canRenewFree: false, hasWelcomeGift: false };
     }
 
     const expiresAt = sub.expiresAt;
     const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
     const active = daysLeft > 0;
 
-    // Calcola spesa nel periodo corrente
     const periodStart = sub.startedAt;
     const periodEnd = expiresAt;
     const txs = getTransactions();
@@ -107,17 +139,52 @@ export function getSubscriptionStatus() {
         periodSpending,
         canRenewFree,
         spendingNeeded: Math.max(0, SPENDING_THRESHOLD - periodSpending),
-        spendingProgress: Math.min(100, (periodSpending / SPENDING_THRESHOLD) * 100)
+        spendingProgress: Math.min(100, (periodSpending / SPENDING_THRESHOLD) * 100),
+        hasWelcomeGift: sub.isWelcomeGift || false
     };
 }
 
-// ===== VERIFICA SE UTENTE HA ACCESSO COMPLETO =====
 export function hasFullAccess() {
-    const status = getSubscriptionStatus();
-    return status.active;
+    return getSubscriptionStatus().active;
 }
 
-// ===== SIMULA PAGAMENTO (modalità test) =====
+// ===== REGALO BENVENUTO 3 MESI =====
+export function activateWelcomeGift() {
+    const user = getCurrentUser();
+    if (!user) return false;
+
+    const now = Date.now();
+    const existing = getSubscription();
+    if (existing && existing.active) return false; // Già abbonato
+
+    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
+    if (shown) return false; // Già mostrato in passato
+
+    setSubscription({
+        startedAt: now,
+        expiresAt: now + (90 * 24 * 60 * 60 * 1000),
+        userId: user.id,
+        isWelcomeGift: true
+    });
+
+    addTransaction({
+        type: 'welcome_gift',
+        packageId: 'sub_trimestrale',
+        amount: 0,
+        description: '🎁 Regalo di benvenuto — 3 mesi gratis'
+    });
+
+    localStorage.setItem(WELCOME_GIFT_KEY, 'true');
+    return true;
+}
+
+export function shouldShowWelcomeGift() {
+    const status = getSubscriptionStatus();
+    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
+    return !status.active && !shown;
+}
+
+// ===== SIMULA PAGAMENTO =====
 export async function simulatePayment(packageId, amount) {
     const user = getCurrentUser();
     if (!user) {
@@ -125,40 +192,45 @@ export async function simulatePayment(packageId, amount) {
         return false;
     }
 
-    // Simula delay rete
     await new Promise(r => setTimeout(r, 800));
-
     const now = Date.now();
 
     if (packageId === 'sub_trimestrale') {
-        // Abbonamento
         const existing = getSubscription();
         let startedAt, expiresAt;
 
         if (existing && existing.expiresAt > now) {
-            // Rinnovo prima della scadenza: estendi
             startedAt = existing.startedAt;
             expiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
         } else {
-            // Nuovo abbonamento
             startedAt = now;
             expiresAt = now + (90 * 24 * 60 * 60 * 1000);
         }
 
         setSubscription({ startedAt, expiresAt, userId: user.id });
         addTransaction({ type: 'subscription', packageId, amount, description: 'Abbonamento trimestrale' });
-
-        alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
+        alert(`✅ Abbonamento attivato!
+Valido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
 
-    // Servizio o Chat
-    addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${packageId}` });
+    // Servizio voce
+    const svc = PACKAGES.services.find(s => s.id === packageId);
+    if (svc) {
+        setVoicePackage({
+            packageId,
+            category: svc.category,
+            startedAt: now,
+            durationMinutes: 18,
+            expiresAt: now + (18 * 60 * 1000)
+        });
+        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${svc.name}` });
+    } else {
+        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${packageId}` });
+    }
 
-    // Verifica se con questa spesa si raggiunge la soglia per rinnovo gratuito
     const status = getSubscriptionStatus();
     if (status.canRenewFree && status.daysLeft <= 30) {
-        // Auto-rinnova gratuito
         const sub = getSubscription();
         if (sub) {
             sub.expiresAt += (90 * 24 * 60 * 60 * 1000);
@@ -167,18 +239,23 @@ export async function simulatePayment(packageId, amount) {
         }
     }
 
-    alert(`✅ Acquisto completato!\nHai acquistato ${packageId} per €${amount}`);
+    alert(`✅ Acquisto completato!
+Hai acquistato ${getPackageName(packageId)} per €${amount}`);
     return true;
 }
 
-// ===== STRIPE CHECKOUT (placeholder per produzione) =====
+// ===== STRIPE CHECKOUT =====
 export async function startStripeCheckout(packageId, amount) {
     if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
-        // Modalità test
         const confirmed = confirm(
-            `💳 MODALITÀ TEST\n\n` +
-            `Stai per acquistare:\n` +
-            `${getPackageName(packageId)} — €${amount}\n\n` +
+            `💳 MODALITÀ TEST
+
+` +
+            `Stai per acquistare:
+` +
+            `${getPackageName(packageId)} — €${amount}
+
+` +
             `Confermi il pagamento simulato?`
         );
         if (confirmed) {
@@ -187,7 +264,6 @@ export async function startStripeCheckout(packageId, amount) {
         return false;
     }
 
-    // Produzione Stripe
     try {
         const user = getCurrentUser();
         if (!user) {
@@ -241,7 +317,6 @@ export function renderPaymentsPage() {
     const txs = getTransactions().slice(0, 5);
     const user = getCurrentUser();
 
-    // Sezione abbonamento
     const subSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
@@ -258,7 +333,7 @@ export function renderPaymentsPage() {
                 ? `<div style="font-size:0.8125rem;color:#4ade80;margin-bottom:0.75rem;">✅ Rinnovo gratuito garantito! Hai speso €${status.periodSpending}</div>`
                 : `<div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
                     💰 Hai speso €${status.periodSpending}/€${SPENDING_THRESHOLD} in questo periodo
-n                   </div>`
+                   </div>`
             }
             <button class="sub-btn secondary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
                 Rinnova ora (€15)
@@ -281,7 +356,6 @@ n                   </div>`
         </div>
     `;
 
-    // Progresso spesa
     const spendingSection = status.active ? `
         <div class="spending-tracker">
             <div class="spending-header">
@@ -301,7 +375,6 @@ n                   </div>`
         </div>
     ` : '';
 
-    // Pacchetti servizi
     const packagesSection = `
         <div class="payments-header">
             <h2>🔮 Pacchetti Servizi</h2>
@@ -320,7 +393,6 @@ n                   </div>`
         </div>
     `;
 
-    // Chat AI
     const chatSection = `
         <div class="chat-ai-card" onclick="window.app.startStripeCheckout('chat_ai', 25)">
             <div class="chat-ai-icon">${PACKAGES.chat.icon}</div>
@@ -333,7 +405,6 @@ n                   </div>`
         </div>
     `;
 
-    // Storico
     const historySection = txs.length > 0 ? `
         <div class="history-section">
             <div class="history-title">📜 Ultime transazioni</div>
@@ -374,31 +445,22 @@ n                   </div>`
     `;
 }
 
-// ===== AGGIORNA UI HEADER (crediti pill) =====
 export function updatePaymentsUI() {
     const status = getSubscriptionStatus();
     const pill = document.getElementById('creditsPill');
     if (pill) {
         pill.style.cursor = 'pointer';
         pill.onclick = () => window.app.showPaymentsPage();
-
-        // Aggiungi indicatore stato abbonamento
         const dot = document.getElementById('creditsDot');
         if (dot) {
             dot.className = 'credits-dot';
-            if (status.active) {
-                dot.style.background = '#22c55e';
-            } else {
-                dot.style.background = '#ef4444';
-            }
+            dot.style.background = status.active ? '#22c55e' : '#ef4444';
         }
     }
 }
 
-// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA =====
 export function shouldBlurPersonalized() {
     return !hasFullAccess();
 }
 
-// Esporta pacchetti per uso esterno
 export { PACKAGES, SPENDING_THRESHOLD };
