@@ -1,5 +1,5 @@
 // ============================================================
-// APP.JS v13.1b — FIX: Personalizza apre modal registrazione
+// APP.JS v13.2 — Overlay regalo, benvenuto, categorie sogni/affinita
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -28,7 +28,9 @@ import {
  getSubscriptionStatus,
  hasFullAccess,
  updatePaymentsUI,
- shouldBlurPersonalized
+ shouldBlurPersonalized,
+ activateWelcomeGift,
+ shouldShowWelcomeGift
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
@@ -89,7 +91,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  window.history.replaceState({}, document.title, window.location.pathname);
  }
 
- // Gestione redirect da pagamento Stripe
  const paymentStatus = urlParams.get("payment");
  if (paymentStatus === "success") {
  alert("✅ Pagamento completato con successo!");
@@ -104,7 +105,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  let user = getCurrentUser();
  let profile = getCurrentProfile();
 
- // Retry esplicito se abbiamo user ma profilo latente
  let attempts = 0;
  while (user && !profile && attempts < 5) {
  console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
@@ -249,7 +249,7 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA =====
+// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
 function applyPersonalizedBlur() {
  if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
 
@@ -281,11 +281,15 @@ function applyPersonalizedBlur() {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
  overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;">
- <span style="font-size:1.5rem;">🔒</span>
- <span style="color:var(--gold);font-weight:600;font-size:0.9375rem;">Abbonamento richiesto</span>
- <span style="color:var(--text-dim);font-size:0.8125rem;">Sblocca per €15/trimestre</span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.5rem 1.25rem;font-size:0.8125rem;" onclick="window.app.showPaymentsPage()">Abbonati ora</button>
+ <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
+ <span style="font-size:2rem;">🎁</span>
+ <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
+ <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
+ Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong> (valore €15)
+ </span>
+ <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift()">
+ 🎁 Attiva ora il regalo
+ </button>
  </div>
  `;
  el.appendChild(overlay);
@@ -307,7 +311,6 @@ function goHome() {
  showPage("home");
 }
 
-// ===== FIX: PERSONALIZZA APRE REGISTRAZIONE =====
 function requireAuthOrModal() {
  const user = getCurrentUser();
  if (user) {
@@ -318,17 +321,13 @@ function requireAuthOrModal() {
  }
  showPage("personalized");
  } else {
- // Utente non loggato → apre modal in modalità REGISTRAZIONE
  openAuthModal();
- // Switch alla tab registrazione dopo un breve delay per assicurare il DOM
  setTimeout(() => {
  switchAuthTab('register');
- // Assicurati che i form siano visibili
  const loginForm = $("loginForm");
- const regForm = $("regForm");
+ const regForm = $("registerForm");
  if (loginForm) loginForm.classList.add("hidden");
  if (regForm) regForm.classList.remove("hidden");
- // Aggiorna titolo
  const title = $("authModalTitle");
  if (title) title.textContent = "Registrati";
  }, 50);
@@ -343,7 +342,7 @@ async function startVoiceSession(category) {
  setTimeout(() => {
  switchAuthTab('register');
  const loginForm = $("loginForm");
- const regForm = $("regForm");
+ const regForm = $("registerForm");
  if (loginForm) loginForm.classList.add("hidden");
  if (regForm) regForm.classList.remove("hidden");
  const title = $("authModalTitle");
@@ -353,11 +352,8 @@ async function startVoiceSession(category) {
  }
 
  state.voiceCategory = category;
-
- // Mostra la pagina voce
  showPage("voice");
 
- // Avvia la sessione voce con ElevenLabs
  const started = await startRealVoiceSession(category);
  if (!started) {
  const statusEl = document.getElementById('voiceStatus');
@@ -369,13 +365,11 @@ async function startVoiceSession(category) {
 }
 
 function goBackFromVoice() {
- // Termina sessione voce
  endRealVoiceSession();
  showPage(state.lastPage || "home");
 }
 
 function toggleVoiceListening() {
- // Gestito automaticamente dal widget ElevenLabs
  console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
 }
 
@@ -407,7 +401,6 @@ function switchAuthTab(tab) {
  if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
  if (regForm) regForm.classList.toggle("hidden", tab !== "register");
 
- // Aggiorna titolo
  const title = $("authModalTitle");
  if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
 
@@ -426,7 +419,7 @@ function handleShowServiceChoice(category) {
  setTimeout(() => {
  switchAuthTab('register');
  const loginForm = $("loginForm");
- const regForm = $("regForm");
+ const regForm = $("registerForm");
  if (loginForm) loginForm.classList.add("hidden");
  if (regForm) regForm.classList.remove("hidden");
  const title = $("authModalTitle");
@@ -447,7 +440,7 @@ function handleChooseService(mode) {
  }
 }
 
-// ===== PAGINA CREDITI / ABBONAMENTO =====
+// ===== PAGINA PAGAMENTI =====
 function showPaymentsPage() {
  const page = document.getElementById('page-payments');
  if (!page || page.innerHTML.trim() === '') {
@@ -486,29 +479,21 @@ async function handleLogoutClick() {
  console.log('🚪 Logout richiesto...');
 
  try {
- // Termina eventuale sessione voce
  endRealVoiceSession();
-
- // Chiama handleLogout da auth.js
  await handleLogout();
 
- // Pulizia aggiuntiva stato app
  cachedNatalChart = null;
  isLoadingChart = false;
  state.currentPage = "home";
  state.lastPage = "home";
 
- // Pulisci DOM pagine
  const personalized = document.getElementById('page-personalized');
  if (personalized) personalized.innerHTML = '';
 
  const payments = document.getElementById('page-payments');
  if (payments) payments.innerHTML = '';
 
- // Ricostruisci home
  renderHomePage();
-
- // Mostra home
  showPage("home");
 
  console.log('✅ Logout completato con successo');
@@ -555,6 +540,7 @@ window.app = {
  loadNatalChart,
  geocodeProfileIfNeeded,
  startStripeCheckout,
+ activateWelcomeGift,
  // Voce reale
  startVoiceSession,
  endVoiceSession: () => {
@@ -564,7 +550,6 @@ window.app = {
  goBackFromVoice,
  toggleVoiceListening,
  startVoiceRecording: () => {
- // Placeholder per futura integrazione recording avanzato
  alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
  },
  openLunaFromCompat: function(category) {
