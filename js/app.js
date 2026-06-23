@@ -1,10 +1,5 @@
 // ============================================================
-// APP.JS v13.0 — Orchestratore principale
-// FIX v13: Integrazione ElevenLabs Conversational AI Widget
-// FIX v8: logout senza reload, renderHeader robusto
-// FIX v9: Pagina Crediti/Abbonamento integrata
-// FIX v10: Logout corretto, spazio voce dedicato
-// FIX v11: Voce reale con Web Speech API, timer, interpretazione astrologica
+// APP.JS v13.1b — FIX: Personalizza apre modal registrazione
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -12,7 +7,7 @@ import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
- renderChatPage, renderAuthModal, renderCompatModal,
+ renderAuthModal, renderCompatModal,
  renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
  showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
@@ -26,10 +21,6 @@ import {
  openCompatModal, closeCompatModal, handleCompatSubmit,
  showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
-import {
- setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
- sendMessage, goBackFromChat
-} from './chat.js';
 import { loadTransits } from './transits.js';
 import {
  renderPaymentsPage,
@@ -48,7 +39,6 @@ import {
 let state = {
  currentPage: "home",
  lastPage: "home",
- chatMode: "chat",
  voiceCategory: null
 };
 
@@ -91,7 +81,6 @@ document.addEventListener("DOMContentLoaded", async () => {
  renderAuthModal();
  renderCompatModal();
  renderHomePage();
- renderChatPage();
  renderVoicePage();
 
  const urlParams = new URLSearchParams(window.location.search);
@@ -228,7 +217,7 @@ function updateUI(authState) {
 }
 
 function showPage(pageId) {
- if (pageId !== "chat" && pageId !== "voice") state.lastPage = pageId;
+ if (pageId !== "voice") state.lastPage = pageId;
  state.currentPage = pageId;
  uiShowPage(pageId, state.lastPage);
  renderNav(pageId);
@@ -318,6 +307,7 @@ function goHome() {
  showPage("home");
 }
 
+// ===== FIX: PERSONALIZZA APRE REGISTRAZIONE =====
 function requireAuthOrModal() {
  const user = getCurrentUser();
  if (user) {
@@ -328,7 +318,20 @@ function requireAuthOrModal() {
  }
  showPage("personalized");
  } else {
+ // Utente non loggato → apre modal in modalità REGISTRAZIONE
  openAuthModal();
+ // Switch alla tab registrazione dopo un breve delay per assicurare il DOM
+ setTimeout(() => {
+ switchAuthTab('register');
+ // Assicurati che i form siano visibili
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ // Aggiorna titolo
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  }
 }
 
@@ -337,6 +340,15 @@ async function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  return;
  }
 
@@ -367,17 +379,6 @@ function toggleVoiceListening() {
  console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
 }
 
-function requireAuthOrModalForChat(mode) {
- state.chatMode = mode;
- setChatMode(mode);
- const user = getCurrentUser();
- if (user) {
- showPage("chat");
- } else {
- openAuthModal();
- }
-}
-
 function openAuthModal() {
  const modal = $("authModal");
  if (modal) {
@@ -399,12 +400,16 @@ function switchAuthTab(tab) {
  const loginTab = $("tab-login");
  const regTab = $("tab-register");
  const loginForm = $("loginForm");
- const regForm = $("regForm");
+ const regForm = $("registerForm");
 
  if (loginTab) loginTab.classList.toggle("active", tab === "login");
  if (regTab) regTab.classList.toggle("active", tab === "register");
  if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
  if (regForm) regForm.classList.toggle("hidden", tab !== "register");
+
+ // Aggiorna titolo
+ const title = $("authModalTitle");
+ if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
 
  hideAlerts();
 }
@@ -418,6 +423,15 @@ function handleShowServiceChoice(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  return;
  }
  startVoiceSession(category);
@@ -428,40 +442,9 @@ function handleChooseService(mode) {
  closeServiceChoice();
  if (!category) return;
 
- if (mode === 'chat') {
- setChatMode("chat");
- startCategoryChat(category);
- } else {
- setChatMode("voice");
- startCategoryChat(category);
+ if (mode === 'voice') {
+ startVoiceSession(category);
  }
-}
-
-function handleSendMessage() {
- sendMessage(
- getCurrentUser(),
- getCurrentProfile(),
- getCredits(),
- async () => {
- await updateCredits(-CONFIG.CREDITS_PER_MESSAGE);
- }
- );
-}
-
-function handleStartCategoryChat(topic) {
- startCategoryChat(topic);
-}
-
-function handleStartChatAbout(topic) {
- startChatAbout(topic);
-}
-
-function handleStartVoiceAbout(topic) {
- startVoiceAbout(topic);
-}
-
-function handleGoBackFromChat() {
- goBackFromChat(state.lastPage);
 }
 
 // ===== PAGINA CREDITI / ABBONAMENTO =====
@@ -471,7 +454,6 @@ function showPaymentsPage() {
  renderPaymentsPage();
  }
  showPage("payments");
- updatePaymentsUI();
 }
 
 function toggleLang() {
@@ -539,7 +521,6 @@ window.app = {
  showPage,
  goHome,
  requireAuthOrModal,
- requireAuthOrModalForChat,
  openAuthModal,
  closeAuthModal,
  switchAuthTab,
@@ -554,11 +535,6 @@ window.app = {
  closeCompatModal,
  handleCompatSubmit,
  toggleAccordion,
- sendMessage: handleSendMessage,
- startCategoryChat: handleStartCategoryChat,
- startChatAbout: handleStartChatAbout,
- startVoiceAbout: handleStartVoiceAbout,
- goBackFromChat: handleGoBackFromChat,
  showPaymentsPage,
  toggleLang,
  setLang,
