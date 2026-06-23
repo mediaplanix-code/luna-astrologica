@@ -1,50 +1,41 @@
 // ============================================================
-// CONFIG.JS v2.0 — Unico punto di configurazione
-// Aggiunti: feature flags abbonamento, pacchetti prezzi
+// CONFIG.JS v2.1 — Aggiunte categorie: sogni, affinita
 // ============================================================
 
 export const CONFIG = {
-  // Supabase
   SUPABASE_URL: "https://yyserqquzqoywtqrqvlk.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5c2VycXF1enFveXd0cXJxdmxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODgzMzAsImV4cCI6MjA5NDQ2NDMzMH0.FJWeBOUKX69Fk4BvFh0RSU92LiKj2e7ZoFczbkbw1dY",
 
-  // App
   APP_NAME: "Luna Astrologica",
   DEFAULT_LANG: "it",
   WELCOME_CREDITS: 10,
 
-  // Chat
   CHAT_MAX_HISTORY: 50,
   CREDITS_PER_MESSAGE: 1,
 
-  // Stripe (placeholder per futuro)
   STRIPE_PUBLISHABLE_KEY: "pk_test_YOUR_KEY",
   STRIPE_PRICE_ID: "price_YOUR_PRICE_ID",
 
-  // Worker API → Render
   WORKER_URL: "https://luna-astrologica-api-render.onrender.com",
 
-  // Feature flags
   FEATURES: {
     REAL_NATAL_CHART: false,
     AI_CHAT: false,
-    STRIPE_PAYMENTS: false,   // true quando avrai Stripe
+    STRIPE_PAYMENTS: false,
     TELEGRAM_BOT: false,
     VOICE_MODE: false,
-    SUBSCRIPTION: true,        // NUOVO: sistema abbonamento attivo
-    BLUR_UNSUBSCRIBED: true,   // NUOVO: offusca pagina se non abbonato
+    SUBSCRIPTION: true,
+    BLUR_UNSUBSCRIBED: true,
   },
 
-  // Pacchetti prezzi (referenza)
   PRICING: {
-    SUBSCRIPTION: 15,          // €/trimestre
-    SPENDING_THRESHOLD: 49,    // € per rinnovo gratuito
-    SERVICE_PACKAGE: 45,       // € per pacchetto servizio (18 min AI Voice)
-    CHAT_AI: 25,               // € per sessione chat AI (12 min)
+    SUBSCRIPTION: 15,
+    SPENDING_THRESHOLD: 49,
+    SERVICE_PACKAGE: 45,
+    CHAT_AI: 25,
   }
 };
 
-// Mappatura segni zodiacali
 export const ZODIAC_SIGNS = {
   "Ariete": { symbol: "♈", element: "Fuoco", ruler: "Marte", period: "21 Mar - 19 Apr" },
   "Toro": { symbol: "♉", element: "Terra", ruler: "Venere", period: "20 Apr - 20 Mag" },
@@ -85,13 +76,14 @@ export const CATEGORY_LABELS = {
   viaggi: "Viaggi",
   partner: "Partner",
   carriera: "Carriera",
+  sogni: "Sogni",
+  affinita: "Affinità",
 };
 
 export const LANGUAGE_FLAGS = {
   it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸"
 };
 
-// Schema tabella profiles per riferimento
 export const PROFILE_SCHEMA = {
   id: { type: "uuid", nullable: false },
   email: { type: "text", nullable: true },
