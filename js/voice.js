@@ -1,24 +1,22 @@
 // ============================================================
-// VOICE.JS v6.2 — ElevenLabs Conversational AI Widget
-// Dynamic Variables in formato JSON corretto
+// VOICE.JS v6.3 — Benvenuto AI + blocco, timer nascosto, pacchetti voce
 // ============================================================
 
 import { getCurrentUser, getCurrentProfile } from './auth.js';
+import { hasVoicePackage, getVoicePackage, getVoicePackageMinutesRemaining } from './payments.js';
 
-// ===== CONFIGURAZIONE =====
 const ELEVENLABS_AGENT_ID = 'agent_2001kkv60b6fetctf45errwqwjmg';
 
-// ===== STATO =====
 let session = {
   active: false,
   category: null,
   startTime: null,
   durationSeconds: 18 * 60,
   elapsedSeconds: 0,
-  timerInterval: null
+  timerInterval: null,
+  welcomePlayed: false
 };
 
-// ===== CARICA SCRIPT ELEVENLABS =====
 function loadElevenLabsScript() {
   return new Promise((resolve, reject) => {
     if (document.getElementById('elevenlabs-convai-script')) {
@@ -40,7 +38,6 @@ function loadElevenLabsScript() {
   });
 }
 
-// ===== RECUPERA DATI TEMA NATALE =====
 function getNatalData() {
   try {
     const saved = localStorage.getItem('luna_natal_chart');
@@ -49,11 +46,9 @@ function getNatalData() {
   return null;
 }
 
-// ===== COSTRUISCI DYNAMIC VARIABLES =====
 function buildDynamicVars(profile, natal, category) {
   const vars = {};
 
-  // Dati base
   vars.nome = profile?.full_name?.split(' ')[0] || 'amico';
   vars.segno_solare = profile?.sun_sign || natal?.planets?.find(p => p.key === 'sun')?.sign || 'sconosciuto';
   vars.segno_lunare = profile?.moon_sign || natal?.planets?.find(p => p.key === 'moon')?.sign || 'sconosciuto';
@@ -62,14 +57,12 @@ function buildDynamicVars(profile, natal, category) {
   vars.citta_nascita = profile?.birth_city || 'sconosciuta';
   vars.categoria = category || 'generale';
 
-  // Pianeti
   const planetKeys = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
   planetKeys.forEach(key => {
     const p = natal?.planets?.find(pl => pl.key === key);
     vars[`pianeta_${key}`] = p ? `${p.sign} ${p.degree}°` : 'sconosciuto';
   });
 
-  // Case
   for (let i = 1; i <= 12; i++) {
     const h = natal?.houses?.[i - 1];
     vars[`casa_${i}`] = h ? `${h.sign} ${h.degree}°` : 'sconosciuta';
@@ -78,8 +71,7 @@ function buildDynamicVars(profile, natal, category) {
   return vars;
 }
 
-// ===== INIZIALIZZA WIDGET =====
-function initWidget(category) {
+function initWidget(category, mode) {
   const container = document.getElementById('elevenlabs-widget-container');
   if (!container) return;
 
@@ -87,7 +79,10 @@ function initWidget(category) {
   const natal = getNatalData();
   const vars = buildDynamicVars(profile, natal, category);
 
-  // JSON string per dynamic-variables
+  // Aggiungi flag per il prompt di ElevenLabs
+  vars.has_package = mode === 'full' ? 'true' : 'false';
+  vars.minuti_rimanenti = mode === 'full' ? String(getVoicePackageMinutesRemaining()) : '0';
+
   const varsJson = JSON.stringify(vars);
 
   container.innerHTML = `
@@ -97,33 +92,13 @@ function initWidget(category) {
     ></elevenlabs-convai>
   `;
 
-  console.log('🎙️ Widget ElevenLabs inizializzato');
-  console.log('📊 Dynamic variables:', vars);
+  console.log('🎙️ Widget ElevenLabs inizializzato — modalità:', mode);
 }
 
-// ===== TIMER =====
 function startTimer() {
-  const bar = document.getElementById('voiceTimerBar');
-  const text = document.getElementById('voiceTimerText');
-
   session.timerInterval = setInterval(() => {
     session.elapsedSeconds++;
     const remaining = session.durationSeconds - session.elapsedSeconds;
-    const progress = (session.elapsedSeconds / session.durationSeconds) * 100;
-
-    if (bar) {
-      bar.style.width = `${progress}%`;
-      const min = remaining / 60;
-      if (min <= 1) bar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
-      else if (min <= 3) bar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)';
-      else bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)';
-    }
-
-    if (text) {
-      const m = Math.floor(remaining / 60);
-      const s = remaining % 60;
-      text.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-    }
 
     if (session.elapsedSeconds >= session.durationSeconds) {
       endSession();
@@ -139,25 +114,63 @@ export async function startVoiceSession(category) {
     return false;
   }
 
+  const hasPkg = hasVoicePackage();
+  const pkg = getVoicePackage();
+
   session.active = true;
   session.category = category || 'generale';
   session.startTime = Date.now();
   session.elapsedSeconds = 0;
+  session.welcomePlayed = false;
 
-  const bar = document.getElementById('voiceTimerBar');
-  const text = document.getElementById('voiceTimerText');
   const status = document.getElementById('voiceStatus');
 
-  if (bar) { bar.style.width = '0%'; bar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)'; }
-  if (text) text.textContent = '18:00';
-  if (status) status.textContent = '⏳ Caricamento...';
+  // Nascondi timer visibile
+  const timerWrap = document.querySelector('.voice-timer-wrap');
+  if (timerWrap) timerWrap.style.display = 'none';
 
   try {
     await loadElevenLabsScript();
-    initWidget(category);
-    if (status) status.textContent = '🎙️ Pronta — premi Start a call';
-    startTimer();
-    return true;
+
+    if (!hasPkg) {
+      // MODALITÀ BENVENUTO: carica widget, fa parlare Luna, poi blocca
+      initWidget(category, 'welcome');
+      if (status) status.textContent = '🎙️ Luna ti sta salutando...';
+
+      // Dopo 15 secondi di benvenuto, mostra blocco
+      setTimeout(() => {
+        session.welcomePlayed = true;
+        const container = document.getElementById('elevenlabs-widget-container');
+        if (container) container.innerHTML = '';
+
+        if (status) {
+          status.innerHTML = `
+            <div style="text-align:center; padding: 1rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎁</div>
+              <div style="color: var(--gold); font-weight: 600; margin-bottom: 0.5rem;">
+                Ciao ${getCurrentProfile()?.full_name?.split(' ')[0] || 'amico'}!
+              </div>
+              <div style="color: var(--text-dim); font-size: 0.875rem; margin-bottom: 1rem;">
+                Sono Luna, ho letto il tuo tema natale.<br>
+                Per parlare con me e approfondire il consulto,<br>
+                acquista un pacchetto dal carrello.
+              </div>
+              <button class="btn-gold" onclick="window.app.showPaymentsPage()" style="padding: 0.75rem 1.5rem;">
+                🛒 Vai al carrello
+              </button>
+            </div>
+          `;
+        }
+      }, 15000); // 15 secondi di benvenuto
+
+      return true;
+    } else {
+      // MODALITÀ FULL: pacchetto acquistato, parla liberamente
+      initWidget(category, 'full');
+      if (status) status.textContent = '🎙️ Luna è pronta per ascoltarti';
+      startTimer();
+      return true;
+    }
   } catch (err) {
     console.error('❌ Errore avvio ElevenLabs:', err);
     if (status) status.textContent = '⚠️ Errore caricamento voce';
@@ -175,12 +188,11 @@ export function endSession() {
   if (container) container.innerHTML = '';
 
   const status = document.getElementById('voiceStatus');
-  if (status) status.textContent = 'Sessione terminata';
+  if (status) status.textContent = 'Grazie per aver parlato con Luna';
 
   console.log('🎙️ SESSIONE TERMINATA');
 }
 
-// ===== STATO =====
 export function getStatus() {
   return {
     active: session.active,
