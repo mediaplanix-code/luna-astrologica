@@ -1,16 +1,10 @@
 // ============================================================
-// UI.JS v6.0 — Renderizza tutti i componenti UI
-// FIX: Pagina voce con ElevenLabs Conversational AI Widget
-// FIX: compat modal con reset e struttura per risultato reale
-// FIX v2: Home senza scelta chat/voce, apertura diretta voce
-// FIX v3: Carrello al posto crediti, spazio voce dedicato
-// FIX v4: Pagina voce con timer, stato, conversazione reale
+// UI.JS v6.2 — Aggiunte: sogni, affinita, messaggio regalo overlay
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
 import { $, setText, setHTML } from './utils.js';
 
-// ===== RENDER HEADER =====
 export function renderHeader(isLoggedIn, userData) {
     const avatarInitial = userData?.full_name
         ? userData.full_name.charAt(0).toUpperCase()
@@ -36,7 +30,6 @@ export function renderHeader(isLoggedIn, userData) {
                 </div>
             </div>
 
-            <!-- Carrello servizi -->
             <div class="cart-btn ${isLoggedIn ? 'active' : ''}" id="cartBtn" onclick="window.app.showPaymentsPage()" style="cursor:pointer;" title="Carrello servizi">
                 <span style="font-size:1.25rem;">🛒</span>
             </div>
@@ -49,12 +42,10 @@ export function renderHeader(isLoggedIn, userData) {
     setHTML("app-header", html);
 }
 
-// ===== RENDER BOTTOM NAV — RIMOSSA =====
 export function renderNav(activePage) {
     setHTML("app-nav", "");
 }
 
-// ===== RENDER HOME PAGE =====
 export function renderHomePage() {
     const signs = Object.entries(ZODIAC_SIGNS).map(([name, data]) => `
         <div class="card" onclick="window.app.showHoroscopePage('${name}')">
@@ -73,6 +64,8 @@ export function renderHomePage() {
         { key: "viaggi", icon: "✈️", cls: "cat-travel" },
         { key: "partner", icon: "💑", cls: "cat-partner" },
         { key: "carriera", icon: "📈", cls: "cat-career" },
+        { key: "sogni", icon: "🌙", cls: "cat-dreams" },
+        { key: "affinita", icon: "💞", cls: "cat-compat" },
     ].map(c => `
         <div class="card ${c.cls}" onclick="window.app.startVoiceSession('${c.key}')">
             <div class="card-icon">${c.icon}</div>
@@ -104,7 +97,6 @@ export function renderHomePage() {
     setHTML("page-home", html);
 }
 
-// ===== RENDER HOROSCOPE PAGE =====
 export function renderHoroscopePage(signName) {
     const data = ZODIAC_SIGNS[signName];
     const tags = (ZODIAC_TAGS[signName] || []).map(t => `<span class="tag">${t}</span>`).join("");
@@ -179,28 +171,6 @@ export function renderHoroscopePage(signName) {
     setHTML("page-horoscope", html);
 }
 
-// ===== RENDER CHAT PAGE =====
-export function renderChatPage() {
-    const html = `
-        <div class="chat-header">
-            <button class="chat-back" onclick="window.app.goBackFromChat()">🔙</button>
-            <div class="chat-title">💬 Luna Astrologica</div>
-        </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="msg msg-ai" id="currentExchange">
-                <p>Ciao! Sono Luna, la tua astrologa personale. Come posso aiutarti oggi?</p>
-                <div class="msg-meta">Luna • ora</div>
-            </div>
-        </div>
-        <div class="chat-input-wrap">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Scrivi un messaggio..." onkeypress="if(event.key==='Enter')window.app.sendMessage()">
-            <button class="chat-send" onclick="window.app.sendMessage()">Invia</button>
-        </div>
-    `;
-    setHTML("page-chat", html);
-}
-
-// ===== RENDER VOICE PAGE (v6.0 — ElevenLabs Widget) =====
 export function renderVoicePage() {
     const html = `
         <div class="voice-header">
@@ -208,7 +178,6 @@ export function renderVoicePage() {
             <div class="voice-title">🎙️ Luna</div>
         </div>
 
-        <!-- Timer -->
         <div class="voice-timer-wrap">
             <div class="voice-timer-bar-container">
                 <div class="voice-timer-bar" id="voiceTimerBar" style="width: 0%;"></div>
@@ -216,15 +185,11 @@ export function renderVoicePage() {
             <div class="voice-timer-text" id="voiceTimerText">18:00</div>
         </div>
 
-        <!-- Stato -->
         <div class="voice-status" id="voiceStatus">⏳ Caricamento...</div>
 
-        <!-- Container ElevenLabs Widget -->
         <div id="elevenlabs-widget-container" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 1rem;">
-            <!-- Widget inserito qui da voice.js -->
         </div>
 
-        <!-- Controlli -->
         <div class="voice-controls">
             <button class="voice-btn voice-btn-end" onclick="window.app.endVoiceSession(); window.app.goBackFromVoice();">
                 <span style="font-size: 1.25rem;">✕</span>
@@ -234,7 +199,6 @@ export function renderVoicePage() {
     setHTML("page-voice", html);
 }
 
-// ===== RENDER AUTH MODAL =====
 export function renderAuthModal() {
     const html = `
         <div class="modal">
@@ -330,7 +294,6 @@ export function renderAuthModal() {
     setHTML("authModal", html);
 }
 
-// ===== RENDER COMPAT MODAL =====
 export function renderCompatModal() {
     const html = `
         <div class="modal">
@@ -376,11 +339,8 @@ export function renderCompatModal() {
     setHTML("compatModal", html);
 }
 
-// ===== ICONS SVG =====
-const CHAT_ICON = `<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
 const VOICE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
 
-// ===== RENDER PERSONALIZED PAGE =====
 export function renderPersonalizedPage(profile, user, natalData) {
     const name = profile?.full_name || (user?.email?.split("@")[0]) || "Utente";
     const bd = profile?.birth_date ? new Date(profile.birth_date).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"}) : "--";
@@ -436,18 +396,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
- ${!profile?.telegram_chat_id ? `
-        <div style="position: fixed; bottom: 20px; right: 20px; z-index: 100;">
-            <a href="https://t.me/LunastrologicaBot?start=${profile?.id || ''}" 
-               target="_blank" 
-               style="display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; background: #0088cc; border-radius: 50%; text-decoration: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-                    <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.61c-.23.18-.42.33-.76.33z"/>
-                </svg>
-            </a>
-        </div>
-        ` : ''}
-
         <div style="padding: 0 1rem; margin-top:1rem;">
             <div class="section-title" style="margin-top:0;">✨ IL TUO OROSCOPO PERSONALIZZATO</div>
             <div class="horo-tabs" style="margin-bottom:0.75rem;">
@@ -488,13 +436,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <div class="accordion-body" id="acc-wheel">
                 <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('ruota')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
                 <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">Tema natale calcolato con effemeridi svizzere</p>
@@ -520,13 +464,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('pianeti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -553,13 +493,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('case')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -575,13 +511,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('aspetti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -597,13 +529,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                 </div>
                 <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startChatAbout('transiti')">
-                        ${CHAT_ICON}
-                        <span>Chiedi a Luna</span>
-                    </button>
                     <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
                         ${VOICE_ICON}
-                        <span>Spiegami</span>
+                        <span>Cosa vuol dire? Parla con Luna</span>
                     </button>
                 </div>
             </div>
@@ -634,7 +562,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
     setHTML("page-personalized", html);
 }
 
-// ===== SERVICE CHOICE MODAL — DISABILITATO =====
 let serviceChoiceCategory = null;
 
 export function showServiceChoice(category) {
@@ -651,7 +578,6 @@ export function getServiceChoiceCategory() {
     return serviceChoiceCategory;
 }
 
-// ===== NAVIGAZIONE PAGINE =====
 export function showPage(pageId, lastPageRef) {
     document.querySelectorAll(".page-section").forEach(s => s.classList.remove("active"));
 
@@ -662,8 +588,7 @@ export function showPage(pageId, lastPageRef) {
     return pageId;
 }
 
-// ===== HELPER: icona categoria =====
 function getCategoryIcon(key) {
-    const icons = { amore: "💖", denaro: "💰", lavoro: "💼", salute: "🏥", amici: "👥", famiglia: "👨‍👩‍👧‍👦", viaggi: "✈️", partner: "💑", carriera: "📈" };
+    const icons = { amore: "💖", denaro: "💰", lavoro: "💼", salute: "🏥", amici: "👥", famiglia: "👨‍👩‍👧‍👦", viaggi: "✈️", partner: "💑", carriera: "📈", sogni: "🌙", affinita: "💞" };
     return icons[key] || "✨";
 }
