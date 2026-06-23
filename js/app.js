@@ -1,11 +1,5 @@
 // ============================================================
-// APP.JS v13.1 — Orchestratore principale
-// FIX v13: Integrazione ElevenLabs Conversational AI Widget
-// FIX v8: logout senza reload, renderHeader robusto
-// FIX v9: Pagina Crediti/Abbonamento integrata
-// FIX v10: Logout corretto, spazio voce dedicato
-// FIX v11: Voce reale con Web Speech API, timer, interpretazione astrologica
-// FIX v12: Eliminata chat testuale, solo microfono
+// APP.JS v13.1b — FIX: Personalizza apre modal registrazione
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -313,6 +307,7 @@ function goHome() {
  showPage("home");
 }
 
+// ===== FIX: PERSONALIZZA APRE REGISTRAZIONE =====
 function requireAuthOrModal() {
  const user = getCurrentUser();
  if (user) {
@@ -323,7 +318,20 @@ function requireAuthOrModal() {
  }
  showPage("personalized");
  } else {
+ // Utente non loggato → apre modal in modalità REGISTRAZIONE
  openAuthModal();
+ // Switch alla tab registrazione dopo un breve delay per assicurare il DOM
+ setTimeout(() => {
+ switchAuthTab('register');
+ // Assicurati che i form siano visibili
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ // Aggiorna titolo
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  }
 }
 
@@ -332,6 +340,15 @@ async function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  return;
  }
 
@@ -390,6 +407,10 @@ function switchAuthTab(tab) {
  if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
  if (regForm) regForm.classList.toggle("hidden", tab !== "register");
 
+ // Aggiorna titolo
+ const title = $("authModalTitle");
+ if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
+
  hideAlerts();
 }
 
@@ -402,6 +423,15 @@ function handleShowServiceChoice(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("regForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
  return;
  }
  startVoiceSession(category);
@@ -424,7 +454,6 @@ function showPaymentsPage() {
  renderPaymentsPage();
  }
  showPage("payments");
- updatePaymentsUI();
 }
 
 function toggleLang() {
