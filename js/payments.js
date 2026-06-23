@@ -1,0 +1,404 @@
+// ============================================================
+// PAYMENTS.JS v2.0 — Abbonamento + Pacchetti + Chat AI
+// Modalità test finché Stripe non è attivo
+// ============================================================
+
+import { CONFIG } from './config.js';
+import { getCurrentUser, getCurrentProfile, updateCredits } from './auth.js';
+
+// ===== CONFIGURAZIONE PACCHETTI =====
+const PACKAGES = {
+    subscription: {
+        id: 'sub_trimestrale',
+        name: 'Abbonamento Completo',
+        price: 15,
+        periodDays: 90,
+        description: 'Sblocca tema natale, case, pianeti, aspetti, transiti e dossier',
+        features: [
+            'Tema natale completo',
+            'Case astrologiche',
+            'Posizione pianeti',
+            'Aspetti planetari',
+            'Transiti giornalieri',
+            'Dossier astrologico'
+        ]
+    },
+    services: [
+        { id: 'svc_amore', name: 'Amore', icon: '💖', price: 45, duration: '18 min', category: 'amore', type: 'voice' },
+        { id: 'svc_lavoro', name: 'Lavoro', icon: '💼', price: 45, duration: '18 min', category: 'lavoro', type: 'voice' },
+        { id: 'svc_carriera', name: 'Carriera', icon: '📈', price: 45, duration: '18 min', category: 'carriera', type: 'voice' },
+        { id: 'svc_salute', name: 'Salute', icon: '🏥', price: 45, duration: '18 min', category: 'salute', type: 'voice' },
+        { id: 'svc_denaro', name: 'Denaro', icon: '💰', price: 45, duration: '18 min', category: 'denaro', type: 'voice' },
+        { id: 'svc_famiglia', name: 'Famiglia', icon: '👨‍👩‍👧‍👦', price: 45, duration: '18 min', category: 'famiglia', type: 'voice' },
+    ],
+    chat: {
+        id: 'chat_ai',
+        name: 'Chat con Luna (AI)',
+        icon: '💬',
+        price: 25,
+        duration: '12 min',
+        description: 'Consulto astrologico via chat con intelligenza artificiale',
+        limit: 'Risposte limitate per sessione'
+    }
+};
+
+const SPENDING_THRESHOLD = 49; // € per rinnovo gratuito
+
+// ===== STATO ABBONAMENTO (localStorage finché non c'è DB) =====
+const SUB_KEY = 'luna_subscription';
+const TX_KEY = 'luna_transactions';
+
+function getSubscription() {
+    try {
+        const raw = localStorage.getItem(SUB_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
+function setSubscription(sub) {
+    localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+}
+
+function getTransactions() {
+    try {
+        const raw = localStorage.getItem(TX_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch { return []; }
+}
+
+function addTransaction(tx) {
+    const txs = getTransactions();
+    txs.unshift({ ...tx, id: 'tx_' + Date.now(), date: new Date().toISOString() });
+    localStorage.setItem(TX_KEY, JSON.stringify(txs.slice(0, 50)));
+    updateSpendingTracking();
+}
+
+// ===== CALCOLO STATO ABBONAMENTO =====
+export function getSubscriptionStatus() {
+    const sub = getSubscription();
+    const now = Date.now();
+
+    if (!sub) {
+        return { active: false, expired: true, daysLeft: 0, canRenewFree: false };
+    }
+
+    const expiresAt = sub.expiresAt;
+    const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
+    const active = daysLeft > 0;
+
+    // Calcola spesa nel periodo corrente
+    const periodStart = sub.startedAt;
+    const periodEnd = expiresAt;
+    const txs = getTransactions();
+    const periodSpending = txs
+        .filter(t => t.date >= periodStart && t.date <= periodEnd && t.type === 'service')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+    const canRenewFree = periodSpending >= SPENDING_THRESHOLD;
+
+    return {
+        active,
+        expired: !active,
+        daysLeft,
+        startedAt: sub.startedAt,
+        expiresAt,
+        periodSpending,
+        canRenewFree,
+        spendingNeeded: Math.max(0, SPENDING_THRESHOLD - periodSpending),
+        spendingProgress: Math.min(100, (periodSpending / SPENDING_THRESHOLD) * 100)
+    };
+}
+
+// ===== VERIFICA SE UTENTE HA ACCESSO COMPLETO =====
+export function hasFullAccess() {
+    const status = getSubscriptionStatus();
+    return status.active;
+}
+
+// ===== SIMULA PAGAMENTO (modalità test) =====
+export async function simulatePayment(packageId, amount) {
+    const user = getCurrentUser();
+    if (!user) {
+        alert("Devi essere loggato per effettuare un acquisto");
+        return false;
+    }
+
+    // Simula delay rete
+    await new Promise(r => setTimeout(r, 800));
+
+    const now = Date.now();
+
+    if (packageId === 'sub_trimestrale') {
+        // Abbonamento
+        const existing = getSubscription();
+        let startedAt, expiresAt;
+
+        if (existing && existing.expiresAt > now) {
+            // Rinnovo prima della scadenza: estendi
+            startedAt = existing.startedAt;
+            expiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
+        } else {
+            // Nuovo abbonamento
+            startedAt = now;
+            expiresAt = now + (90 * 24 * 60 * 60 * 1000);
+        }
+
+        setSubscription({ startedAt, expiresAt, userId: user.id });
+        addTransaction({ type: 'subscription', packageId, amount, description: 'Abbonamento trimestrale' });
+
+        alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
+        return true;
+    }
+
+    // Servizio o Chat
+    addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${packageId}` });
+
+    // Verifica se con questa spesa si raggiunge la soglia per rinnovo gratuito
+    const status = getSubscriptionStatus();
+    if (status.canRenewFree && status.daysLeft <= 30) {
+        // Auto-rinnova gratuito
+        const sub = getSubscription();
+        if (sub) {
+            sub.expiresAt += (90 * 24 * 60 * 60 * 1000);
+            setSubscription(sub);
+            addTransaction({ type: 'auto_renew', amount: 0, description: 'Rinnovo gratuito (spesa ≥ €49)' });
+        }
+    }
+
+    alert(`✅ Acquisto completato!\nHai acquistato ${packageId} per €${amount}`);
+    return true;
+}
+
+// ===== STRIPE CHECKOUT (placeholder per produzione) =====
+export async function startStripeCheckout(packageId, amount) {
+    if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
+        // Modalità test
+        const confirmed = confirm(
+            `💳 MODALITÀ TEST\n\n` +
+            `Stai per acquistare:\n` +
+            `${getPackageName(packageId)} — €${amount}\n\n` +
+            `Confermi il pagamento simulato?`
+        );
+        if (confirmed) {
+            return simulatePayment(packageId, amount);
+        }
+        return false;
+    }
+
+    // Produzione Stripe
+    try {
+        const user = getCurrentUser();
+        if (!user) {
+            alert("Devi essere loggato per acquistare");
+            return false;
+        }
+
+        const response = await fetch(`${CONFIG.WORKER_URL}/api/create-checkout`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: user.id,
+                packageId,
+                amount,
+                successUrl: window.location.origin + '/?payment=success',
+                cancelUrl: window.location.origin + '/?payment=cancel'
+            })
+        });
+
+        const { sessionId, url } = await response.json();
+
+        if (url) {
+            window.location.href = url;
+        } else if (sessionId && window.Stripe) {
+            const stripe = Stripe(CONFIG.STRIPE_PUBLISHABLE_KEY);
+            await stripe.redirectToCheckout({ sessionId });
+        }
+
+        return true;
+    } catch (err) {
+        console.error("Errore checkout Stripe:", err);
+        alert("Errore nel caricamento del pagamento. Riprova.");
+        return false;
+    }
+}
+
+function getPackageName(packageId) {
+    if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
+    const svc = PACKAGES.services.find(s => s.id === packageId);
+    if (svc) return svc.name;
+    if (packageId === 'chat_ai') return 'Chat con Luna (AI)';
+    return packageId;
+}
+
+// ===== RENDER PAGINA PAGAMENTI =====
+export function renderPaymentsPage() {
+    const container = document.getElementById('page-payments');
+    if (!container) return;
+
+    const status = getSubscriptionStatus();
+    const txs = getTransactions().slice(0, 5);
+    const user = getCurrentUser();
+
+    // Sezione abbonamento
+    const subSection = status.active ? `
+        <div class="sub-card">
+            <div class="sub-status active dot">Attivo</div>
+            <div class="sub-title">Abbonamento Completo</div>
+            <div class="sub-price">€15 <span>/ trimestre</span></div>
+            <ul class="sub-features">
+                ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
+            </ul>
+            <div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
+                ⏳ Scade il <strong style="color:var(--gold)">${new Date(status.expiresAt).toLocaleDateString('it-IT')}</strong> 
+                (${status.daysLeft} giorni rimasti)
+            </div>
+            ${status.canRenewFree 
+                ? `<div style="font-size:0.8125rem;color:#4ade80;margin-bottom:0.75rem;">✅ Rinnovo gratuito garantito! Hai speso €${status.periodSpending}</div>`
+                : `<div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
+                    💰 Hai speso €${status.periodSpending}/€${SPENDING_THRESHOLD} in questo periodo
+n                   </div>`
+            }
+            <button class="sub-btn secondary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
+                Rinnova ora (€15)
+            </button>
+        </div>
+    ` : `
+        <div class="sub-card" style="border-color:#ef4444;">
+            <div class="sub-status expired">Offuscato</div>
+            <div class="sub-title">Abbonamento Completo</div>
+            <div class="sub-price">€15 <span>/ trimestre</span></div>
+            <ul class="sub-features">
+                ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
+            </ul>
+            <div style="font-size:0.8125rem;color:#f87171;margin-bottom:0.75rem;">
+                🔒 La tua pagina personale mostra solo l'oroscopo giornaliero
+            </div>
+            <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
+                Sblocca ora per €15
+            </button>
+        </div>
+    `;
+
+    // Progresso spesa
+    const spendingSection = status.active ? `
+        <div class="spending-tracker">
+            <div class="spending-header">
+                <span class="spending-label">💰 Spesa nel periodo attuale</span>
+                <span class="spending-amount">€${status.periodSpending} / €${SPENDING_THRESHOLD}</span>
+            </div>
+            <div class="spending-bar">
+                <div class="spending-fill ${status.spendingProgress >= 100 ? 'complete' : ''}" 
+                     style="width:${status.spendingProgress}%"></div>
+            </div>
+            <div class="spending-note ${status.spendingProgress >= 100 ? 'complete' : ''}">
+                ${status.spendingProgress >= 100 
+                    ? '🎉 Complimenti! Il prossimo trimestre è gratuito' 
+                    : `Mancano €${status.spendingNeeded} per il rinnovo gratuito`
+                }
+            </div>
+        </div>
+    ` : '';
+
+    // Pacchetti servizi
+    const packagesSection = `
+        <div class="payments-header">
+            <h2>🔮 Pacchetti Servizi</h2>
+            <p>Consulto astrologico completo con AI Voice — 18 minuti</p>
+        </div>
+        <div class="packages-grid">
+            ${PACKAGES.services.map((pkg, i) => `
+                <div class="package-card ${i === 0 ? 'featured' : ''}" 
+                     onclick="window.app.startStripeCheckout('${pkg.id}', ${pkg.price})">
+                    <div class="package-icon">${pkg.icon}</div>
+                    <div class="package-name">${pkg.name}</div>
+                    <div class="package-price">€${pkg.price}</div>
+                    <div class="package-duration">⏱️ ${pkg.duration}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    // Chat AI
+    const chatSection = `
+        <div class="chat-ai-card" onclick="window.app.startStripeCheckout('chat_ai', 25)">
+            <div class="chat-ai-icon">${PACKAGES.chat.icon}</div>
+            <div class="chat-ai-info">
+                <div class="chat-ai-title">${PACKAGES.chat.name}</div>
+                <div class="chat-ai-desc">${PACKAGES.chat.description}</div>
+                <div class="chat-ai-price">€${PACKAGES.chat.price} <span style="font-size:0.75rem;color:var(--text-dim);">/ sessione</span></div>
+                <div class="chat-ai-limit">⏱️ ${PACKAGES.chat.duration} · ${PACKAGES.chat.limit}</div>
+            </div>
+        </div>
+    `;
+
+    // Storico
+    const historySection = txs.length > 0 ? `
+        <div class="history-section">
+            <div class="history-title">📜 Ultime transazioni</div>
+            ${txs.map(t => `
+                <div class="history-item">
+                    <div>
+                        <div class="history-desc">${t.description}</div>
+                        <div class="history-date">${new Date(t.date).toLocaleDateString('it-IT')}</div>
+                    </div>
+                    <div class="history-amount ${t.amount === 0 ? '' : 'negative'}">
+                        ${t.amount === 0 ? 'GRATIS' : '-€' + t.amount}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    ` : '';
+
+    container.innerHTML = `
+        <div class="payments-page">
+            <div class="payments-header">
+                <h2>💳 Crediti & Abbonamento</h2>
+                <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
+            </div>
+
+            ${subSection}
+            ${spendingSection}
+            ${packagesSection}
+            ${chatSection}
+            ${historySection}
+
+            <footer class="footer" style="margin-top:2rem;">
+                <p style="font-size:0.75rem;color:var(--text-dim);">
+                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
+                    Se spendi almeno €49 in servizi, il rinnovo è gratuito.
+                </p>
+            </footer>
+        </div>
+    `;
+}
+
+// ===== AGGIORNA UI HEADER (crediti pill) =====
+export function updatePaymentsUI() {
+    const status = getSubscriptionStatus();
+    const pill = document.getElementById('creditsPill');
+    if (pill) {
+        pill.style.cursor = 'pointer';
+        pill.onclick = () => window.app.showPaymentsPage();
+
+        // Aggiungi indicatore stato abbonamento
+        const dot = document.getElementById('creditsDot');
+        if (dot) {
+            dot.className = 'credits-dot';
+            if (status.active) {
+                dot.style.background = '#22c55e';
+            } else {
+                dot.style.background = '#ef4444';
+            }
+        }
+    }
+}
+
+// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA =====
+export function shouldBlurPersonalized() {
+    return !hasFullAccess();
+}
+
+// Esporta pacchetti per uso esterno
+export { PACKAGES, SPENDING_THRESHOLD };

@@ -1,0 +1,721 @@
+// ============================================================
+// VOICE.JS — Interazione vocale reale con Web Speech API
+// Gratuito, nessuna API esterna necessaria
+// Interpretazione astrologica basata su dati utente + transiti
+// ============================================================
+
+import { CONFIG } from './config.js';
+import { getCurrentUser, getCurrentProfile } from './auth.js';
+import { getSubscriptionStatus } from './payments.js';
+
+// ===== STATO SESSIONE VOCE =====
+let voiceSession = {
+    active: false,
+    category: null,
+    startTime: null,
+    durationSeconds: 18 * 60, // 18 minuti
+    elapsedSeconds: 0,
+    timerInterval: null,
+    recognition: null,
+    synthesis: null,
+    transcript: '',
+    isListening: false,
+    isSpeaking: false
+};
+
+// ===== INIZIALIZZA RICONOSCIMENTO VOCE =====
+function initSpeechRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.warn('❌ SpeechRecognition non supportato dal browser');
+        return null;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'it-IT';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+
+        if (finalTranscript) {
+            voiceSession.transcript = finalTranscript;
+            handleUserVoiceInput(finalTranscript);
+        }
+
+        // Aggiorna UI con testo interim
+        updateVoiceUI(interimTranscript || finalTranscript, 'user');
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Errore riconoscimento:', event.error);
+        if (event.error === 'no-speech') {
+            // Riavvia automaticamente se non sente nulla
+            if (voiceSession.active) {
+                setTimeout(() => {
+                    if (voiceSession.active && !voiceSession.isSpeaking) {
+                        try { recognition.start(); } catch(e) {}
+                    }
+                }, 500);
+            }
+        }
+    };
+
+    recognition.onend = () => {
+        // Riavvia automaticamente se sessione ancora attiva
+        if (voiceSession.active && !voiceSession.isSpeaking) {
+            setTimeout(() => {
+                try { recognition.start(); } catch(e) {}
+            }, 300);
+        }
+    };
+
+    return recognition;
+}
+
+// ===== INIZIALIZZA SINTESI VOCE =====
+function initSpeechSynthesis() {
+    const synth = window.speechSynthesis;
+    if (!synth) {
+        console.warn('❌ SpeechSynthesis non supportato');
+        return null;
+    }
+    return synth;
+}
+
+// ===== TROVA VOCE ITALIANA =====
+function getItalianVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    // Cerca voce italiana preferita
+    const preferred = voices.find(v => 
+        v.lang.startsWith('it') && 
+        (v.name.includes('Female') || v.name.includes('femmina') || v.name.includes('Anna') || v.name.includes('Alice'))
+    );
+    if (preferred) return preferred;
+
+    // Fallback qualsiasi voce italiana
+    const italian = voices.find(v => v.lang.startsWith('it'));
+    if (italian) return italian;
+
+    // Ultimo fallback: prima voce disponibile
+    return voices[0];
+}
+
+// ===== PARLA (TTS) =====
+function speak(text, onEnd) {
+    const synth = voiceSession.synthesis;
+    if (!synth) return;
+
+    // Ferma eventuale parlata precedente
+    synth.cancel();
+
+    voiceSession.isSpeaking = true;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = getItalianVoice();
+    utterance.lang = 'it-IT';
+    utterance.rate = 0.92; // Leggermente più lento per chiarezza
+    utterance.pitch = 1.05; // Leggermente più alto, tono femminile
+    utterance.volume = 1;
+
+    utterance.onend = () => {
+        voiceSession.isSpeaking = false;
+        if (onEnd) onEnd();
+    };
+
+    utterance.onerror = (e) => {
+        console.error('Errore TTS:', e);
+        voiceSession.isSpeaking = false;
+        if (onEnd) onEnd();
+    };
+
+    synth.speak(utterance);
+
+    // Aggiorna UI
+    updateVoiceUI(text, 'luna');
+}
+
+// ===== INTERPRETAZIONE ASTROLOGICA =====
+// Genera risposta basata sui dati reali dell'utente
+function generateAstrologicalResponse(userInput, category) {
+    const profile = getCurrentProfile();
+    const user = getCurrentUser();
+
+    if (!profile) {
+        return "Devi prima completare il tuo profilo per ricevere un'interpretazione personalizzata.";
+    }
+
+    // Recupera dati dal localStorage (tema natale calcolato)
+    let natalData = null;
+    try {
+        const saved = localStorage.getItem('luna_natal_chart');
+        if (saved) natalData = JSON.parse(saved);
+    } catch(e) {}
+
+    const sunSign = profile.sun_sign || natalData?.planets?.find(p => p.key === 'sun')?.sign || 'il tuo segno';
+    const moonSign = profile.moon_sign || natalData?.planets?.find(p => p.key === 'moon')?.sign || 'una posizione lunare';
+    const ascSign = profile.rising_sign || natalData?.ascendant?.name || 'il tuo ascendente';
+
+    // Data odierna per transiti
+    const today = new Date();
+    const dayName = today.toLocaleDateString('it-IT', { weekday: 'long' });
+    const dateStr = today.toLocaleDateString('it-IT');
+
+    // Costruisci interpretazione basata sulla categoria
+    const responses = {
+        amore: generateLoveReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        lavoro: generateWorkReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        carriera: generateCareerReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        denaro: generateMoneyReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        salute: generateHealthReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        famiglia: generateFamilyReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        amici: generateFriendsReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        viaggi: generateTravelReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        partner: generatePartnerReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData),
+        generale: generateGeneralReading(sunSign, moonSign, ascSign, dayName, dateStr, natalData)
+    };
+
+    return responses[category] || responses.generale;
+}
+
+// ===== GENERATORI DI LETTURA PER CATEGORIA =====
+function generateLoveReading(sun, moon, asc, day, date, natal) {
+    const lovePlanets = natal?.planets?.filter(p => 
+        ['venus', 'mars', 'moon'].includes(p.key)
+    ) || [];
+
+    const venus = lovePlanets.find(p => p.key === 'venus');
+    const mars = lovePlanets.find(p => p.key === 'mars');
+
+    let reading = `Ciao, sono Luna. Guardando il tuo tema natale, vedo che hai il Sole in ${sun} e la Luna in ${moon}. `;
+
+    if (venus) {
+        reading += `Venere, il pianeta dell'amore, si trova in ${venus.sign} a ${venus.degree}°. `;
+        if (venus.sign === 'Toro' || venus.sign === 'Bilancia') {
+            reading += `Questa è una posizione eccellente per Venere, ti dona un magnetismo naturale e una profonda capacità di dare e ricevere affetto. `;
+        } else if (venus.sign === 'Scorpione' || venus.sign === 'Ariete') {
+            reading += `Venere qui ti rende passionale e intenso nelle relazioni, a volte quasi troppo. `;
+        }
+    }
+
+    if (mars) {
+        reading += `Marte in ${mars.sign} indica come approcci il desiderio e la conquista. `;
+    }
+
+    reading += `Oggi, ${day} ${date}, i transiti suggeriscono di aprirti emotivamente. `;
+    reading += `Con l'Ascendente in ${asc}, la prima impressione che dai agli altri è quella di una persona ${getAscendantTrait(asc)}. `;
+    reading += `Il mio consiglio per il cuore oggi: segui l'intuizione lunare, ma lascia che Venere guidi le tue parole.`;
+
+    return reading;
+}
+
+function generateWorkReading(sun, moon, asc, day, date, natal) {
+    const mc = natal?.mc || {};
+    const saturn = natal?.planets?.find(p => p.key === 'saturn');
+    const jupiter = natal?.planets?.find(p => p.key === 'jupiter');
+
+    let reading = `Analizzando il tuo cielo natale, ${sun} con la Luna in ${moon} mi dice che nel lavoro ti muovi con ${getElementTrait(sun)}. `;
+
+    if (mc.name) {
+        reading += `Il tuo Medio Cielo in ${mc.name} indica la vocazione professionale verso ambiti ${getMCVocation(mc.name)}. `;
+    }
+
+    if (saturn) {
+        reading += `Saturno in ${saturn.sign} ti insegna la disciplina attraverso sfide specifiche nel settore lavorativo. `;
+    }
+
+    if (jupiter) {
+        reading += `Giove in ${jupiter.sign} è il tuo alleato per l'espansione professionale. `;
+    }
+
+    reading += `Per oggi ${day}, il consiglio astrologico è di concentrarti su obiettivi a medio termine. `;
+    reading += `L'energia di ${sun} ti supporta nelle trattative, mentre ${moon} suggerisce di fidarti del tuo istinto nelle decisioni.`;
+
+    return reading;
+}
+
+function generateCareerReading(sun, moon, asc, day, date, natal) {
+    return generateWorkReading(sun, moon, asc, day, date, natal) + 
+           ` Per la carriera specificamente, guarda alle opportunità che arrivano dal settore ${getCareerDirection(sun, natal)}.`;
+}
+
+function generateMoneyReading(sun, moon, asc, day, date, natal) {
+    const venus = natal?.planets?.find(p => p.key === 'venus');
+    const jupiter = natal?.planets?.find(p => p.key === 'jupiter');
+
+    let reading = `Dal punto di vista finanziario, il tuo tema natale rivela molto. `;
+    reading += `Con il Sole in ${sun}, il tuo approccio al denaro è ${getMoneyApproach(sun)}. `;
+
+    if (venus) {
+        reading += `Venere in ${venus.sign} influenza come attrai abbondanza. `;
+    }
+
+    if (jupiter) {
+        reading += `Giove in ${jupiter.sign} indica dove puoi trovare espansione economica. `;
+    }
+
+    reading += `Oggi ${date}, i transiti suggeriscono cautela nelle spese immediate ma aperture per investimenti legati alla tua vocazione.`;
+
+    return reading;
+}
+
+function generateHealthReading(sun, moon, asc, day, date, natal) {
+    const mars = natal?.planets?.find(p => p.key === 'mars');
+    const saturn = natal?.planets?.find(p => p.key === 'saturn');
+
+    let reading = `Per la salute, guardo Marte e Saturno nel tuo tema. `;
+
+    if (mars) {
+        reading += `Marte in ${mars.sign} indica la tua energia vitale e come la esprimi fisicamente. `;
+    }
+
+    if (saturn) {
+        reading += `Saturno in ${saturn.sign} indica aree dove potresti accumulare tensione se non gestisci lo stress. `;
+    }
+
+    reading += `Con ${sun} e Luna in ${moon}, il mio consiglio oggi è di ${getHealthAdvice(sun, moon)}.`;
+
+    return reading;
+}
+
+function generateFamilyReading(sun, moon, asc, day, date, natal) {
+    const moonData = natal?.planets?.find(p => p.key === 'moon');
+
+    let reading = `La famiglia nel tuo tema natale è rappresentata principalmente dalla Luna e dalla Casa IV. `;
+    reading += `Con la Luna in ${moon}, il tuo bisogno emotivo di radici è ${getMoonFamilyTrait(moon)}. `;
+
+    if (moonData) {
+        reading += `La posizione precisa a ${moonData.degree}° in ${moonData.sign} aggiunge una sfumatura ${getDegreeMeaning(moonData.degree)}. `;
+    }
+
+    reading += `Oggi è un buon giorno per riconnetterti con le origini, anche solo mentalmente.`;
+
+    return reading;
+}
+
+function generateFriendsReading(sun, moon, asc, day, date, natal) {
+    let reading = `Nelle amicizie, il tuo ${sun} ti rende ${getFriendshipTrait(sun)}. `;
+    reading += `La Luna in ${moon} suggerisce che cerchi amici che ${getMoonFriendshipTrait(moon)}. `;
+    reading += `Oggi i transiti favoriscono incontri casuali che potrebbero trasformarsi in legami significativi.`;
+    return reading;
+}
+
+function generateTravelReading(sun, moon, asc, day, date, natal) {
+    const jupiter = natal?.planets?.find(p => p.key === 'jupiter');
+
+    let reading = `Per i viaggi, guardo Giove e la Casa IX. `;
+    if (jupiter) {
+        reading += `Giove in ${jupiter.sign} indica che i viaggi più fortunati per te sono verso destinazioni ${getJupiterTravel(jupiter.sign)}. `;
+    }
+    reading += `Con il Sole in ${sun}, ti senti più te stesso quando esplori luoghi ${getSunTravel(sun)}.`;
+    return reading;
+}
+
+function generatePartnerReading(sun, moon, asc, day, date, natal) {
+    const venus = natal?.planets?.find(p => p.key === 'venus');
+    const mars = natal?.planets?.find(p => p.key === 'mars');
+
+    let reading = `Nel tema natale, il partner è rappresentato dalla Casa VII e da Venere/Marte. `;
+    if (venus) reading += `Venere in ${venus.sign} indica cosa ti attrae. `;
+    if (mars) reading += `Marte in ${mars.sign} mostra come persegui ciò che desideri. `;
+    reading += `Oggi, ascolta cosa il tuo ${moon} emotivo sta cercando di dirti sulle relazioni.`;
+    return reading;
+}
+
+function generateGeneralReading(sun, moon, asc, day, date, natal) {
+    return `Benvenuto nel tuo consulto astrologico vocale. Sono Luna, e guardando il tuo tema natale vedo il Sole in ${sun}, la Luna in ${moon}, e l'Ascendente in ${asc}. Oggi ${day} ${date}, i pianeti ti invitano a ${getGeneralAdvice(sun, moon, asc)}. Ricorda: l'astrologia è una bussola, non una gabbia. Tu sei il capitano della tua nave.`;
+}
+
+// ===== HELPERS TRAITS =====
+function getAscendantTrait(asc) {
+    const traits = {
+        'Ariete': 'dinamica e coraggiosa',
+        'Toro': 'sensuale e affidabile',
+        'Gemelli': 'curiosa e comunicativa',
+        'Cancro': 'accogliente e protettiva',
+        'Leone': 'carismatica e luminosa',
+        'Vergine': 'precisa e servizievole',
+        'Bilancia': 'elegante e diplomatica',
+        'Scorpione': 'intensa e magnetica',
+        'Sagittario': 'avventurosa e ottimista',
+        'Capricorno': 'ambiziosa e controllata',
+        'Acquario': 'originale e indipendente',
+        'Pesci': 'sensibile e compassionevole'
+    };
+    return traits[asc] || 'unica nel suo genere';
+}
+
+function getElementTrait(sign) {
+    const elements = {
+        'Ariete': 'passione e impeto', 'Leone': 'creatività e calore', 'Sagittario': 'avventura e filosofia',
+        'Toro': 'concretezza e persistenza', 'Vergine': 'analisi e perfezione', 'Capricorno': 'ambizione e strategia',
+        'Gemelli': 'versatilità e curiosità', 'Bilancia': 'armonia e relazione', 'Acquario': 'innovazione e idealismo',
+        'Cancro': 'intuizione e nutrimento', 'Scorpione': 'trasformazione e profondità', 'Pesci': 'sensibilità e spiritualità'
+    };
+    return elements[sign] || 'energia personale';
+}
+
+function getMCVocation(mc) {
+    const vocations = {
+        'Ariete': 'imprenditoriali e competitivi',
+        'Toro': 'artistici e legati alla terra',
+        'Gemelli': 'comunicativi e della conoscenza',
+        'Cancro': 'di cura e nutrimento',
+        'Leone': 'creativi e dello spettacolo',
+        'Vergine': 'analitici e del servizio',
+        'Bilancia': 'di mediazione e bellezza',
+        'Scorpione': 'di ricerca e trasformazione',
+        'Sagittario': 'di insegnamento e viaggio',
+        'Capricorno': 'manageriali e istituzionali',
+        'Acquario': 'tecnologici e umanitari',
+        'Pesci': 'artistici e spirituali'
+    };
+    return vocations[mc] || 'vari';
+}
+
+function getMoneyApproach(sign) {
+    const approaches = {
+        'Ariete': 'impulsivo ma generoso',
+        'Toro': 'prudente ma attaccato al comfort',
+        'Gemelli': 'variabile e curioso di nuove opportunità',
+        'Cancro': 'protettivo e orientato alla sicurezza',
+        'Leone': 'generoso e attento allo status',
+        'Vergine': 'analitico e risparmiatore',
+        'Bilancia': 'bilanciato ma a volte indeciso',
+        'Scorpione': 'strategico e riservato',
+        'Sagittario': 'ottimista e a volte spericolato',
+        'Capricorno': 'disciplinato e lungimirante',
+        'Acquario': 'originale e non convenzionale',
+        'Pesci': 'intuitivo ma a volte confuso'
+    };
+    return approaches[sign] || 'personale';
+}
+
+function getHealthAdvice(sun, moon) {
+    const advice = {
+        'Ariete': 'fare attività fisica intensa ma controllata',
+        'Toro': 'godere dei piaceri sensoriali senza eccessi',
+        'Gemelli': 'stimolare la mente ma rilassare il nervosismo',
+        'Cancro': 'nutrire lo stomaco e le emozioni',
+        'Leone': 'esprimere creatività e curare il cuore',
+        'Vergine': 'routine salutari e attenzione all intestino',
+        'Bilancia': 'equilibrio e armonia nei ritmi',
+        'Scorpione': 'detox emotivo e fisico periodico',
+        'Sagittario': 'movimento all aperto e stretching',
+        'Capricorno': 'gestire lo stress sulle ossa e articolazioni',
+        'Acquario': 'circolazione e attività in gruppo',
+        'Pesci': 'riposo, acqua e attività creative'
+    };
+    return advice[sun] || 'ascoltare il tuo corpo';
+}
+
+function getMoonFamilyTrait(moon) {
+    const traits = {
+        'Ariete': 'indipendente ma protettivo',
+        'Toro': 'radicato e tradizionale',
+        'Gemelli': 'comunicativo ma a volte distante',
+        'Cancro': 'profondamente legato alle radici',
+        'Leone': 'orgoglioso e generoso in famiglia',
+        'Vergine': 'pratico e attento ai dettagli domestici',
+        'Bilancia': 'cerca armonia in famiglia',
+        'Scorpione': 'legami intensi e trasformativi',
+        'Sagittario': 'cerca libertà anche in famiglia',
+        'Capricorno': 'responsabile e a volte rigido',
+        'Acquario': 'non convenzionale nella famiglia',
+        'Pesci': 'empatico e a volte confuso nei ruoli'
+    };
+    return traits[moon] || 'emotivamente coinvolto';
+}
+
+function getDegreeMeaning(deg) {
+    if (deg < 10) return 'di iniziazione e potenziale puro';
+    if (deg < 20) return 'di sviluppo e manifestazione';
+    return 'di maturità e compimento';
+}
+
+function getFriendshipTrait(sun) {
+    const traits = {
+        'Ariete': 'un leader naturale nel gruppo',
+        'Toro': 'un amico leale e costante',
+        'Gemelli': 'un conversatore brillante',
+        'Cancro': 'un confidente empatico',
+        'Leone': 'un animatore generoso',
+        'Vergine': 'un consigliere pratico',
+        'Bilancia': 'un paciere sociale',
+        'Scorpione': 'un amico profondo e fedele',
+        'Sagittario': 'un compagno di avventure',
+        'Capricorno': 'un amico su cui contare',
+        'Acquario': 'un amico originale e riformatore',
+        'Pesci': 'un amico compassionevole'
+    };
+    return traits[sun] || 'un amico speciale';
+}
+
+function getMoonFriendshipTrait(moon) {
+    const traits = {
+        'Ariete': 'ti stimolino e ti sfidino',
+        'Toro': 'ti offrano stabilità e comfort',
+        'Gemelli': 'ti intrigino mentalmente',
+        'Cancro': 'ti capiscano emotivamente',
+        'Leone': 'ti apprezzino e ti applaudano',
+        'Vergine': 'ti aiutino concretamente',
+        'Bilancia': 'ti portano armonia',
+        'Scorpione': 'ti condividano segreti profondi',
+        'Sagittario': 'ti espandano gli orizzonti',
+        'Capricorno': 'ti rispettino e ti sostengano',
+        'Acquario': 'ti accettino per come sei',
+        'Pesci': 'ti condividano sogni e intuizioni'
+    };
+    return traits[moon] || 'ti comprendano';
+}
+
+function getJupiterTravel(sign) {
+    const places = {
+        'Ariete': 'dinamiche e avventurose',
+        'Toro': 'belle e confortevoli',
+        'Gemelli': 'culturalmente stimolanti',
+        'Cancro': 'vicine all acqua e alla storia',
+        'Leone': 'glamour e dello spettacolo',
+        'Vergine': 'organizzate e naturali',
+        'Bilancia': 'eleganti e artistiche',
+        'Scorpione': 'misteriose e trasformative',
+        'Sagittario': 'lontane e filosofiche',
+        'Capricorno': 'storiche e prestigiose',
+        'Acquario': 'innovative e inconsuete',
+        'Pesci': 'spirituali e vicine al mare'
+    };
+    return places[sign] || 'interessanti';
+}
+
+function getSunTravel(sign) {
+    const travels = {
+        'Ariete': 'di azione e sfida',
+        'Toro': 'di piacere e bellezza',
+        'Gemelli': 'di scoperta e varietà',
+        'Cancro': 'di radici e memoria',
+        'Leone': 'di lusso e celebrazione',
+        'Vergine': 'di wellness e organizzazione',
+        'Bilancia': 'di arte e romanticismo',
+        'Scorpione': 'di mistero e trasformazione',
+        'Sagittario': 'di avventura e conoscenza',
+        'Capricorno': 'di obiettivi e conquista',
+        'Acquario': 'di innovazione e comunità',
+        'Pesci': 'di sogno e spiritualità'
+    };
+    return travels[sign] || 'di scoperta';
+}
+
+function getGeneralAdvice(sun, moon, asc) {
+    return 'fidarti della tua intuizione mentre agisci con determinazione';
+}
+
+function getCareerDirection(sun, natal) {
+    const mc = natal?.mc?.name;
+    if (mc) return `legato a ${mc}`;
+    return 'della tua vocazione naturale';
+}
+
+// ===== GESTISCE INPUT VOCE UTENTE =====
+function handleUserVoiceInput(transcript) {
+    console.log('🎤 Utente ha detto:', transcript);
+
+    // Genera risposta astrologica
+    const response = generateAstrologicalResponse(transcript, voiceSession.category);
+
+    // Luna risponde a voce
+    speak(response, () => {
+        // Dopo che ha parlato, riprendi ad ascoltare
+        if (voiceSession.active && voiceSession.recognition) {
+            try {
+                voiceSession.recognition.start();
+            } catch(e) {}
+        }
+    });
+}
+
+// ===== AGGIORNA UI VOCE =====
+function updateVoiceUI(text, speaker) {
+    const voiceText = document.getElementById('voiceText');
+    const voiceStatus = document.getElementById('voiceStatus');
+
+    if (voiceText) {
+        if (speaker === 'user') {
+            voiceText.innerHTML = `<div style="color: var(--text-dim); font-style: italic; margin-bottom: 0.5rem;">Tu: "${text}"</div>` + voiceText.innerHTML;
+        } else {
+            voiceText.innerHTML = `<div style="color: var(--gold); margin-bottom: 0.5rem;"><strong>Luna:</strong> ${text}</div>` + voiceText.innerHTML;
+        }
+    }
+
+    if (voiceStatus) {
+        if (voiceSession.isListening && !voiceSession.isSpeaking) {
+            voiceStatus.textContent = '🎤 Sto ascoltando...';
+            voiceStatus.style.color = '#4ade80';
+        } else if (voiceSession.isSpeaking) {
+            voiceStatus.textContent = '🔊 Luna sta parlando...';
+            voiceStatus.style.color = 'var(--gold)';
+        } else {
+            voiceStatus.textContent = '⏸️ In pausa';
+            voiceStatus.style.color = 'var(--text-dim)';
+        }
+    }
+}
+
+// ===== TIMER =====
+function startTimer() {
+    const timerBar = document.getElementById('voiceTimerBar');
+    const timerText = document.getElementById('voiceTimerText');
+
+    voiceSession.timerInterval = setInterval(() => {
+        voiceSession.elapsedSeconds++;
+        const remaining = voiceSession.durationSeconds - voiceSession.elapsedSeconds;
+        const progress = (voiceSession.elapsedSeconds / voiceSession.durationSeconds) * 100;
+
+        if (timerBar) {
+            timerBar.style.width = `${progress}%`;
+
+            // Cambia colore
+            const remainingMin = remaining / 60;
+            if (remainingMin <= 1) {
+                timerBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)'; // Rosso
+            } else if (remainingMin <= 3) {
+                timerBar.style.background = 'linear-gradient(90deg, #fbbf24, #f59e0b)'; // Giallo
+            } else {
+                timerBar.style.background = 'linear-gradient(90deg, #22c55e, #16a34a)'; // Verde
+            }
+        }
+
+        if (timerText) {
+            const min = Math.floor(remaining / 60);
+            const sec = remaining % 60;
+            timerText.textContent = `${min}:${sec.toString().padStart(2, '0')} rimanenti`;
+        }
+
+        // Fine sessione
+        if (voiceSession.elapsedSeconds >= voiceSession.durationSeconds) {
+            endVoiceSession();
+            speak('Il tempo del consulto è terminato. Spero che questa conversazione ti sia stata utile. A presto, e ricorda: le stelle ti guidano, ma tu sei il capitano della tua nave.');
+        }
+    }, 1000);
+}
+
+// ===== AVVIA SESSIONE VOCE =====
+export function startVoiceSession(category) {
+    const user = getCurrentUser();
+    if (!user) {
+        alert('Devi essere loggato per usare la modalità voce');
+        return false;
+    }
+
+    // Verifica abbonamento o pagamento
+    const status = getSubscriptionStatus();
+    // Per ora permetti a tutti (modalità test)
+    // In produzione: if (!status.active) { alert('Abbonamento richiesto'); return; }
+
+    voiceSession.active = true;
+    voiceSession.category = category || 'generale';
+    voiceSession.startTime = Date.now();
+    voiceSession.elapsedSeconds = 0;
+    voiceSession.transcript = '';
+
+    // Inizializza Speech API
+    voiceSession.recognition = initSpeechRecognition();
+    voiceSession.synthesis = initSpeechSynthesis();
+
+    // Carica voci (necessario su alcuni browser)
+    if (voiceSession.synthesis) {
+        voiceSession.synthesis.getVoices();
+    }
+
+    // Saluto iniziale
+    const profile = getCurrentProfile();
+    const name = profile?.full_name?.split(' ')[0] || 'amico';
+
+    setTimeout(() => {
+        speak(`Ciao ${name}, sono Luna. Sono pronta per il tuo consulto astrologico vocale su ${getCategoryLabel(category)}. Hai 18 minuti. Parla quando vuoi, io ti ascolto.`, () => {
+            // Inizia ad ascoltare dopo il saluto
+            if (voiceSession.recognition && voiceSession.active) {
+                try {
+                    voiceSession.recognition.start();
+                    voiceSession.isListening = true;
+                } catch(e) {
+                    console.error('Errore avvio ascolto:', e);
+                }
+            }
+        });
+    }, 500);
+
+    // Avvia timer
+    startTimer();
+
+    return true;
+}
+
+// ===== TERMINA SESSIONE VOCE =====
+export function endVoiceSession() {
+    voiceSession.active = false;
+    voiceSession.isListening = false;
+
+    if (voiceSession.recognition) {
+        try { voiceSession.recognition.stop(); } catch(e) {}
+        voiceSession.recognition = null;
+    }
+
+    if (voiceSession.synthesis) {
+        voiceSession.synthesis.cancel();
+    }
+
+    if (voiceSession.timerInterval) {
+        clearInterval(voiceSession.timerInterval);
+        voiceSession.timerInterval = null;
+    }
+
+    console.log('🎙️ Sessione voce terminata');
+}
+
+// ===== PAUSA/RIPRENDI =====
+export function pauseVoiceSession() {
+    if (voiceSession.recognition) {
+        try { voiceSession.recognition.stop(); } catch(e) {}
+    }
+    voiceSession.isListening = false;
+    updateVoiceUI('', 'status');
+}
+
+export function resumeVoiceSession() {
+    if (voiceSession.recognition && voiceSession.active) {
+        try { voiceSession.recognition.start(); } catch(e) {}
+        voiceSession.isListening = true;
+    }
+}
+
+// ===== HELPER =====
+function getCategoryLabel(cat) {
+    const labels = {
+        amore: 'amore', denaro: 'denaro', lavoro: 'lavoro', salute: 'salute',
+        famiglia: 'famiglia', amici: 'amicizia', viaggi: 'viaggi',
+        partner: 'relazioni di coppia', carriera: 'carriera', generale: 'tema generale'
+    };
+    return labels[cat] || 'tema generale';
+}
+
+// ===== STATO ESPORTATO =====
+export function getVoiceSessionStatus() {
+    return {
+        active: voiceSession.active,
+        elapsed: voiceSession.elapsedSeconds,
+        remaining: voiceSession.durationSeconds - voiceSession.elapsedSeconds,
+        category: voiceSession.category
+    };
+}
