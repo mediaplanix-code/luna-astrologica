@@ -1,6 +1,5 @@
 // ============================================================
-// APP.JS v13.0 — Orchestratore principale
-// FIX v13: Integrazione ElevenLabs Conversational AI Widget
+// APP.JS v11.0 — Orchestratore principale
 // FIX v8: logout senza reload, renderHeader robusto
 // FIX v9: Pagina Crediti/Abbonamento integrata
 // FIX v10: Logout corretto, spazio voce dedicato
@@ -41,8 +40,10 @@ import {
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
- endSession as endRealVoiceSession,
- getStatus as getVoiceSessionStatus
+ endVoiceSession as endRealVoiceSession,
+ pauseVoiceSession,
+ resumeVoiceSession,
+ getVoiceSessionStatus
 } from './voice.js';
 
 let state = {
@@ -292,11 +293,25 @@ function applyPersonalizedBlur() {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
  overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;">
- <span style="font-size:1.5rem;">🔒</span>
- <span style="color:var(--gold);font-weight:600;font-size:0.9375rem;">Abbonamento richiesto</span>
- <span style="color:var(--text-dim);font-size:0.8125rem;">Sblocca per €15/trimestre</span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.5rem 1.25rem;font-size:0.8125rem;" onclick="window.app.showPaymentsPage()">Abbonati ora</button>
+ <div style="
+   position: absolute;
+   top: 50%; left: 50%;
+   transform: translate(-50%, -50%);
+   background: rgba(26, 11, 46, 0.95);
+   border: 1.5px solid var(--gold);
+   border-radius: 0.75rem;
+   padding: 0.875rem 1.5rem;
+   font-size: 0.875rem;
+   font-weight: 600;
+   color: var(--gold);
+   white-space: nowrap;
+   z-index: 10;
+   cursor: pointer;
+   text-align: center;
+   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+ " onclick="window.app.showPaymentsPage()">
+   🔒 Abbonamento richiesto<br>
+   <span style="font-size:0.75rem;font-weight:400;color:var(--text-dim);">Sblocca per €15/trimestre</span>
  </div>
  `;
  el.appendChild(overlay);
@@ -333,7 +348,7 @@ function requireAuthOrModal() {
 }
 
 // ===== SPAZIO VOCE DEDICATO =====
-async function startVoiceSession(category) {
+function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
  openAuthModal();
@@ -345,12 +360,13 @@ async function startVoiceSession(category) {
  // Mostra la pagina voce
  showPage("voice");
 
- // Avvia la sessione voce con ElevenLabs
- const started = await startRealVoiceSession(category);
+ // Avvia la sessione voce reale
+ const started = startRealVoiceSession(category);
  if (!started) {
+ // Fallback se Web Speech API non disponibile
  const statusEl = document.getElementById('voiceStatus');
  if (statusEl) {
- statusEl.textContent = '⚠️ Errore caricamento voce';
+ statusEl.textContent = '⚠️ Microfono non disponibile su questo browser';
  statusEl.style.color = '#ef4444';
  }
  }
@@ -363,8 +379,20 @@ function goBackFromVoice() {
 }
 
 function toggleVoiceListening() {
- // Gestito automaticamente dal widget ElevenLabs
- console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
+ const status = getVoiceSessionStatus();
+ if (!status.active) return;
+
+ // Toggle pausa/riprendi
+ // Per semplicità, riavviamo la sessione
+ const micBtn = document.getElementById('voiceMicBtn');
+ if (micBtn) {
+ micBtn.style.background = 'var(--gold)';
+ micBtn.style.color = '#1a0b2e';
+ setTimeout(() => {
+ micBtn.style.background = '';
+ micBtn.style.color = '';
+ }, 300);
+ }
 }
 
 function requireAuthOrModalForChat(mode) {
