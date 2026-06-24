@@ -1,466 +1,393 @@
 // ============================================================
-// PAYMENTS.JS v2.1 — Aggiunti: sogni, affinita, welcome gift, messaggio regalo overlay
+// PAYMENTS.JS v2.0 — Aggiunto hasActiveConsultPackage, getConsultPackageStatus
+// Rinnovo gratis con consulenze €50+, logica regalo 3 mesi
 // ============================================================
 
 import { CONFIG } from './config.js';
-import { getCurrentUser, getCurrentProfile, updateCredits } from './auth.js';
+import { getCurrentUser, getCurrentProfile } from './auth.js';
 
-const PACKAGES = {
-    subscription: {
-        id: 'sub_trimestrale',
-        name: 'Abbonamento Completo',
-        price: 15,
-        periodDays: 90,
-        description: 'Sblocca tema natale, case, pianeti, aspetti, transiti e dossier',
-        features: [
-            'Tema natale completo',
-            'Case astrologiche',
-            'Posizione pianeti',
-            'Aspetti planetari',
-            'Transiti giornalieri',
-            'Dossier astrologico'
-        ]
-    },
-    services: [
-        { id: 'svc_amore', name: 'Amore', icon: '💖', price: 45, duration: '18 min', category: 'amore', type: 'voice' },
-        { id: 'svc_lavoro', name: 'Lavoro', icon: '💼', price: 45, duration: '18 min', category: 'lavoro', type: 'voice' },
-        { id: 'svc_carriera', name: 'Carriera', icon: '📈', price: 45, duration: '18 min', category: 'carriera', type: 'voice' },
-        { id: 'svc_salute', name: 'Salute', icon: '🏥', price: 45, duration: '18 min', category: 'salute', type: 'voice' },
-        { id: 'svc_denaro', name: 'Denaro', icon: '💰', price: 45, duration: '18 min', category: 'denaro', type: 'voice' },
-        { id: 'svc_famiglia', name: 'Famiglia', icon: '👨‍👩‍👧‍👦', price: 45, duration: '18 min', category: 'famiglia', type: 'voice' },
-        { id: 'svc_viaggi', name: 'Viaggi', icon: '✈️', price: 45, duration: '18 min', category: 'viaggi', type: 'voice' },
-        { id: 'svc_partner', name: 'Partner', icon: '💑', price: 45, duration: '18 min', category: 'partner', type: 'voice' },
-        { id: 'svc_sogni', name: 'Interpretazione Sogni', icon: '🌙', price: 45, duration: '18 min', category: 'sogni', type: 'voice' },
-        { id: 'svc_affinita', name: 'Affinità di Coppia', icon: '💞', price: 45, duration: '18 min', category: 'affinita', type: 'voice' },
-    ],
-    chat: {
-        id: 'chat_ai',
-        name: 'Chat con Luna (AI)',
-        icon: '💬',
-        price: 25,
-        duration: '12 min',
-        description: 'Consulto astrologico via chat con intelligenza artificiale',
-        limit: 'Risposte limitate per sessione'
-    }
-};
+const STORAGE_KEY = 'luna_payments';
 
-const SPENDING_THRESHOLD = 49;
-
-const SUB_KEY = 'luna_subscription';
-const TX_KEY = 'luna_transactions';
-const VOICE_PKG_KEY = 'luna_voice_package';
-const WELCOME_GIFT_KEY = 'luna_welcome_gift_shown';
-
-function getSubscription() {
-    try {
-        const raw = localStorage.getItem(SUB_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
-    } catch { return null; }
+function getPaymentsData() {
+ try {
+ const data = localStorage.getItem(STORAGE_KEY);
+ return data ? JSON.parse(data) : {
+ subscription: { active: false, startedAt: null, expiresAt: null },
+ consultPackages: [], // { id, category, purchasedAt, used, expiresAt }
+ transactions: [],
+ totalSpent: 0,
+ periodSpent: 0,
+ periodStart: null
+ };
+ } catch (e) {
+ return {
+ subscription: { active: false, startedAt: null, expiresAt: null },
+ consultPackages: [],
+ transactions: [],
+ totalSpent: 0,
+ periodSpent: 0,
+ periodStart: null
+ };
+ }
 }
 
-function setSubscription(sub) {
-    localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+function savePaymentsData(data) {
+ localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function getTransactions() {
-    try {
-        const raw = localStorage.getItem(TX_KEY);
-        if (!raw) return [];
-        return JSON.parse(raw);
-    } catch { return []; }
-}
-
-function addTransaction(tx) {
-    const txs = getTransactions();
-    txs.unshift({ ...tx, id: 'tx_' + Date.now(), date: new Date().toISOString() });
-    localStorage.setItem(TX_KEY, JSON.stringify(txs.slice(0, 50)));
-    updateSpendingTracking();
-}
-
-// ===== STATO PACCHETTO VOCE ATTIVO =====
-export function getVoicePackage() {
-    try {
-        const raw = localStorage.getItem(VOICE_PKG_KEY);
-        if (!raw) return null;
-        const pkg = JSON.parse(raw);
-        // Verifica scadenza
-        if (pkg.expiresAt && Date.now() > pkg.expiresAt) {
-            localStorage.removeItem(VOICE_PKG_KEY);
-            return null;
-        }
-        return pkg;
-    } catch { return null; }
-}
-
-export function setVoicePackage(pkg) {
-    localStorage.setItem(VOICE_PKG_KEY, JSON.stringify(pkg));
-}
-
-export function hasVoicePackage() {
-    return !!getVoicePackage();
-}
-
-export function getVoicePackageMinutesRemaining() {
-    const pkg = getVoicePackage();
-    if (!pkg) return 0;
-    const elapsed = Math.floor((Date.now() - pkg.startedAt) / 1000 / 60);
-    return Math.max(0, pkg.durationMinutes - elapsed);
-}
-
-// ===== ABBONAMENTO =====
+// ===== STATO ABBONAMENTO =====
 export function getSubscriptionStatus() {
-    const sub = getSubscription();
-    const now = Date.now();
+ const data = getPaymentsData();
+ const now = Date.now();
 
-    if (!sub) {
-        return { active: false, expired: true, daysLeft: 0, canRenewFree: false, hasWelcomeGift: false };
-    }
+ // Verifica regalo benvenuto
+ const giftData = localStorage.getItem('luna_welcome_gift');
+ let giftActive = false;
+ let giftDaysLeft = 0;
+ if (giftData) {
+ const gift = JSON.parse(giftData);
+ if (gift.activated && now < gift.expiresAt) {
+ giftActive = true;
+ giftDaysLeft = Math.max(0, Math.ceil((gift.expiresAt - now) / (24 * 60 * 60 * 1000)));
+ }
+ }
 
-    const expiresAt = sub.expiresAt;
-    const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
-    const active = daysLeft > 0;
+ // Verifica abbonamento pagato
+ const sub = data.subscription;
+ const subActive = sub.active && sub.expiresAt && now < sub.expiresAt;
+ const subDaysLeft = subActive ? Math.max(0, Math.ceil((sub.expiresAt - now) / (24 * 60 * 60 * 1000))) : 0;
 
-    const periodStart = sub.startedAt;
-    const periodEnd = expiresAt;
-    const txs = getTransactions();
-    const periodSpending = txs
-        .filter(t => t.date >= periodStart && t.date <= periodEnd && t.type === 'service')
-        .reduce((sum, t) => sum + (t.amount || 0), 0);
+ // Periodo di spesa per rinnovo
+ const periodStart = data.periodStart || (sub.startedAt || now);
+ const periodEnd = periodStart + (90 * 24 * 60 * 60 * 1000); // 3 mesi
+ const periodSpent = data.periodSpent || 0;
+ const spendingNeeded = Math.max(0, CONFIG.PRICING.SPENDING_THRESHOLD - periodSpent);
+ const spendingProgress = Math.min(100, (periodSpent / CONFIG.PRICING.SPENDING_THRESHOLD) * 100);
+ const canRenewFree = periodSpent >= CONFIG.PRICING.SPENDING_THRESHOLD;
 
-    const canRenewFree = periodSpending >= SPENDING_THRESHOLD;
+ // Priorità: regalo > abbonamento
+ const active = giftActive || subActive;
+ const daysLeft = giftActive ? giftDaysLeft : subDaysLeft;
+ const expiresAt = giftActive ? JSON.parse(giftData).expiresAt : sub.expiresAt;
 
-    return {
-        active,
-        expired: !active,
-        daysLeft,
-        startedAt: sub.startedAt,
-        expiresAt,
-        periodSpending,
-        canRenewFree,
-        spendingNeeded: Math.max(0, SPENDING_THRESHOLD - periodSpending),
-        spendingProgress: Math.min(100, (periodSpending / SPENDING_THRESHOLD) * 100),
-        hasWelcomeGift: sub.isWelcomeGift || false
-    };
+ return {
+ active,
+ giftActive,
+ subActive,
+ daysLeft,
+ expiresAt,
+ periodSpent,
+ spendingNeeded,
+ spendingProgress,
+ canRenewFree,
+ periodStart,
+ periodEnd
+ };
 }
 
 export function hasFullAccess() {
-    return getSubscriptionStatus().active;
-}
-
-// ===== REGALO BENVENUTO 3 MESI =====
-export function activateWelcomeGift() {
-    const user = getCurrentUser();
-    if (!user) return false;
-
-    const now = Date.now();
-    const existing = getSubscription();
-    if (existing && existing.active) return false; // Già abbonato
-
-    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
-    if (shown) return false; // Già mostrato in passato
-
-    setSubscription({
-        startedAt: now,
-        expiresAt: now + (90 * 24 * 60 * 60 * 1000),
-        userId: user.id,
-        isWelcomeGift: true
-    });
-
-    addTransaction({
-        type: 'welcome_gift',
-        packageId: 'sub_trimestrale',
-        amount: 0,
-        description: '🎁 Regalo di benvenuto — 3 mesi gratis'
-    });
-
-    localStorage.setItem(WELCOME_GIFT_KEY, 'true');
-    return true;
-}
-
-export function shouldShowWelcomeGift() {
-    const status = getSubscriptionStatus();
-    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
-    return !status.active && !shown;
-}
-
-// ===== SIMULA PAGAMENTO =====
-export async function simulatePayment(packageId, amount) {
-    const user = getCurrentUser();
-    if (!user) {
-        alert("Devi essere loggato per effettuare un acquisto");
-        return false;
-    }
-
-    await new Promise(r => setTimeout(r, 800));
-    const now = Date.now();
-
-    if (packageId === 'sub_trimestrale') {
-        const existing = getSubscription();
-        let startedAt, expiresAt;
-
-        if (existing && existing.expiresAt > now) {
-            startedAt = existing.startedAt;
-            expiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
-        } else {
-            startedAt = now;
-            expiresAt = now + (90 * 24 * 60 * 60 * 1000);
-        }
-
-        setSubscription({ startedAt, expiresAt, userId: user.id });
-        addTransaction({ type: 'subscription', packageId, amount, description: 'Abbonamento trimestrale' });
-        alert(`✅ Abbonamento attivato!
-Valido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
-        return true;
-    }
-
-    // Servizio voce
-    const svc = PACKAGES.services.find(s => s.id === packageId);
-    if (svc) {
-        setVoicePackage({
-            packageId,
-            category: svc.category,
-            startedAt: now,
-            durationMinutes: 18,
-            expiresAt: now + (18 * 60 * 1000)
-        });
-        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${svc.name}` });
-    } else {
-        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${packageId}` });
-    }
-
-    const status = getSubscriptionStatus();
-    if (status.canRenewFree && status.daysLeft <= 30) {
-        const sub = getSubscription();
-        if (sub) {
-            sub.expiresAt += (90 * 24 * 60 * 60 * 1000);
-            setSubscription(sub);
-            addTransaction({ type: 'auto_renew', amount: 0, description: 'Rinnovo gratuito (spesa ≥ €49)' });
-        }
-    }
-
-    alert(`✅ Acquisto completato!
-Hai acquistato ${getPackageName(packageId)} per €${amount}`);
-    return true;
-}
-
-// ===== STRIPE CHECKOUT =====
-export async function startStripeCheckout(packageId, amount) {
-    if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
-        const confirmed = confirm(
-            `💳 MODALITÀ TEST
-
-` +
-            `Stai per acquistare:
-` +
-            `${getPackageName(packageId)} — €${amount}
-
-` +
-            `Confermi il pagamento simulato?`
-        );
-        if (confirmed) {
-            return simulatePayment(packageId, amount);
-        }
-        return false;
-    }
-
-    try {
-        const user = getCurrentUser();
-        if (!user) {
-            alert("Devi essere loggato per acquistare");
-            return false;
-        }
-
-        const response = await fetch(`${CONFIG.WORKER_URL}/api/create-checkout`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: user.id,
-                packageId,
-                amount,
-                successUrl: window.location.origin + '/?payment=success',
-                cancelUrl: window.location.origin + '/?payment=cancel'
-            })
-        });
-
-        const { sessionId, url } = await response.json();
-
-        if (url) {
-            window.location.href = url;
-        } else if (sessionId && window.Stripe) {
-            const stripe = Stripe(CONFIG.STRIPE_PUBLISHABLE_KEY);
-            await stripe.redirectToCheckout({ sessionId });
-        }
-
-        return true;
-    } catch (err) {
-        console.error("Errore checkout Stripe:", err);
-        alert("Errore nel caricamento del pagamento. Riprova.");
-        return false;
-    }
-}
-
-function getPackageName(packageId) {
-    if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
-    const svc = PACKAGES.services.find(s => s.id === packageId);
-    if (svc) return svc.name;
-    if (packageId === 'chat_ai') return 'Chat con Luna (AI)';
-    return packageId;
-}
-
-// ===== RENDER PAGINA PAGAMENTI =====
-export function renderPaymentsPage() {
-    const container = document.getElementById('page-payments');
-    if (!container) return;
-
-    const status = getSubscriptionStatus();
-    const txs = getTransactions().slice(0, 5);
-    const user = getCurrentUser();
-
-    const subSection = status.active ? `
-        <div class="sub-card">
-            <div class="sub-status active dot">Attivo</div>
-            <div class="sub-title">Abbonamento Completo</div>
-            <div class="sub-price">€15 <span>/ trimestre</span></div>
-            <ul class="sub-features">
-                ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
-            </ul>
-            <div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
-                ⏳ Scade il <strong style="color:var(--gold)">${new Date(status.expiresAt).toLocaleDateString('it-IT')}</strong> 
-                (${status.daysLeft} giorni rimasti)
-            </div>
-            ${status.canRenewFree 
-                ? `<div style="font-size:0.8125rem;color:#4ade80;margin-bottom:0.75rem;">✅ Rinnovo gratuito garantito! Hai speso €${status.periodSpending}</div>`
-                : `<div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
-                    💰 Hai speso €${status.periodSpending}/€${SPENDING_THRESHOLD} in questo periodo
-                   </div>`
-            }
-            <button class="sub-btn secondary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Rinnova ora (€15)
-            </button>
-        </div>
-    ` : `
-        <div class="sub-card" style="border-color:#ef4444;">
-            <div class="sub-status expired">Offuscato</div>
-            <div class="sub-title">Abbonamento Completo</div>
-            <div class="sub-price">€15 <span>/ trimestre</span></div>
-            <ul class="sub-features">
-                ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
-            </ul>
-            <div style="font-size:0.8125rem;color:#f87171;margin-bottom:0.75rem;">
-                🔒 La tua pagina personale mostra solo l'oroscopo giornaliero
-            </div>
-            <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Sblocca ora per €15
-            </button>
-        </div>
-    `;
-
-    const spendingSection = status.active ? `
-        <div class="spending-tracker">
-            <div class="spending-header">
-                <span class="spending-label">💰 Spesa nel periodo attuale</span>
-                <span class="spending-amount">€${status.periodSpending} / €${SPENDING_THRESHOLD}</span>
-            </div>
-            <div class="spending-bar">
-                <div class="spending-fill ${status.spendingProgress >= 100 ? 'complete' : ''}" 
-                     style="width:${status.spendingProgress}%"></div>
-            </div>
-            <div class="spending-note ${status.spendingProgress >= 100 ? 'complete' : ''}">
-                ${status.spendingProgress >= 100 
-                    ? '🎉 Complimenti! Il prossimo trimestre è gratuito' 
-                    : `Mancano €${status.spendingNeeded} per il rinnovo gratuito`
-                }
-            </div>
-        </div>
-    ` : '';
-
-    const packagesSection = `
-        <div class="payments-header">
-            <h2>🔮 Pacchetti Servizi</h2>
-            <p>Consulto astrologico completo con AI Voice — 18 minuti</p>
-        </div>
-        <div class="packages-grid">
-            ${PACKAGES.services.map((pkg, i) => `
-                <div class="package-card ${i === 0 ? 'featured' : ''}" 
-                     onclick="window.app.startStripeCheckout('${pkg.id}', ${pkg.price})">
-                    <div class="package-icon">${pkg.icon}</div>
-                    <div class="package-name">${pkg.name}</div>
-                    <div class="package-price">€${pkg.price}</div>
-                    <div class="package-duration">⏱️ ${pkg.duration}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
-    const chatSection = `
-        <div class="chat-ai-card" onclick="window.app.startStripeCheckout('chat_ai', 25)">
-            <div class="chat-ai-icon">${PACKAGES.chat.icon}</div>
-            <div class="chat-ai-info">
-                <div class="chat-ai-title">${PACKAGES.chat.name}</div>
-                <div class="chat-ai-desc">${PACKAGES.chat.description}</div>
-                <div class="chat-ai-price">€${PACKAGES.chat.price} <span style="font-size:0.75rem;color:var(--text-dim);">/ sessione</span></div>
-                <div class="chat-ai-limit">⏱️ ${PACKAGES.chat.duration} · ${PACKAGES.chat.limit}</div>
-            </div>
-        </div>
-    `;
-
-    const historySection = txs.length > 0 ? `
-        <div class="history-section">
-            <div class="history-title">📜 Ultime transazioni</div>
-            ${txs.map(t => `
-                <div class="history-item">
-                    <div>
-                        <div class="history-desc">${t.description}</div>
-                        <div class="history-date">${new Date(t.date).toLocaleDateString('it-IT')}</div>
-                    </div>
-                    <div class="history-amount ${t.amount === 0 ? '' : 'negative'}">
-                        ${t.amount === 0 ? 'GRATIS' : '-€' + t.amount}
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    ` : '';
-
-    container.innerHTML = `
-        <div class="payments-page">
-            <div class="payments-header">
-                <h2>💳 Crediti & Abbonamento</h2>
-                <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
-            </div>
-
-            ${subSection}
-            ${spendingSection}
-            ${packagesSection}
-            ${chatSection}
-            ${historySection}
-
-            <footer class="footer" style="margin-top:2rem;">
-                <p style="font-size:0.75rem;color:var(--text-dim);">
-                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
-                    Se spendi almeno €49 in servizi, il rinnovo è gratuito.
-                </p>
-            </footer>
-        </div>
-    `;
-}
-
-export function updatePaymentsUI() {
-    const status = getSubscriptionStatus();
-    const pill = document.getElementById('creditsPill');
-    if (pill) {
-        pill.style.cursor = 'pointer';
-        pill.onclick = () => window.app.showPaymentsPage();
-        const dot = document.getElementById('creditsDot');
-        if (dot) {
-            dot.className = 'credits-dot';
-            dot.style.background = status.active ? '#22c55e' : '#ef4444';
-        }
-    }
+ const status = getSubscriptionStatus();
+ return status.active || hasActiveConsultPackage();
 }
 
 export function shouldBlurPersonalized() {
-    return !hasFullAccess();
+ if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return false;
+ return !hasFullAccess();
 }
 
-export { PACKAGES, SPENDING_THRESHOLD };
+// ===== PACCHETTI CONSULTO =====
+export function hasActiveConsultPackage() {
+ const data = getPaymentsData();
+ const now = Date.now();
+ return data.consultPackages.some(p => !p.used && p.expiresAt > now);
+}
+
+export function getConsultPackageStatus() {
+ const data = getPaymentsData();
+ const now = Date.now();
+ const active = data.consultPackages.filter(p => !p.used && p.expiresAt > now);
+ return {
+ hasPackage: active.length > 0,
+ packages: active,
+ count: active.length
+ };
+}
+
+export function addConsultPackage(category) {
+ const data = getPaymentsData();
+ const now = Date.now();
+ const packageId = 'consult_' + now + '_' + Math.random().toString(36).substr(2, 9);
+
+ data.consultPackages.push({
+ id: packageId,
+ category: category || 'generale',
+ purchasedAt: now,
+ used: false,
+ expiresAt: now + (30 * 24 * 60 * 60 * 1000) // 30 giorni validità
+ });
+
+ // Aggiungi transazione
+ data.transactions.push({
+ id: packageId,
+ type: 'consult',
+ description: 'Consulenza astrologica vocale' + (category ? ' — ' + category : ''),
+ amount: CONFIG.PRICING.CONSULT_PACKAGE,
+ date: now,
+ status: 'completed'
+ });
+
+ // Aggiorna spesa periodo
+ data.periodSpent = (data.periodSpent || 0) + CONFIG.PRICING.CONSULT_PACKAGE;
+ if (!data.periodStart) data.periodStart = now;
+
+ savePaymentsData(data);
+ return packageId;
+}
+
+export function useConsultPackage(packageId) {
+ const data = getPaymentsData();
+ const pkg = data.consultPackages.find(p => p.id === packageId);
+ if (pkg && !pkg.used) {
+ pkg.used = true;
+ pkg.usedAt = Date.now();
+ savePaymentsData(data);
+ return true;
+ }
+ return false;
+}
+
+// ===== GESTIONE SPESA E RINNOVO =====
+export function recordSpent(amount, description) {
+ const data = getPaymentsData();
+ const now = Date.now();
+
+ // Inizializza periodo se necessario
+ if (!data.periodStart) data.periodStart = now;
+
+ // Verifica se periodo è scaduto (3 mesi)
+ const periodEnd = data.periodStart + (90 * 24 * 60 * 60 * 1000);
+ if (now > periodEnd) {
+ // Nuovo periodo
+ data.periodStart = now;
+ data.periodSpent = 0;
+ }
+
+ data.periodSpent = (data.periodSpent || 0) + amount;
+ data.totalSpent = (data.totalSpent || 0) + amount;
+
+ data.transactions.push({
+ id: 'tx_' + now + '_' + Math.random().toString(36).substr(2, 9),
+ type: 'spending',
+ description: description || 'Acquisto servizio',
+ amount: amount,
+ date: now,
+ status: 'completed'
+ });
+
+ savePaymentsData(data);
+
+ // Verifica rinnovo gratuito
+ checkAndApplyFreeRenewal();
+}
+
+function checkAndApplyFreeRenewal() {
+ const data = getPaymentsData();
+ const status = getSubscriptionStatus();
+
+ if (status.canRenewFree && status.subActive) {
+ // Rinnova abbonamento gratis
+ const now = Date.now();
+ data.subscription.expiresAt = now + (90 * 24 * 60 * 60 * 1000);
+ data.periodStart = now;
+ data.periodSpent = 0;
+
+ data.transactions.push({
+ id: 'renewal_' + now,
+ type: 'renewal',
+ description: 'Rinnovo gratuito trimestre — spesa €' + CONFIG.PRICING.SPENDING_THRESHOLD + '+',
+ amount: 0,
+ date: now,
+ status: 'completed'
+ });
+
+ savePaymentsData(data);
+ console.log('🎉 Rinnovo gratuito applicato!');
+ }
+}
+
+// ===== WELCOME GIFT =====
+export function activateWelcomeGift() {
+ const giftData = localStorage.getItem('luna_welcome_gift');
+ if (!giftData) {
+ const now = Date.now();
+ const expires = now + (CONFIG.WELCOME_GIFT_DAYS * 24 * 60 * 60 * 1000);
+ const gift = { activated: true, createdAt: now, expiresAt: expires };
+ localStorage.setItem('luna_welcome_gift', JSON.stringify(gift));
+ } else {
+ const gift = JSON.parse(giftData);
+ gift.activated = true;
+ localStorage.setItem('luna_welcome_gift', JSON.stringify(gift));
+ }
+
+ // Registra transazione gratuita
+ const data = getPaymentsData();
+ data.transactions.push({
+ id: 'welcome_gift_' + Date.now(),
+ type: 'gift',
+ description: 'Regalo benvenuto — 3 mesi accesso completo (valore €' + CONFIG.PRICING.SUBSCRIPTION + ')',
+ amount: 0,
+ date: Date.now(),
+ status: 'completed'
+ });
+ savePaymentsData(data);
+}
+
+export function shouldShowWelcomeGift() {
+ const giftData = localStorage.getItem('luna_welcome_gift');
+ if (!giftData) return true;
+ const gift = JSON.parse(giftData);
+ return !gift.activated;
+}
+
+// ===== PAGAMENTI UI =====
+export function renderPaymentsPage() {
+ const page = document.getElementById('page-payments');
+ if (!page) return;
+
+ const status = getSubscriptionStatus();
+ const data = getPaymentsData();
+
+ const subSection = status.active ? `
+ <div style="background:var(--bg-elevated); border-radius:0.75rem; padding:1.25rem; margin-bottom:1.5rem; border-left:3px solid var(--gold);">
+ <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+ <span style="font-size:1.5rem;">✨</span>
+ <div>
+ <div style="font-weight:700; color:var(--gold);">Abbonamento Attivo</div>
+ <div style="font-size:0.875rem; color:var(--text-dim);">⏳ Scade il ${new Date(status.expiresAt).toLocaleDateString('it-IT')} (${status.daysLeft} giorni rimasti)</div>
+ </div>
+ </div>
+ ${status.canRenewFree ? `
+ <div style="background:rgba(34,197,94,0.1); border-radius:0.5rem; padding:0.75rem; margin-top:0.75rem;">
+ <div style="color:#22c55e; font-size:0.875rem; font-weight:600;">✅ Rinnovo gratuito garantito!</div>
+ <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.25rem;">Hai speso €${status.periodSpent} in questo periodo — il prossimo trimestre è gratis</div>
+ </div>
+ ` : `
+ <div style="margin-top:0.75rem;">
+ <div style="display:flex; justify-content:space-between; font-size:0.875rem; margin-bottom:0.5rem;">
+ <span style="color:var(--text-dim);">Spesa nel periodo</span>
+ <span style="color:var(--text);">€${status.periodSpent} / €${CONFIG.PRICING.SPENDING_THRESHOLD}</span>
+ </div>
+ <div style="background:var(--bg); border-radius:0.5rem; height:0.5rem; overflow:hidden;">
+ <div style="background:linear-gradient(90deg, var(--gold), #f59e0b); height:100%; width:${status.spendingProgress}%; border-radius:0.5rem; transition:width 0.5s;"></div>
+ </div>
+ <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.5rem;">
+ ${status.spendingProgress >= 100 ? '🎉 Complimenti! Il prossimo trimestre è gratuito' : `Mancano €${status.spendingNeeded} per il rinnovo gratuito`}
+ </div>
+ </div>
+ `}
+ </div>
+ ` : `
+ <div style="background:var(--bg-elevated); border-radius:0.75rem; padding:1.25rem; margin-bottom:1.5rem; text-align:center;">
+ <div style="font-size:2.5rem; margin-bottom:0.75rem;">🌙</div>
+ <h3 style="margin:0 0 0.5rem 0; color:var(--gold);">Abbonamento Completo</h3>
+ <div style="font-size:1.5rem; font-weight:800; color:var(--text); margin-bottom:0.5rem;">€${CONFIG.PRICING.SUBSCRIPTION} <span style="font-size:0.875rem; font-weight:400; color:var(--text-dim);">/ trimestre</span></div>
+ <div style="font-size:0.875rem; color:var(--text-dim); margin-bottom:1rem; line-height:1.5;">
+ Accesso completo al tema natale, transiti, affinità<br>
+ Rinnovo <strong style="color:var(--gold);">gratis</strong> con consulenze €${CONFIG.PRICING.SPENDING_THRESHOLD}+
+ </div>
+ <button class="btn-gold" onclick="window.app.startStripeCheckout('subscription')" style="width:100%; padding:0.875rem;">
+ 💳 Attiva Abbonamento €${CONFIG.PRICING.SUBSCRIPTION}
+ </button>
+ </div>
+ `;
+
+ const packagesSection = `
+ <div style="margin-bottom:1.5rem;">
+ <h4 style="margin:0 0 1rem 0; color:var(--text); font-size:1rem;">🎯 Consulenze Vocali</h4>
+ <div style="background:var(--bg-elevated); border-radius:0.75rem; padding:1.25rem; display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+ <div>
+ <div style="font-weight:700; color:var(--text);">Consulzione Astrologica Vocale</div>
+ <div style="font-size:0.875rem; color:var(--text-dim); margin-top:0.25rem;">18 minuti • Tema natale + transiti • Categoria a scelta</div>
+ </div>
+ <div style="text-align:right;">
+ <div style="font-size:1.25rem; font-weight:800; color:var(--gold);">€${CONFIG.PRICING.CONSULT_PACKAGE}</div>
+ <button class="btn-gold" onclick="window.app.startStripeCheckout('consult')" style="padding:0.5rem 1rem; font-size:0.875rem; margin-top:0.5rem;">Acquista</button>
+ </div>
+ </div>
+ </div>
+ `;
+
+ const historySection = data.transactions.length > 0 ? `
+ <div>
+ <h4 style="margin:0 0 1rem 0; color:var(--text); font-size:1rem;">📜 Storico Transazioni</h4>
+ ${data.transactions.slice(-10).reverse().map(t => `
+ <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; background:var(--bg-elevated); border-radius:0.5rem; margin-bottom:0.5rem;">
+ <div>
+ <div style="font-size:0.875rem; color:var(--text);">${t.description}</div>
+ <div style="font-size:0.75rem; color:var(--text-dim);">${new Date(t.date).toLocaleDateString('it-IT')}</div>
+ </div>
+ <div style="font-weight:700; color:${t.amount === 0 ? '#22c55e' : 'var(--text)'};">${t.amount === 0 ? 'GRATIS' : '-€' + t.amount}</div>
+ </div>
+ `).join('')}
+ </div>
+ ` : '';
+
+ page.innerHTML = `
+ <div style="padding:1.5rem; max-width:600px; margin:0 auto;">
+ <h2 style="margin:0 0 1.5rem 0; color:var(--gold); font-size:1.5rem; text-align:center;">💳 Pagamenti & Abbonamento</h2>
+ ${subSection}
+ ${packagesSection}
+ ${historySection}
+ </div>
+ `;
+}
+
+export function updatePaymentsUI() {
+ // Aggiorna eventuali elementi UI legati ai pagamenti
+ const cartBtn = document.getElementById('cartBtn');
+ if (cartBtn) {
+ const status = getSubscriptionStatus();
+ const hasConsult = hasActiveConsultPackage();
+ if (status.active || hasConsult) {
+ cartBtn.style.display = 'none';
+ } else {
+ cartBtn.style.display = 'flex';
+ }
+ }
+}
+
+export function startStripeCheckout(type) {
+ if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
+ // Modalità test: simula acquisto
+ if (type === 'subscription') {
+ const data = getPaymentsData();
+ const now = Date.now();
+ data.subscription = {
+ active: true,
+ startedAt: now,
+ expiresAt: now + (90 * 24 * 60 * 60 * 1000)
+ };
+ data.periodStart = now;
+ data.periodSpent = 0;
+ data.transactions.push({
+ id: 'sub_' + now,
+ type: 'subscription',
+ description: 'Abbonamento trimestre',
+ amount: CONFIG.PRICING.SUBSCRIPTION,
+ date: now,
+ status: 'completed'
+ });
+ savePaymentsData(data);
+ alert('✅ Abbonamento attivato in modalità test!\n\nScadenza: ' + new Date(data.subscription.expiresAt).toLocaleDateString('it-IT'));
+ } else if (type === 'consult') {
+ const category = window.app?.state?.consultCategory || 'generale';
+ addConsultPackage(category);
+ alert('✅ Consulenza acquistata in modalità test!\n\nVai su "Parla con le tue stelle" per iniziare la sessione.');
+ }
+ window.app.showPage('personalized');
+ return;
+ }
+
+ // Produzione: redirect Stripe
+ alert('💳 Redirect a Stripe Checkout...\n(In produzione: integrazione Stripe reale)');
+}
