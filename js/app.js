@@ -1,5 +1,6 @@
 // ============================================================
-// APP.JS v13.2 — Overlay regalo, benvenuto, categorie sogni/affinita
+// APP.JS v14.0 — Rimossa chat, oscuramento completo tema natale,
+// consulto a pagamento per voce, logica regalo 3 mesi
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -9,7 +10,7 @@ import {
  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
  renderAuthModal, renderCompatModal,
  renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
- showServiceChoice, closeServiceChoice, getServiceChoiceCategory
+ renderConsultModal, closeConsultModal
 } from './ui.js';
 import {
  initAuth, handleRegister, handleLogin, handleLogout,
@@ -30,7 +31,9 @@ import {
  updatePaymentsUI,
  shouldBlurPersonalized,
  activateWelcomeGift,
- shouldShowWelcomeGift
+ shouldShowWelcomeGift,
+ hasActiveConsultPackage,
+ getConsultPackageStatus
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
@@ -41,7 +44,8 @@ import {
 let state = {
  currentPage: "home",
  lastPage: "home",
- voiceCategory: null
+ voiceCategory: null,
+ consultCategory: null
 };
 
 let cachedNatalChart = null;
@@ -82,6 +86,7 @@ function loadNatalChartFromStorage() {
 document.addEventListener("DOMContentLoaded", async () => {
  renderAuthModal();
  renderCompatModal();
+ renderConsultModal();
  renderHomePage();
  renderVoicePage();
 
@@ -249,26 +254,33 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
+// ===== OFFUSCAMENTO COMPLETO TEMA NATALE — CON REGALO ATTIVAZIONE =====
 function applyPersonalizedBlur() {
  if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
 
  const status = getSubscriptionStatus();
- const isSubscribed = status.active;
+ const giftStatus = getWelcomeGiftStatus();
+ const hasAccess = status.active || giftStatus.active || hasActiveConsultPackage();
 
+ // Selettori TUTTE le sezioni del tema natale da oscurare
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
  '#acc-houses',
  '#acc-aspects',
- '#acc-transits'
+ '#acc-transits',
+ '#acc-dossier',
+ '.personal-astro-line',
+ '.compat-row',
+ '.planet-grid'
  ];
 
  blurSelectors.forEach(selector => {
- const el = document.querySelector(selector);
+ const elements = document.querySelectorAll(selector);
+ elements.forEach(el => {
  if (!el) return;
 
- if (!isSubscribed) {
+ if (!hasAccess) {
  el.classList.add('blur-section');
  el.style.filter = 'blur(8px)';
  el.style.userSelect = 'none';
@@ -281,20 +293,26 @@ function applyPersonalizedBlur() {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
  overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
- <span style="font-size:2rem;">🎁</span>
- <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
- <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
- Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong> (valore €15)
- </span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift()">
- 🎁 Attiva ora il regalo
+ <div style="text-align:center; padding:1.5rem;">
+ <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎁</div>
+ <div style="font-size:1rem; font-weight:700; color:var(--gold); margin-bottom:0.5rem;">Regalo per te!</div>
+ <div style="font-size:0.875rem; color:var(--text); margin-bottom:1rem; line-height:1.5;">
+ Sblocca il tuo tema natale completo<br>
+ <strong style="color:var(--gold);">3 mesi gratis</strong> (valore €15)
+ </div>
+ <button class="btn-gold" onclick="window.app.activateWelcomeGift()" style="padding:0.625rem 1.5rem; font-size:0.875rem; width:auto; display:inline-block;">
+ ✨ Attiva ora
  </button>
+ <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">
+ Scade tra ${giftStatus.daysLeft} giorni • Rinnovo gratis con consulenze €50+
+ </div>
  </div>
  `;
  el.appendChild(overlay);
  }
- overlay.style.display = 'block';
+ overlay.style.display = 'flex';
+ overlay.style.alignItems = 'center';
+ overlay.style.justifyContent = 'center';
  } else {
  el.classList.remove('blur-section');
  el.style.filter = '';
@@ -305,6 +323,46 @@ function applyPersonalizedBlur() {
  if (overlay) overlay.style.display = 'none';
  }
  });
+ });
+}
+
+// ===== STATO REGALO BENVENUTO =====
+function getWelcomeGiftStatus() {
+ const giftData = localStorage.getItem('luna_welcome_gift');
+ if (!giftData) {
+ // Primo accesso: crea regalo
+ const now = Date.now();
+ const expires = now + (CONFIG.WELCOME_GIFT_DAYS * 24 * 60 * 60 * 1000);
+ const gift = { activated: false, createdAt: now, expiresAt: expires };
+ localStorage.setItem('luna_welcome_gift', JSON.stringify(gift));
+ return { active: false, daysLeft: CONFIG.WELCOME_GIFT_DAYS, activated: false };
+ }
+
+ const gift = JSON.parse(giftData);
+ const now = Date.now();
+ const daysLeft = Math.max(0, Math.ceil((gift.expiresAt - now) / (24 * 60 * 60 * 1000)));
+
+ return {
+ active: gift.activated && now < gift.expiresAt,
+ daysLeft: daysLeft,
+ activated: gift.activated,
+ expiresAt: gift.expiresAt
+ };
+}
+
+function activateWelcomeGift() {
+ const giftData = localStorage.getItem('luna_welcome_gift');
+ if (!giftData) return;
+
+ const gift = JSON.parse(giftData);
+ gift.activated = true;
+ localStorage.setItem('luna_welcome_gift', JSON.stringify(gift));
+
+ console.log('🎁 Regalo benvenuto attivato!');
+ applyPersonalizedBlur();
+
+ // Mostra conferma
+ alert('🎁 Regalo attivato! Hai 3 mesi di accesso completo al tuo tema natale.\n\nRinnova gratis acquistando consulenze per €50+ nel corso dei 3 mesi.');
 }
 
 function goHome() {
@@ -331,6 +389,48 @@ function requireAuthOrModal() {
  const title = $("authModalTitle");
  if (title) title.textContent = "Registrati";
  }, 50);
+ }
+}
+
+// ===== CONSULTO / VOCE — LOGICA A PAGAMENTO =====
+function handleConsultRequest(category) {
+ const user = getCurrentUser();
+ if (!user) {
+ openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("registerForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
+ return;
+ }
+
+ // Verifica se ha accesso (abbonamento, regalo attivo, o pacchetto consulto)
+ const status = getSubscriptionStatus();
+ const giftStatus = getWelcomeGiftStatus();
+ const hasConsult = hasActiveConsultPackage();
+
+ const hasAccess = status.active || (giftStatus.active && giftStatus.activated) || hasConsult;
+
+ if (hasAccess) {
+ // Ha accesso → apre voce direttamente
+ startVoiceSession(category);
+ } else {
+ // Non ha accesso → apre modal consulto
+ state.consultCategory = category;
+ openConsultModal(category);
+ }
+}
+
+function openConsultModal(category) {
+ const modal = $("consultModal");
+ if (modal) {
+ modal.classList.add("active");
+ document.body.style.overflow = "hidden";
  }
 }
 
@@ -385,8 +485,8 @@ function closeAuthModal() {
  const modal = $("authModal");
  if (modal) {
  modal.classList.remove("active");
- document.body.style.overflow = "";
  }
+ document.body.style.overflow = "";
  hideAlerts();
 }
 
@@ -410,34 +510,6 @@ function switchAuthTab(tab) {
 function handleShowHoroscopePage(signName) {
  renderHoroscopePage(signName);
  showPage("horoscope");
-}
-
-function handleShowServiceChoice(category) {
- const user = getCurrentUser();
- if (!user) {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- return;
- }
- startVoiceSession(category);
-}
-
-function handleChooseService(mode) {
- const category = getServiceChoiceCategory();
- closeServiceChoice();
- if (!category) return;
-
- if (mode === 'voice') {
- startVoiceSession(category);
- }
 }
 
 // ===== PAGINA PAGAMENTI =====
@@ -532,16 +604,10 @@ window.app = {
  if (textEl) textEl.classList.toggle("hidden", t !== tab);
  });
  },
- showServiceChoice: handleShowServiceChoice,
- closeServiceChoice,
- chooseService: handleChooseService,
- getCurrentProfile,
- getCurrentUser,
- loadNatalChart,
- geocodeProfileIfNeeded,
- startStripeCheckout,
- activateWelcomeGift,
- // Voce reale
+ // Consulto / Voce
+ handleConsultRequest,
+ openConsultModal,
+ closeConsultModal,
  startVoiceSession,
  endVoiceSession: () => {
  endRealVoiceSession();
@@ -552,9 +618,18 @@ window.app = {
  startVoiceRecording: () => {
  alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
  },
+ // Regalo
+ activateWelcomeGift,
+ getWelcomeGiftStatus,
+ // Pagamenti
+ startStripeCheckout,
+ getCurrentProfile,
+ getCurrentUser,
+ loadNatalChart,
+ geocodeProfileIfNeeded,
  openLunaFromCompat: function(category) {
  window.app.closeCompatModal();
- window.app.startVoiceSession(category);
+ window.app.handleConsultRequest(category);
  },
  resetCompatForm: function() {
  var form = document.getElementById("compatForm");
