@@ -27,7 +27,6 @@ import {
  startStripeCheckout,
  getSubscriptionStatus,
  hasFullAccess,
- hasVoicePackage,
  updatePaymentsUI,
  shouldBlurPersonalized,
  activateWelcomeGift,
@@ -252,11 +251,7 @@ function showPage(pageId) {
 
 // ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
 function applyPersonalizedBlur() {
- if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
-
- const status = getSubscriptionStatus();
- const isSubscribed = status.active;
-
+ // OFFUSCAMENTO DISABILITATO — tutto in chiaro
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
@@ -266,43 +261,29 @@ function applyPersonalizedBlur() {
  ];
 
  blurSelectors.forEach(selector => {
-   const el = document.querySelector(selector);
-   if (!el) return;
+ const el = document.querySelector(selector);
+ if (!el) return;
 
-   if (!isSubscribed) {
-     el.classList.add('blur-section');
-     // NON applicare blur/opacity/pointer-events al parent — l'overlay con backdrop-filter offusca
-     el.style.position = 'relative';
+ // Rimuovi blur-content wrapper se presente
+ const contentWrapper = el.querySelector('.blur-content');
+ if (contentWrapper) {
+ while (contentWrapper.firstChild) {
+ el.insertBefore(contentWrapper.firstChild, contentWrapper);
+ }
+ contentWrapper.remove();
+ }
 
-     let overlay = el.querySelector('.blur-overlay');
-     if (!overlay) {
-       overlay = document.createElement('div');
-       overlay.className = 'blur-overlay';
-       overlay.innerHTML = `
-         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.92);backdrop-filter:blur(12px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
-           <span style="font-size:2rem;">🎁</span>
-           <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
-           <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
-             Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong>
-           </span>
-           <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift(); window.app.showPage('personalized');">
-             🎁 Attiva ora il regalo
-           </button>
-         </div>
-       `;
-       el.appendChild(overlay);
-     }
-     overlay.style.display = 'block';
-   } else {
-     el.classList.remove('blur-section');
-     el.style.filter = '';
-     el.style.userSelect = '';
-     el.style.pointerEvents = '';
-     el.style.opacity = '';
-     el.style.position = '';
-     const overlay = el.querySelector('.blur-overlay');
-     if (overlay) overlay.style.display = 'none';
-   }
+ // Rimuovi overlay
+ const overlay = el.querySelector('.blur-overlay');
+ if (overlay) overlay.remove();
+
+ // Pulisci tutti gli stili
+ el.classList.remove('blur-section');
+ el.style.filter = '';
+ el.style.userSelect = '';
+ el.style.pointerEvents = '';
+ el.style.opacity = '';
+ el.style.position = '';
  });
 }
 
@@ -347,12 +328,6 @@ async function startVoiceSession(category) {
  const title = $("authModalTitle");
  if (title) title.textContent = "Registrati";
  }, 50);
- return;
- }
-
- // Se non ha accesso completo e non ha pacchetto voce → carrello
- if (!hasFullAccess() && !hasVoicePackage()) {
- showPaymentsPage();
  return;
  }
 
