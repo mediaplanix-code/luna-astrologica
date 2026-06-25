@@ -449,7 +449,7 @@ function openConsultModal(category) {
  '• Categoria: ' + catLabel +
  '</div>' +
  '</div>' +
- '<button class="btn-gold" onclick="window.app.startStripeCheckout('consult')" style="width:100%; padding:0.875rem; margin-bottom:0.75rem;">' +
+ '<button class="btn-gold" onclick="window.app.startStripeCheckout(&#39;consult&#39;)" style="width:100%; padding:0.875rem; margin-bottom:0.75rem;">' +
  '💳 Acquista ora 45 euro' +
  '</button>' +
  '<button class="btn-secondary" onclick="window.app.closeConsultModal()" style="width:100%; padding:0.75rem; background:transparent; border:1px solid var(--border); color:var(--text-dim);">' +
