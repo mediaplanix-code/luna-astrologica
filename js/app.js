@@ -269,76 +269,40 @@ function applyPersonalizedBlur() {
  if (!el) return;
 
  if (!isSubscribed) {
- // Rimuovi overlay vecchio (se presente senza wrapper)
- const oldOverlay = el.querySelector('.blur-overlay');
- if (oldOverlay && !el.querySelector('.blur-content')) {
- oldOverlay.remove();
- }
-
- // Crea wrapper blur-content se non esiste
- let contentWrapper = el.querySelector('.blur-content');
- if (!contentWrapper) {
- contentWrapper = document.createElement('div');
- contentWrapper.className = 'blur-content';
- while (el.firstChild) {
- if (el.firstChild.classList && el.firstChild.classList.contains('blur-overlay')) break;
- contentWrapper.appendChild(el.firstChild);
- }
- el.appendChild(contentWrapper);
- }
-
- // Blur SOLO il contenuto, NON il parent
- contentWrapper.style.filter = 'blur(8px)';
- contentWrapper.style.opacity = '0.4';
- contentWrapper.style.pointerEvents = 'none';
- contentWrapper.style.userSelect = 'none';
-
- // Il parent è solo un contenitore posizionato, NON blurato
+ el.classList.add('blur-section');
+ el.style.filter = 'blur(8px)';
+ el.style.userSelect = 'none';
+ el.style.pointerEvents = 'none';
+ el.style.opacity = '0.4';
  el.style.position = 'relative';
- el.style.pointerEvents = '';
- el.style.opacity = '';
- el.style.filter = '';
- el.classList.remove('blur-section');
 
- // Overlay come SIBLING del blur-content → NON viene blurato
  let overlay = el.querySelector('.blur-overlay');
  if (!overlay) {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
- overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;border-radius:0.75rem;overflow:hidden;display:flex;';
  overlay.innerHTML = `
- <div style="margin:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.94);backdrop-filter:blur(4px);padding:1.5rem;text-align:center;cursor:pointer;border-radius:0.75rem;max-width:90%;box-shadow:0 0 30px rgba(0,0,0,0.5);">
+ <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
  <span style="font-size:2rem;">🎁</span>
- <span style="color:var(--gold);font-weight:600;font-size:1.1rem;">Regalo per te!</span>
+ <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
  <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
  Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong> (valore €15)
  </span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;pointer-events:auto;" onclick="event.stopPropagation(); window.app.activateWelcomeGift(); window.app.showPage('personalized');">
+ <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift()">
  🎁 Attiva ora il regalo
  </button>
  </div>
  `;
  el.appendChild(overlay);
  }
- overlay.style.display = 'flex';
+ overlay.style.display = 'block';
  } else {
- // SBLOCCA: rimuovi wrapper e ripristina contenuto originale
- const contentWrapper = el.querySelector('.blur-content');
- if (contentWrapper) {
- while (contentWrapper.firstChild) {
- el.insertBefore(contentWrapper.firstChild, contentWrapper);
- }
- contentWrapper.remove();
- }
- const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.remove();
-
- el.style.position = '';
- el.style.pointerEvents = '';
- el.style.opacity = '';
+ el.classList.remove('blur-section');
  el.style.filter = '';
  el.style.userSelect = '';
- el.classList.remove('blur-section');
+ el.style.pointerEvents = '';
+ el.style.opacity = '';
+ const overlay = el.querySelector('.blur-overlay');
+ if (overlay) overlay.style.display = 'none';
  }
  });
 }
