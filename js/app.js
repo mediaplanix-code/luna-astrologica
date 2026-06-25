@@ -272,22 +272,22 @@ function applyPersonalizedBlur() {
  el.classList.add('blur-section');
  el.style.filter = 'blur(8px)';
  el.style.userSelect = 'none';
- el.style.pointerEvents = 'none';
- el.style.opacity = '0.4';
  el.style.position = 'relative';
+ // Rimosso pointerEvents:none e opacity:0.4 — bloccano l'overlay
 
  let overlay = el.querySelector('.blur-overlay');
  if (!overlay) {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
+ overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;border-radius:0.75rem;overflow:hidden;';
  overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
+ <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.92);backdrop-filter:blur(4px);padding:1rem;text-align:center;cursor:pointer;">
  <span style="font-size:2rem;">🎁</span>
- <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
+ <span style="color:var(--gold);font-weight:600;font-size:1.1rem;">Regalo per te!</span>
  <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
  Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong> (valore €15)
  </span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift()">
+ <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;pointer-events:auto;" onclick="event.stopPropagation(); window.app.activateWelcomeGift(); window.app.showPage('personalized');">
  🎁 Attiva ora il regalo
  </button>
  </div>
@@ -301,6 +301,7 @@ function applyPersonalizedBlur() {
  el.style.userSelect = '';
  el.style.pointerEvents = '';
  el.style.opacity = '';
+ el.style.position = '';
  const overlay = el.querySelector('.blur-overlay');
  if (overlay) overlay.style.display = 'none';
  }
