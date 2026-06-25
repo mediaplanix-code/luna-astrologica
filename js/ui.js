@@ -593,13 +593,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-aspects">
-                <div style="font-size:0.875rem; line-height:1.7;">
+                <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
                     <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                 </div>
-                <div class="action-btn-row">
+                <div class="action-btn-row" style="margin-top:1rem;">
                     <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
                         ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna</span>
+                        <span>Cosa vuol dire? Parla con Luna!</span>
                     </button>
                 </div>
             </div>
@@ -611,13 +611,13 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-transits">
-                <div style="font-size:0.875rem; line-height:1.7;">
+                <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
                     <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                 </div>
-                <div class="action-btn-row">
+                <div class="action-btn-row" style="margin-top:1rem;">
                     <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
                         ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna</span>
+                        <span>Cosa vuol dire? Parla con Luna!</span>
                     </button>
                 </div>
             </div>
