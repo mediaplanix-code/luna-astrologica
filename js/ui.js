@@ -87,6 +87,92 @@ export function renderHomePage() {
         <div class="banner-cta">
             <button class="btn-gold" onclick="window.app.startVoiceSession('generale')">🎙️ PARLA CON LE TUE STELLE</button>
         </div>
+        <!-- SEZIONE PRESENTAZIONE -->
+        <div class="section-title">Scopri Luna Astrologica</div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-cosae')">
+                <div class="accordion-title"><span class="acc-icon">🔮</span> Cos'è Luna Astrologica</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-cosae">
+                <p>Luna Astrologica è il tuo <strong>consultorio astrologico digitale</strong>. Entri, inserisci data, ora e luogo di nascita, e il motore calcola la tua <strong>carta natale completa</strong>: ruota astrologica, 12 case, posizione dei pianeti, ascendente, segno lunare, Medio Cielo.</p>
+                <p>Poi ti mostra i <strong>transiti reali</strong> — cosa sta succedendo oggi nel cielo rispetto alla tua carta — e un dossier interpretativo.</p>
+                <p style="margin-top:0.75rem; color:var(--gold);"><strong>La differenza?</strong> Non è un oroscopo generico del giorno. È il TUO cielo, calcolato in tempo reale.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-regalo')">
+                <div class="accordion-title"><span class="acc-icon">🎁</span> Il Regalo di Benvenuto</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-regalo">
+                <p>Appena entri, il sito ti fa un regalo: <strong>3 mesi di accesso completo gratis</strong>. Sblocchi tutti i calcoli del tuo tema natale: la ruota, le case, gli aspetti, i transiti, il dossier.</p>
+                <p>Se non lo attivi, quei contenuti restano offuscati — li vedi sfocati dietro una vetrata, con un bottone dorato che dice <strong>"Attiva il regalo"</strong>. Clicchi e tutto si sblocca.</p>
+                <p style="margin-top:0.75rem; color:var(--gold);"><strong>Perché?</strong> Perché tu possa toccare con mano la potenza dei calcoli reali prima di decidere se vuoi anche l'interpretazione.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-voce')">
+                <div class="accordion-title"><span class="acc-icon">🎤</span> Parla con le tue Stelle</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-voce">
+                <p>Non c'è chat testuale — l'unico modo per dialogare con Luna è la <strong>viva voce</strong>.</p>
+                <p>Premi il microfono e parli: <em>"Cosa mi dici del lavoro?"</em> — <em>"Ho incontrato una persona, è la mia anima gemella?"</em></p>
+                <p>Luna ti risponde a voce, in italiano, basandosi sui <strong>tuoi dati reali</strong>: il tuo segno solare, la tua Luna, il tuo ascendente, dove sta Venere oggi, se Saturno ti sta quadrando. Non è un oroscopo generico — è una <strong>consulenza su misura</strong>.</p>
+                <p style="margin-top:0.75rem; color:var(--gold);"><strong>18 minuti di consulenza</strong> per approfondire l'argomento che vuoi. Ma puoi spaziare tra le categorie fino a consumare il tempo acquistato.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-affinita')">
+                <div class="accordion-title"><span class="acc-icon">💞</span> Affinità di Coppia</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-affinita">
+                <p>Puoi calcolare la <strong>sinastria</strong> tra il tuo tema natale e quello di una persona che ti sta a cuore. Il sistema analizza le posizioni reciproche dei pianeti, gli elementi, le modalità e genera un punteggio di affinità con consigli personalizzati.</p>
+                <p>Non è un gioco — è un confronto tra due cieli, calcolato con la stessa precisione del tema natale singolo.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-telegram')">
+                <div class="accordion-title"><span class="acc-icon">📱</span> Telegram — Il tuo oroscopo quotidiano</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-telegram">
+                <p>Nel sito trovi il logo Telegram. Un click, ti iscrivi, e ogni giorno ricevi il tuo <strong>oroscopo personalizzato</strong> direttamente sul telefono.</p>
+                <p>Ma c'è di più: se il sistema calcola un evento specifico nel tuo cielo — un transito importante, un'opposizione critica — <strong>Luna ti avvisa per tempo</strong>. Non è una notifica generica, è un alert astrologico su misura.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:0.625rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-pagamento')">
+                <div class="accordion-title"><span class="acc-icon">💳</span> Come funziona il pagamento</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-pagamento">
+                <p>Ci sono due strade, a seconda di cosa cerchi:</p>
+                <ul style="list-style:none; padding-left:0; margin:0.5rem 0;">
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.5rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> <strong style="color:var(--gold-light);">Accesso Completo (€15/trimestre)</strong> — sblocca tutti i calcoli del tema natale, la ruota, i transiti, il dossier. Se sai leggere la carta, hai il tuo futuro in mano.</li>
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.5rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> <strong style="color:var(--gold-light);">Consulenze vocali (€45)</strong> — 18 minuti di viva voce con Luna che interpreta i tuoi calcoli. Una categoria specifica, ma puoi spaziare tra argomenti fino a consumare i minuti.</li>
+                </ul>
+                <p style="margin-top:0.75rem; color:var(--gold);"><strong>Soglia €49</strong> — se in un trimestre spendi almeno €49 in consulenze, il trimestre successivo è gratis. È un modo per premiare chi usa davvero il servizio.</p>
+            </div>
+        </div>
+        <div class="accordion" style="margin-bottom:1.5rem;">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-unica')">
+                <div class="accordion-title"><span class="acc-icon">✨</span> Cosa la rende unica</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-preso-unica">
+                <p>La maggior parte dei siti ti dà l'oroscopo del giorno generico per il tuo segno. Luna Astrologica invece:</p>
+                <ul style="list-style:none; padding-left:0; margin:0.5rem 0;">
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Calcola il <strong style="color:var(--gold-light);">tuo tema natale in tempo reale</strong></li>
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Ti dice i <strong style="color:var(--gold-light);">transiti personalizzati</strong> e ti spiega cosa significano</li>
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Ti permette di fare <strong style="color:var(--gold-light);">sinastria di coppia</strong> con calcoli reali</li>
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Ti offre una <strong style="color:var(--gold-light);">consulenza vocale personalizzata</strong>, non generica</li>
+                    <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Funziona tutto da browser, <strong style="color:var(--gold-light);">senza scaricare nulla</strong></li>
+                </ul>
+            </div>
+        </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
             <p>Utilizzando il servizio accetti i Termini di Servizio e la Privacy Policy.</p>
