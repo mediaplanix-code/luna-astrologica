@@ -269,19 +269,45 @@ function applyPersonalizedBlur() {
  if (!el) return;
 
  if (!isSubscribed) {
- el.classList.add('blur-section');
- el.style.filter = 'blur(8px)';
- el.style.userSelect = 'none';
- el.style.position = 'relative';
- // Rimosso pointerEvents:none e opacity:0.4 — bloccano l'overlay
+ // Rimuovi overlay vecchio (se presente senza wrapper)
+ const oldOverlay = el.querySelector('.blur-overlay');
+ if (oldOverlay && !el.querySelector('.blur-content')) {
+ oldOverlay.remove();
+ }
 
+ // Crea wrapper blur-content se non esiste
+ let contentWrapper = el.querySelector('.blur-content');
+ if (!contentWrapper) {
+ contentWrapper = document.createElement('div');
+ contentWrapper.className = 'blur-content';
+ while (el.firstChild) {
+ if (el.firstChild.classList && el.firstChild.classList.contains('blur-overlay')) break;
+ contentWrapper.appendChild(el.firstChild);
+ }
+ el.appendChild(contentWrapper);
+ }
+
+ // Blur SOLO il contenuto, NON il parent
+ contentWrapper.style.filter = 'blur(8px)';
+ contentWrapper.style.opacity = '0.4';
+ contentWrapper.style.pointerEvents = 'none';
+ contentWrapper.style.userSelect = 'none';
+
+ // Il parent è solo un contenitore posizionato, NON blurato
+ el.style.position = 'relative';
+ el.style.pointerEvents = '';
+ el.style.opacity = '';
+ el.style.filter = '';
+ el.classList.remove('blur-section');
+
+ // Overlay come SIBLING del blur-content → NON viene blurato
  let overlay = el.querySelector('.blur-overlay');
  if (!overlay) {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
- overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;border-radius:0.75rem;overflow:hidden;';
+ overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;border-radius:0.75rem;overflow:hidden;display:flex;';
  overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.92);backdrop-filter:blur(4px);padding:1rem;text-align:center;cursor:pointer;">
+ <div style="margin:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.94);backdrop-filter:blur(4px);padding:1.5rem;text-align:center;cursor:pointer;border-radius:0.75rem;max-width:90%;box-shadow:0 0 30px rgba(0,0,0,0.5);">
  <span style="font-size:2rem;">🎁</span>
  <span style="color:var(--gold);font-weight:600;font-size:1.1rem;">Regalo per te!</span>
  <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
@@ -294,16 +320,25 @@ function applyPersonalizedBlur() {
  `;
  el.appendChild(overlay);
  }
- overlay.style.display = 'block';
+ overlay.style.display = 'flex';
  } else {
- el.classList.remove('blur-section');
- el.style.filter = '';
- el.style.userSelect = '';
+ // SBLOCCA: rimuovi wrapper e ripristina contenuto originale
+ const contentWrapper = el.querySelector('.blur-content');
+ if (contentWrapper) {
+ while (contentWrapper.firstChild) {
+ el.insertBefore(contentWrapper.firstChild, contentWrapper);
+ }
+ contentWrapper.remove();
+ }
+ const overlay = el.querySelector('.blur-overlay');
+ if (overlay) overlay.remove();
+
+ el.style.position = '';
  el.style.pointerEvents = '';
  el.style.opacity = '';
- el.style.position = '';
- const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.style.display = 'none';
+ el.style.filter = '';
+ el.style.userSelect = '';
+ el.classList.remove('blur-section');
  }
  });
 }
