@@ -72,7 +72,7 @@ export async function handleCompatInlineSubmit(e) {
 
     const userId = window.app?.getCurrentProfile?.()?.id;
     if (!userId) {
-        alert('Devi essere loggato per calcolare l'affinità');
+        alert('Devi essere loggato per calcolare l\'affinità');
         return;
     }
 
