@@ -255,7 +255,7 @@ function applyPersonalizedBlur() {
  if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
 
  const status = getSubscriptionStatus();
- const hasAccess = status.active || hasVoicePackage();
+ const isSubscribed = status.active;
 
  const blurSelectors = [
  '#acc-wheel',
@@ -266,57 +266,43 @@ function applyPersonalizedBlur() {
  ];
 
  blurSelectors.forEach(selector => {
- const el = document.querySelector(selector);
- if (!el) return;
+   const el = document.querySelector(selector);
+   if (!el) return;
 
- if (!hasAccess) {
- el.style.position = 'relative';
+   if (!isSubscribed) {
+     el.classList.add('blur-section');
+     // NON applicare blur/opacity/pointer-events al parent — l'overlay con backdrop-filter offusca
+     el.style.position = 'relative';
 
- // Blur sui figli diretti (NON sul parent) → overlay non viene blurato
- Array.from(el.children).forEach(child => {
- if (!child.classList.contains('blur-overlay')) {
- child.style.filter = 'blur(8px)';
- child.style.opacity = '0.4';
- child.style.pointerEvents = 'none';
- child.style.userSelect = 'none';
- }
- });
-
- // Overlay sibling — leggibile, cliccabile, NON blurato
- let overlay = el.querySelector('.blur-overlay');
- if (!overlay) {
- overlay = document.createElement('div');
- overlay.className = 'blur-overlay';
- overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;display:flex;align-items:center;justify-content:center;';
- overlay.innerHTML = `
- <div style="margin:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.94);backdrop-filter:blur(4px);padding:1.5rem;text-align:center;cursor:pointer;border-radius:0.75rem;max-width:90%;box-shadow:0 0 30px rgba(0,0,0,0.5);">
- <span style="font-size:2rem;">🎁</span>
- <span style="color:var(--gold);font-weight:600;font-size:1.1rem;">Regalo per te!</span>
- <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
- Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong>
- </span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="event.stopPropagation(); window.app.activateWelcomeGift(); window.app.showPage('personalized');">
- 🎁 Attiva ora il regalo
- </button>
- </div>
- `;
- el.appendChild(overlay);
- }
- overlay.style.display = 'flex';
- } else {
- // Sblocca: rimuovi stili dai figli
- Array.from(el.children).forEach(child => {
- if (!child.classList.contains('blur-overlay')) {
- child.style.filter = '';
- child.style.opacity = '';
- child.style.pointerEvents = '';
- child.style.userSelect = '';
- }
- });
- const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.style.display = 'none';
- el.style.position = '';
- }
+     let overlay = el.querySelector('.blur-overlay');
+     if (!overlay) {
+       overlay = document.createElement('div');
+       overlay.className = 'blur-overlay';
+       overlay.innerHTML = `
+         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.92);backdrop-filter:blur(12px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
+           <span style="font-size:2rem;">🎁</span>
+           <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
+           <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
+             Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong>
+           </span>
+           <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift(); window.app.showPage('personalized');">
+             🎁 Attiva ora il regalo
+           </button>
+         </div>
+       `;
+       el.appendChild(overlay);
+     }
+     overlay.style.display = 'block';
+   } else {
+     el.classList.remove('blur-section');
+     el.style.filter = '';
+     el.style.userSelect = '';
+     el.style.pointerEvents = '';
+     el.style.opacity = '';
+     el.style.position = '';
+     const overlay = el.querySelector('.blur-overlay');
+     if (overlay) overlay.style.display = 'none';
+   }
  });
 }
 
@@ -364,7 +350,7 @@ async function startVoiceSession(category) {
  return;
  }
 
- // Se non ha accesso gratis e non ha pacchetto voce → carrello
+ // Se non ha accesso completo e non ha pacchetto voce → carrello
  if (!hasFullAccess() && !hasVoicePackage()) {
  showPaymentsPage();
  return;
