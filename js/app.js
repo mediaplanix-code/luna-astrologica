@@ -251,11 +251,7 @@ function showPage(pageId) {
 
 // ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
 function applyPersonalizedBlur() {
- if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
-
- const status = getSubscriptionStatus();
- const isSubscribed = status.active;
-
+ // OFFUSCAMENTO DISABILITATO — tutto in chiaro
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
@@ -268,42 +264,26 @@ function applyPersonalizedBlur() {
  const el = document.querySelector(selector);
  if (!el) return;
 
- if (!isSubscribed) {
- el.classList.add('blur-section');
- el.style.filter = 'blur(8px)';
- el.style.userSelect = 'none';
- el.style.pointerEvents = 'none';
- el.style.opacity = '0.4';
- el.style.position = 'relative';
-
- let overlay = el.querySelector('.blur-overlay');
- if (!overlay) {
- overlay = document.createElement('div');
- overlay.className = 'blur-overlay';
- overlay.innerHTML = `
- <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.85);backdrop-filter:blur(4px);border-radius:0.75rem;z-index:10;padding:1rem;text-align:center;">
- <span style="font-size:2rem;">🎁</span>
- <span style="color:var(--gold);font-weight:600;font-size:1rem;">Regalo per te!</span>
- <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
- Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong> (valore €15)
- </span>
- <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="window.app.activateWelcomeGift()">
- 🎁 Attiva ora il regalo
- </button>
- </div>
- `;
- el.appendChild(overlay);
+ // Rimuovi blur-content wrapper se presente
+ const contentWrapper = el.querySelector('.blur-content');
+ if (contentWrapper) {
+ while (contentWrapper.firstChild) {
+ el.insertBefore(contentWrapper.firstChild, contentWrapper);
  }
- overlay.style.display = 'block';
- } else {
+ contentWrapper.remove();
+ }
+
+ // Rimuovi overlay
+ const overlay = el.querySelector('.blur-overlay');
+ if (overlay) overlay.remove();
+
+ // Pulisci tutti gli stili
  el.classList.remove('blur-section');
  el.style.filter = '';
  el.style.userSelect = '';
  el.style.pointerEvents = '';
  el.style.opacity = '';
- const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.style.display = 'none';
- }
+ el.style.position = '';
  });
 }
 
