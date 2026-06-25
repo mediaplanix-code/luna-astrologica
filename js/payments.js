@@ -8,7 +8,7 @@ import { getCurrentUser, getCurrentProfile, updateCredits } from './auth.js';
 const PACKAGES = {
     subscription: {
         id: 'sub_trimestrale',
-        name: 'Accesso Completo',
+        name: 'Abbonamento Completo',
         price: 15,
         periodDays: 90,
         description: 'Sblocca tema natale, case, pianeti, aspetti, transiti e dossier',
@@ -108,7 +108,7 @@ export function getVoicePackageMinutesRemaining() {
     return Math.max(0, pkg.durationMinutes - elapsed);
 }
 
-// ===== ACCESSO =====
+// ===== ABBONAMENTO =====
 export function getSubscriptionStatus() {
     const sub = getSubscription();
     const now = Date.now();
@@ -171,7 +171,7 @@ export function activateWelcomeGift() {
         type: 'welcome_gift',
         packageId: 'sub_trimestrale',
         amount: 0,
-        description: '🎁 Accesso gratis — 3 mesi'
+        description: '🎁 Regalo di benvenuto — 3 mesi gratis'
     });
 
     localStorage.setItem(WELCOME_GIFT_KEY, 'true');
@@ -208,8 +208,8 @@ export async function simulatePayment(packageId, amount) {
         }
 
         setSubscription({ startedAt, expiresAt, userId: user.id });
-        addTransaction({ type: 'subscription', packageId, amount, description: 'Accesso trimestrale' });
-        alert(`✅ Accesso attivato!
+        addTransaction({ type: 'subscription', packageId, amount, description: 'Abbonamento trimestrale' });
+        alert(`✅ Abbonamento attivato!
 Valido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
@@ -301,7 +301,7 @@ export async function startStripeCheckout(packageId, amount) {
 }
 
 function getPackageName(packageId) {
-    if (packageId === 'sub_trimestrale') return 'Accesso Trimestrale';
+    if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) return svc.name;
     if (packageId === 'chat_ai') return 'Chat con Luna (AI)';
@@ -320,7 +320,7 @@ export function renderPaymentsPage() {
     const subSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
-            <div class="sub-title">Accesso Completo</div>
+            <div class="sub-title">Abbonamento Completo</div>
             <div class="sub-price">€15 <span>/ trimestre</span></div>
             <ul class="sub-features">
                 ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
@@ -341,8 +341,8 @@ export function renderPaymentsPage() {
         </div>
     ` : `
         <div class="sub-card" style="border-color:#ef4444;">
-            <div class="sub-status expired">Limitato</div>
-            <div class="sub-title">Accesso Completo</div>
+            <div class="sub-status expired">Offuscato</div>
+            <div class="sub-title">Abbonamento Completo</div>
             <div class="sub-price">€15 <span>/ trimestre</span></div>
             <ul class="sub-features">
                 ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
@@ -351,7 +351,7 @@ export function renderPaymentsPage() {
                 🔒 La tua pagina personale mostra solo l'oroscopo giornaliero
             </div>
             <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Attiva ora per €15
+                Sblocca ora per €15
             </button>
         </div>
     `;
@@ -425,8 +425,8 @@ export function renderPaymentsPage() {
     container.innerHTML = `
         <div class="payments-page">
             <div class="payments-header">
-                <h2>💳 Crediti & Accesso</h2>
-                <p>Gestisci il tuo accesso e i servizi a pagamento</p>
+                <h2>💳 Crediti & Abbonamento</h2>
+                <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
             </div>
 
             ${subSection}
@@ -437,7 +437,7 @@ export function renderPaymentsPage() {
 
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
-                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'accesso si rinnova automaticamente ogni 90 giorni.
+                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
                     Se spendi almeno €49 in servizi, il rinnovo è gratuito.
                 </p>
             </footer>
