@@ -391,6 +391,15 @@ export function renderCompatModal() {
                     <label class="form-label">Nome</label>
                     <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Sesso</label>
+                    <select class="form-input form-select" id="compatGender">
+                        <option value="">Seleziona</option>
+                        <option value="M">Uomo</option>
+                        <option value="F">Donna</option>
+                        <option value="O">Altro</option>
+                    </select>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Data nascita *</label>
@@ -479,7 +488,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill"><span class="compat-icon">♌</span><span class="compat-name">Leone</span></span>
             <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
             <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
-            <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -618,6 +626,24 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
                         ${VOICE_ICON}
                         <span>Cosa vuol dire? Parla con Luna!</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-compat')">
+                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ DI COPPIA</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-compat">
+                <div style="font-size:0.875rem; line-height:1.7;">
+                    <p style="color:var(--text-dim);"><em>💞 Scopri la sinastria tra il tuo tema natale e quello di una persona che ti sta a cuore. Analisi delle posizioni reciproche, degli elementi e delle modalità.</em></p>
+                </div>
+                <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
+                    <button class="action-btn" onclick="window.app.openCompatModal()">
+                        ${VOICE_ICON}
+                        <span>Calcola affinità di coppia</span>
                     </button>
                 </div>
             </div>
