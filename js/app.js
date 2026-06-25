@@ -27,6 +27,7 @@ import {
  startStripeCheckout,
  getSubscriptionStatus,
  hasFullAccess,
+ hasVoicePackage,
  updatePaymentsUI,
  shouldBlurPersonalized,
  activateWelcomeGift,
@@ -251,7 +252,11 @@ function showPage(pageId) {
 
 // ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
 function applyPersonalizedBlur() {
- // OFFUSCAMENTO DISABILITATO — tutto in chiaro
+ if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
+
+ const status = getSubscriptionStatus();
+ const hasAccess = status.active || hasVoicePackage();
+
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
@@ -264,26 +269,54 @@ function applyPersonalizedBlur() {
  const el = document.querySelector(selector);
  if (!el) return;
 
- // Rimuovi blur-content wrapper se presente
- const contentWrapper = el.querySelector('.blur-content');
- if (contentWrapper) {
- while (contentWrapper.firstChild) {
- el.insertBefore(contentWrapper.firstChild, contentWrapper);
- }
- contentWrapper.remove();
- }
+ if (!hasAccess) {
+ el.style.position = 'relative';
 
- // Rimuovi overlay
+ // Blur sui figli diretti (NON sul parent) → overlay non viene blurato
+ Array.from(el.children).forEach(child => {
+ if (!child.classList.contains('blur-overlay')) {
+ child.style.filter = 'blur(8px)';
+ child.style.opacity = '0.4';
+ child.style.pointerEvents = 'none';
+ child.style.userSelect = 'none';
+ }
+ });
+
+ // Overlay sibling — leggibile, cliccabile, NON blurato
+ let overlay = el.querySelector('.blur-overlay');
+ if (!overlay) {
+ overlay = document.createElement('div');
+ overlay.className = 'blur-overlay';
+ overlay.style.cssText = 'position:absolute;inset:0;z-index:100;pointer-events:auto;display:flex;align-items:center;justify-content:center;';
+ overlay.innerHTML = `
+ <div style="margin:auto;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0.5rem;background:rgba(26,11,46,0.94);backdrop-filter:blur(4px);padding:1.5rem;text-align:center;cursor:pointer;border-radius:0.75rem;max-width:90%;box-shadow:0 0 30px rgba(0,0,0,0.5);">
+ <span style="font-size:2rem;">🎁</span>
+ <span style="color:var(--gold);font-weight:600;font-size:1.1rem;">Regalo per te!</span>
+ <span style="color:var(--text-dim);font-size:0.875rem;max-width:260px;">
+ Sblocca il tuo tema natale completo — <strong style="color:var(--gold)">3 mesi gratis</strong>
+ </span>
+ <button class="btn-gold" style="margin-top:0.5rem;padding:0.6rem 1.5rem;font-size:0.875rem;" onclick="event.stopPropagation(); window.app.activateWelcomeGift(); window.app.showPage('personalized');">
+ 🎁 Attiva ora il regalo
+ </button>
+ </div>
+ `;
+ el.appendChild(overlay);
+ }
+ overlay.style.display = 'flex';
+ } else {
+ // Sblocca: rimuovi stili dai figli
+ Array.from(el.children).forEach(child => {
+ if (!child.classList.contains('blur-overlay')) {
+ child.style.filter = '';
+ child.style.opacity = '';
+ child.style.pointerEvents = '';
+ child.style.userSelect = '';
+ }
+ });
  const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.remove();
-
- // Pulisci tutti gli stili
- el.classList.remove('blur-section');
- el.style.filter = '';
- el.style.userSelect = '';
- el.style.pointerEvents = '';
- el.style.opacity = '';
+ if (overlay) overlay.style.display = 'none';
  el.style.position = '';
+ }
  });
 }
 
@@ -328,6 +361,12 @@ async function startVoiceSession(category) {
  const title = $("authModalTitle");
  if (title) title.textContent = "Registrati";
  }, 50);
+ return;
+ }
+
+ // Se non ha accesso gratis e non ha pacchetto voce → carrello
+ if (!hasFullAccess() && !hasVoicePackage()) {
+ showPaymentsPage();
  return;
  }
 
