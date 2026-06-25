@@ -637,10 +637,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-compat">
-                <div style="font-size:0.875rem; line-height:1.7;">
-                    <p style="color:var(--text-dim);"><em>💞 Scopri la sinastria tra il tuo tema natale e quello di una persona che ti sta a cuore. Analisi delle posizioni reciproche, degli elementi e delle modalità.</em></p>
-                </div>
-                <form id="compatInlineForm" onsubmit="window.app.handleCompatSubmit(event)" style="margin-top:1rem;">
+                <form id="compatInlineForm" onsubmit="window.app.handleCompatSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">Nome</label>
                         <input type="text" class="form-input" id="compatInlineName" placeholder="Nome della persona" required>
@@ -683,12 +680,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     <button type="submit" class="btn-gold btn-full" style="margin-top:0.75rem;">Calcola affinità</button>
                 </form>
                 <div id="compatInlineResult" style="margin-top:1rem; display:none;"></div>
-                <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('affinita')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna!</span>
-                    </button>
-                </div>
             </div>
         </div>
 
