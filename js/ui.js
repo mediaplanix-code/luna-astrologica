@@ -633,17 +633,60 @@ export function renderPersonalizedPage(profile, user, natalData) {
 
         <div class="accordion">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-compat')">
-                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ DI COPPIA</div>
+                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-compat">
                 <div style="font-size:0.875rem; line-height:1.7;">
                     <p style="color:var(--text-dim);"><em>💞 Scopri la sinastria tra il tuo tema natale e quello di una persona che ti sta a cuore. Analisi delle posizioni reciproche, degli elementi e delle modalità.</em></p>
                 </div>
+                <form id="compatInlineForm" onsubmit="window.app.handleCompatSubmit(event)" style="margin-top:1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-input" id="compatInlineName" placeholder="Nome della persona" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sesso</label>
+                        <select class="form-input form-select" id="compatInlineGender" required>
+                            <option value="">Seleziona</option>
+                            <option value="M">Uomo</option>
+                            <option value="F">Donna</option>
+                            <option value="O">Altro</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data nascita *</label>
+                            <input type="date" class="form-input" id="compatInlineBirthDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ora nascita</label>
+                            <input type="time" class="form-input" id="compatInlineBirthTime">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Città nascita *</label>
+                        <input type="text" class="form-input" id="compatInlineBirthCity" placeholder="Città" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nazione *</label>
+                        <select class="form-input form-select" id="compatInlineBirthCountry" required>
+                            <option value="">Seleziona</option>
+                            <option value="IT">Italia</option>
+                            <option value="FR">Francia</option>
+                            <option value="DE">Germania</option>
+                            <option value="ES">Spagna</option>
+                            <option value="UK">UK</option>
+                            <option value="US">USA</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-gold btn-full" style="margin-top:0.75rem;">Calcola affinità</button>
+                </form>
+                <div id="compatInlineResult" style="margin-top:1rem; display:none;"></div>
                 <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                    <button class="action-btn" onclick="window.app.openCompatModal()">
+                    <button class="action-btn" onclick="window.app.startVoiceAbout('affinita')">
                         ${VOICE_ICON}
-                        <span>Calcola affinità di coppia</span>
+                        <span>Cosa vuol dire? Parla con Luna!</span>
                     </button>
                 </div>
             </div>
