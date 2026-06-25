@@ -643,7 +643,7 @@ export function startVoiceSession(category) {
  const hasAccess = status.active || giftActive || hasConsult;
 
  if (!hasAccess) {
- alert('🔒 Per parlare con Luna devi prima acquistare una consulenza o attivare l'abbonamento.\n\nVai su "Pagamenti" per saperne di più.');
+ alert("Per parlare con Luna devi prima acquistare una consulenza o attivare l abbonamento. Vai su Pagamenti per saperne di piu.");
  return false;
  }
 
