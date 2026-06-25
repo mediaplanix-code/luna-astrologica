@@ -1,6 +1,5 @@
 // ============================================================
-// APP.JS v14.0 — Rimossa chat, oscuramento completo tema natale,
-// consulto a pagamento per voce, logica regalo 3 mesi
+// APP.JS v14.1 — Fix parentesi, rimosso duplicato activateWelcomeGift
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -9,8 +8,7 @@ import { $, hideAlerts } from './utils.js';
 import {
  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
  renderAuthModal, renderCompatModal,
- renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
- renderConsultModal, closeConsultModal
+ renderPersonalizedPage, renderVoicePage, showPage as uiShowPage
 } from './ui.js';
 import {
  initAuth, handleRegister, handleLogin, handleLogout,
@@ -30,10 +28,10 @@ import {
  hasFullAccess,
  updatePaymentsUI,
  shouldBlurPersonalized,
- activateWelcomeGift,
- shouldShowWelcomeGift,
  hasActiveConsultPackage,
- getConsultPackageStatus
+ getConsultPackageStatus,
+ addConsultPackage,
+ useConsultPackage
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
@@ -86,7 +84,6 @@ function loadNatalChartFromStorage() {
 document.addEventListener("DOMContentLoaded", async () => {
  renderAuthModal();
  renderCompatModal();
- renderConsultModal();
  renderHomePage();
  renderVoicePage();
 
@@ -98,10 +95,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  const paymentStatus = urlParams.get("payment");
  if (paymentStatus === "success") {
- alert("✅ Pagamento completato con successo!");
+ alert("Pagamento completato con successo!");
  window.history.replaceState({}, document.title, window.location.pathname);
  } else if (paymentStatus === "cancel") {
- alert("❌ Pagamento annullato.");
+ alert("Pagamento annullato.");
  window.history.replaceState({}, document.title, window.location.pathname);
  }
 
@@ -112,7 +109,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  let attempts = 0;
  while (user && !profile && attempts < 5) {
- console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
+ console.log('Profilo latente, tentativo ' + (attempts + 1) + '/5...');
  await new Promise(r => setTimeout(r, 400));
  await loadUserData();
  user = getCurrentUser();
@@ -120,20 +117,20 @@ document.addEventListener("DOMContentLoaded", async () => {
  attempts++;
  }
 
- if (user && profile?.id) {
+ if (user && profile && profile.id) {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
 
  const page = document.getElementById('page-personalized');
  if (!page || page.innerHTML.trim() === '') {
  renderPersonalizedPage(profile, user, cachedNatalChart);
- console.log('🎨 DOM personalized costruito');
+ console.log('DOM personalized costruito');
  } else if (cachedNatalChart) {
  updateNatalChartUI(cachedNatalChart);
- console.log('🎨 DOM personalized aggiornato da cache');
+ console.log('DOM personalized aggiornato da cache');
  }
 
- const creditsValue = getCredits() || profile?.credits || 0;
- console.log('💰 Crediti inizializzati:', creditsValue);
+ const creditsValue = getCredits() || profile.credits || 0;
+ console.log('Crediti inizializzati:', creditsValue);
 
  updateUI({
  isLoggedIn: true,
@@ -144,11 +141,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
  showPage("personalized");
  setTimeout(() => ensureGeocodingAndChart(profile), 600);
- console.log("🌙 Sessione attiva — personalized caricata");
+ console.log("Sessione attiva — personalized caricata");
  } else {
  updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
  showPage("home");
- console.log("🌙 Nessuna sessione — home caricata");
+ console.log("Nessuna sessione — home caricata");
  }
 });
 
@@ -157,7 +154,7 @@ function onAuthStateChange(authState) {
  updateUI(authState);
  updatePaymentsUI();
 
- if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
+ if (authState.isLoggedIn && authState.profile && authState.profile.id && state.currentPage !== 'personalized') {
  if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
  const page = document.getElementById('page-personalized');
  if (!page || page.innerHTML.trim() === '') {
@@ -171,41 +168,41 @@ function onAuthStateChange(authState) {
 // ===== GEO + CHART =====
 async function ensureGeocodingAndChart(profile) {
  if (isLoadingChart) {
- console.log('⏳ Calcolo tema già in corso, skip');
+ console.log('Calcolo tema gia in corso, skip');
  return;
  }
  if (!profile) {
- console.warn('❌ ensureGeocodingAndChart: profilo non fornito');
+ console.warn('ensureGeocodingAndChart: profilo non fornito');
  return;
  }
 
  isLoadingChart = true;
  try {
  if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
- console.log('🌍 Geocoding necessario per:', profile.birth_city);
+ console.log('Geocoding necessario per:', profile.birth_city);
  const geoOk = await geocodeProfileIfNeeded();
  if (!geoOk) {
- console.warn('❌ Geocoding fallito');
+ console.warn('Geocoding fallito');
  return;
  }
- console.log('✅ Geocoding completato');
+ console.log('Geocoding completato');
  profile = getCurrentProfile() || profile;
  }
 
- console.log('🔮 Avvio calcolo tema natale...');
+ console.log('Avvio calcolo tema natale...');
  const chart = await loadNatalChart();
  if (chart) {
  cachedNatalChart = chart;
  saveNatalChartToStorage(chart);
- console.log('✅ Tema natale calcolato e salvato');
+ console.log('Tema natale calcolato e salvato');
  } else {
- console.warn('❌ Tema natale non calcolato');
+ console.warn('Tema natale non calcolato');
  }
 
- console.log('🌙 Avvio caricamento transiti...');
+ console.log('Avvio caricamento transiti...');
  await loadTransits();
  } catch (err) {
- console.error('❌ Errore ensureGeocodingAndChart:', err);
+ console.error('Errore ensureGeocodingAndChart:', err);
  } finally {
  isLoadingChart = false;
  }
@@ -213,9 +210,9 @@ async function ensureGeocodingAndChart(profile) {
 
 // ===== UI =====
 function updateUI(authState) {
- const isLoggedIn = authState?.isLoggedIn || false;
- const profile = authState?.profile || null;
- const user = authState?.user || null;
+ const isLoggedIn = authState && authState.isLoggedIn || false;
+ const profile = authState && authState.profile || null;
+ const user = authState && authState.user || null;
 
  renderHeader(isLoggedIn, profile || user || null);
  renderNav(state.currentPage);
@@ -240,9 +237,9 @@ function showPage(pageId) {
  if (pageId === "personalized") {
  if (cachedNatalChart) {
  updateNatalChartUI(cachedNatalChart);
- console.log('🎨 Dati natal ridisegnati su personalized');
+ console.log('Dati natal ridisegnati su personalized');
  } else if (profile) {
- console.log('⏳ Dati natal mancanti, avvio caricamento...');
+ console.log('Dati natal mancanti, avvio caricamento...');
  setTimeout(() => ensureGeocodingAndChart(profile), 100);
  }
  applyPersonalizedBlur();
@@ -254,7 +251,7 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO COMPLETO TEMA NATALE — CON REGALO ATTIVAZIONE =====
+// ===== OFFUSCAMENTO COMPLETO TEMA NATALE =====
 function applyPersonalizedBlur() {
  if (!CONFIG.FEATURES.BLUR_UNSUBSCRIBED) return;
 
@@ -262,7 +259,6 @@ function applyPersonalizedBlur() {
  const giftStatus = getWelcomeGiftStatus();
  const hasAccess = status.active || giftStatus.active || hasActiveConsultPackage();
 
- // Selettori TUTTE le sezioni del tema natale da oscurare
  const blurSelectors = [
  '#acc-wheel',
  '#acc-planets',
@@ -292,22 +288,21 @@ function applyPersonalizedBlur() {
  if (!overlay) {
  overlay = document.createElement('div');
  overlay.className = 'blur-overlay';
- overlay.innerHTML = `
- <div style="text-align:center; padding:1.5rem;">
- <div style="font-size:2.5rem; margin-bottom:0.5rem;">🎁</div>
- <div style="font-size:1rem; font-weight:700; color:var(--gold); margin-bottom:0.5rem;">Regalo per te!</div>
- <div style="font-size:0.875rem; color:var(--text); margin-bottom:1rem; line-height:1.5;">
- Sblocca il tuo tema natale completo<br>
- <strong style="color:var(--gold);">3 mesi gratis</strong> (valore €15)
- </div>
- <button class="btn-gold" onclick="window.app.activateWelcomeGift()" style="padding:0.625rem 1.5rem; font-size:0.875rem; width:auto; display:inline-block;">
- ✨ Attiva ora
- </button>
- <div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">
- Scade tra ${giftStatus.daysLeft} giorni • Rinnovo gratis con consulenze €50+
- </div>
- </div>
- `;
+ const daysLeft = giftStatus.daysLeft || CONFIG.WELCOME_GIFT_DAYS;
+ overlay.innerHTML = '<div style="text-align:center; padding:1.5rem;">' +
+ '<div style="font-size:2.5rem; margin-bottom:0.5rem;">🎁</div>' +
+ '<div style="font-size:1rem; font-weight:700; color:var(--gold); margin-bottom:0.5rem;">Regalo per te!</div>' +
+ '<div style="font-size:0.875rem; color:var(--text); margin-bottom:1rem; line-height:1.5;">' +
+ 'Sblocca il tuo tema natale completo<br>' +
+ '<strong style="color:var(--gold);">3 mesi gratis</strong> (valore 15 euro)' +
+ '</div>' +
+ '<button class="btn-gold" onclick="window.app.activateWelcomeGift()" style="padding:0.625rem 1.5rem; font-size:0.875rem; width:auto; display:inline-block;">' +
+ '✨ Attiva ora' +
+ '</button>' +
+ '<div style="font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">' +
+ 'Scade tra ' + daysLeft + ' giorni. Rinnovo gratis con consulenze 50+ euro' +
+ '</div>' +
+ '</div>';
  el.appendChild(overlay);
  }
  overlay.style.display = 'flex';
@@ -330,7 +325,6 @@ function applyPersonalizedBlur() {
 function getWelcomeGiftStatus() {
  const giftData = localStorage.getItem('luna_welcome_gift');
  if (!giftData) {
- // Primo accesso: crea regalo
  const now = Date.now();
  const expires = now + (CONFIG.WELCOME_GIFT_DAYS * 24 * 60 * 60 * 1000);
  const gift = { activated: false, createdAt: now, expiresAt: expires };
@@ -358,11 +352,10 @@ function activateWelcomeGift() {
  gift.activated = true;
  localStorage.setItem('luna_welcome_gift', JSON.stringify(gift));
 
- console.log('🎁 Regalo benvenuto attivato!');
+ console.log('Regalo benvenuto attivato!');
  applyPersonalizedBlur();
 
- // Mostra conferma
- alert('🎁 Regalo attivato! Hai 3 mesi di accesso completo al tuo tema natale.\n\nRinnova gratis acquistando consulenze per €50+ nel corso dei 3 mesi.');
+ alert('Regalo attivato! Hai 3 mesi di accesso completo al tuo tema natale. Rinnova gratis acquistando consulenze per 50+ euro nel corso dei 3 mesi.');
 }
 
 function goHome() {
@@ -392,7 +385,7 @@ function requireAuthOrModal() {
  }
 }
 
-// ===== CONSULTO / VOCE — LOGICA A PAGAMENTO =====
+// ===== CONSULTO / VOCE =====
 function handleConsultRequest(category) {
  const user = getCurrentUser();
  if (!user) {
@@ -409,7 +402,6 @@ function handleConsultRequest(category) {
  return;
  }
 
- // Verifica se ha accesso (abbonamento, regalo attivo, o pacchetto consulto)
  const status = getSubscriptionStatus();
  const giftStatus = getWelcomeGiftStatus();
  const hasConsult = hasActiveConsultPackage();
@@ -417,24 +409,68 @@ function handleConsultRequest(category) {
  const hasAccess = status.active || (giftStatus.active && giftStatus.activated) || hasConsult;
 
  if (hasAccess) {
- // Ha accesso → apre voce direttamente
  startVoiceSession(category);
  } else {
- // Non ha accesso → apre modal consulto
  state.consultCategory = category;
  openConsultModal(category);
  }
 }
 
 function openConsultModal(category) {
- const modal = $("consultModal");
- if (modal) {
+ const modal = document.getElementById("consultModal");
+ if (!modal) return;
+
+ const catLabel = {
+ amore: 'Amore', lavoro: 'Lavoro', carriera: 'Carriera',
+ denaro: 'Denaro', salute: 'Salute', famiglia: 'Famiglia',
+ amici: 'Amici', viaggi: 'Viaggi', partner: 'Partner', generale: 'Generale'
+ }[category] || 'Generale';
+
+ modal.innerHTML = '<div class="modal-content" style="max-width:420px;">' +
+ '<div class="modal-header" style="border-bottom:1px solid var(--border); padding:1.25rem; display:flex; justify-content:space-between; align-items:center;">' +
+ '<h3 style="margin:0; font-size:1.125rem; color:var(--gold);">✨ Consulenza con Luna</h3>' +
+ '<button class="close-btn" onclick="window.app.closeConsultModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-dim);">×</button>' +
+ '</div>' +
+ '<div style="padding:1.5rem; text-align:center;">' +
+ '<div style="font-size:3rem; margin-bottom:1rem;">🌙</div>' +
+ '<h4 style="margin:0 0 0.75rem 0; color:var(--text);">Parla con le tue stelle</h4>' +
+ '<p style="color:var(--text-dim); font-size:0.875rem; line-height:1.6; margin-bottom:1.5rem;">' +
+ 'Una consulenza astrologica vocale personalizzata di 18 minuti con Luna.<br>' +
+ 'Basata sul tuo tema natale reale e i transiti attuali.' +
+ '</p>' +
+ '<div style="background:var(--bg-elevated); border-radius:0.75rem; padding:1rem; margin-bottom:1.5rem; text-align:left;">' +
+ '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+ '<span style="color:var(--text-dim); font-size:0.875rem;">Pacchetto consulenza</span>' +
+ '<span style="color:var(--gold); font-weight:700; font-size:1.125rem;">45 euro</span>' +
+ '</div>' +
+ '<div style="font-size:0.75rem; color:var(--text-dim);">' +
+ '• Sessione vocale 18 minuti<br>' +
+ '• Interpretazione basata su tema natale<br>' +
+ '• Categoria: ' + catLabel +
+ '</div>' +
+ '</div>' +
+ '<button class="btn-gold" onclick="window.app.startStripeCheckout('consult')" style="width:100%; padding:0.875rem; margin-bottom:0.75rem;">' +
+ '💳 Acquista ora 45 euro' +
+ '</button>' +
+ '<button class="btn-secondary" onclick="window.app.closeConsultModal()" style="width:100%; padding:0.75rem; background:transparent; border:1px solid var(--border); color:var(--text-dim);">' +
+ 'Annulla' +
+ '</button>' +
+ '</div>' +
+ '</div>';
+
  modal.classList.add("active");
  document.body.style.overflow = "hidden";
+}
+
+function closeConsultModal() {
+ const modal = document.getElementById("consultModal");
+ if (modal) {
+ modal.classList.remove("active");
+ document.body.style.overflow = "";
  }
 }
 
-// ===== SPAZIO VOCE DEDICATO =====
+// ===== SPAZIO VOCE =====
 async function startVoiceSession(category) {
  const user = getCurrentUser();
  if (!user) {
@@ -458,7 +494,7 @@ async function startVoiceSession(category) {
  if (!started) {
  const statusEl = document.getElementById('voiceStatus');
  if (statusEl) {
- statusEl.textContent = '⚠️ Errore caricamento voce';
+ statusEl.textContent = 'Errore caricamento voce';
  statusEl.style.color = '#ef4444';
  }
  }
@@ -470,7 +506,7 @@ function goBackFromVoice() {
 }
 
 function toggleVoiceListening() {
- console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
+ console.log('toggleVoiceListening — gestito da ElevenLabs widget');
 }
 
 function openAuthModal() {
@@ -512,7 +548,6 @@ function handleShowHoroscopePage(signName) {
  showPage("horoscope");
 }
 
-// ===== PAGINA PAGAMENTI =====
 function showPaymentsPage() {
  const page = document.getElementById('page-payments');
  if (!page || page.innerHTML.trim() === '') {
@@ -546,9 +581,9 @@ document.addEventListener("click", (e) => {
  }
 });
 
-// ===== LOGOUT CORRETTO =====
+// ===== LOGOUT =====
 async function handleLogoutClick() {
- console.log('🚪 Logout richiesto...');
+ console.log('Logout richiesto...');
 
  try {
  endRealVoiceSession();
@@ -568,34 +603,35 @@ async function handleLogoutClick() {
  renderHomePage();
  showPage("home");
 
- console.log('✅ Logout completato con successo');
+ console.log('Logout completato con successo');
  } catch (err) {
- console.error('❌ Errore durante logout:', err);
+ console.error('Errore durante logout:', err);
  }
 }
 
+// ===== WINDOW.APP =====
 window.app = {
- showPage,
- goHome,
- requireAuthOrModal,
- openAuthModal,
- closeAuthModal,
- switchAuthTab,
- handleRegister,
- handleLogin,
+ showPage: showPage,
+ goHome: goHome,
+ requireAuthOrModal: requireAuthOrModal,
+ openAuthModal: openAuthModal,
+ closeAuthModal: closeAuthModal,
+ switchAuthTab: switchAuthTab,
+ handleRegister: handleRegister,
+ handleLogin: handleLogin,
  handleLogout: handleLogoutClick,
  showHoroscopePage: handleShowHoroscopePage,
- switchHoroTab,
- openProfileEdit,
- showCompat,
- openCompatModal,
- closeCompatModal,
- handleCompatSubmit,
- toggleAccordion,
- showPaymentsPage,
- toggleLang,
- setLang,
- switchPersonalHoroTab: (tab) => {
+ switchHoroTab: switchHoroTab,
+ openProfileEdit: openProfileEdit,
+ showCompat: showCompat,
+ openCompatModal: openCompatModal,
+ closeCompatModal: closeCompatModal,
+ handleCompatSubmit: handleCompatSubmit,
+ toggleAccordion: toggleAccordion,
+ showPaymentsPage: showPaymentsPage,
+ toggleLang: toggleLang,
+ setLang: setLang,
+ switchPersonalHoroTab: function(tab) {
  const tabs = ["day", "week", "month", "year"];
  tabs.forEach(t => {
  const tabBtn = document.getElementById("ph-tab-" + t);
@@ -604,29 +640,26 @@ window.app = {
  if (textEl) textEl.classList.toggle("hidden", t !== tab);
  });
  },
- // Consulto / Voce
- handleConsultRequest,
- openConsultModal,
- closeConsultModal,
- startVoiceSession,
- endVoiceSession: () => {
+ handleConsultRequest: handleConsultRequest,
+ openConsultModal: openConsultModal,
+ closeConsultModal: closeConsultModal,
+ startVoiceSession: startVoiceSession,
+ endVoiceSession: function() {
  endRealVoiceSession();
  showPage(state.lastPage || "home");
  },
- goBackFromVoice,
- toggleVoiceListening,
- startVoiceRecording: () => {
- alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
+ goBackFromVoice: goBackFromVoice,
+ toggleVoiceListening: toggleVoiceListening,
+ startVoiceRecording: function() {
+ alert('Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
  },
- // Regalo
- activateWelcomeGift,
- getWelcomeGiftStatus,
- // Pagamenti
- startStripeCheckout,
- getCurrentProfile,
- getCurrentUser,
- loadNatalChart,
- geocodeProfileIfNeeded,
+ activateWelcomeGift: activateWelcomeGift,
+ getWelcomeGiftStatus: getWelcomeGiftStatus,
+ startStripeCheckout: startStripeCheckout,
+ getCurrentProfile: getCurrentProfile,
+ getCurrentUser: getCurrentUser,
+ loadNatalChart: loadNatalChart,
+ geocodeProfileIfNeeded: geocodeProfileIfNeeded,
  openLunaFromCompat: function(category) {
  window.app.closeCompatModal();
  window.app.handleConsultRequest(category);
@@ -649,6 +682,6 @@ window.app = {
  if (page) page.innerHTML = '';
  const payPage = document.getElementById('page-payments');
  if (payPage) payPage.innerHTML = '';
- console.log('🔁 Stato app resettato');
+ console.log('Stato app resettato');
  }
 };
