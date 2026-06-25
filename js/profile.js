@@ -310,7 +310,11 @@ export async function handleCompatSubmit(e) {
 
 // ===== RENDER RISULTATO COMPATIBILITÀ =====
 function renderCompatResult(data, partnerName) {
-    const resultDiv = document.getElementById('compatResult');
+    // Se il modal è aperto, mostra nel modal; altrimenti mostra nella tendina inline
+    const modal = document.getElementById('compatModal');
+    const resultDiv = (modal && modal.classList.contains('active')) 
+        ? document.getElementById('compatResult')
+        : document.getElementById('compatInlineResult');
     if (!resultDiv) return;
 
     const score = data.compatibility_score || 0;
