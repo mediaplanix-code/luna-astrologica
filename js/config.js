@@ -1,5 +1,5 @@
 // ============================================================
-// CONFIG.JS v2.1 — Aggiunte categorie: sogni, affinita
+// CONFIG.JS v2.2 — Aggiunto WELCOME_GIFT_DAYS
 // ============================================================
 
 export const CONFIG = {
@@ -33,7 +33,10 @@ export const CONFIG = {
     SPENDING_THRESHOLD: 49,
     SERVICE_PACKAGE: 45,
     CHAT_AI: 25,
-  }
+  },
+
+  // Durata regalo benvenuto in millisecondi (3 mesi)
+  WELCOME_GIFT_DAYS: 90,
 };
 
 export const ZODIAC_SIGNS = {
