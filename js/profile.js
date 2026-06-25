@@ -87,7 +87,7 @@ export async function handleCompatInlineSubmit(e) {
         if (resultDiv) {
             resultDiv.innerHTML = `
                 <div style="text-align:center; padding:1rem; color:var(--danger);">
-                    <p>⚠️ Impossibile trovare la città "${city}". Controlla l'ortografia.</p>
+                    <p>⚠️ Impossibile trovare la città "${city}". Controlla l\'ortografia.</p>
                     <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="document.getElementById('compatInlineBirthCity').focus()">Riprova</button>
                 </div>
             `;
@@ -127,7 +127,7 @@ export async function handleCompatInlineSubmit(e) {
         if (resultDiv) {
             resultDiv.innerHTML = `
                 <div style="text-align:center; padding:1rem; color:var(--danger);">
-                    <p>⚠️ ${err.message || 'Errore nel calcolo dell'affinità'}</p>
+                    <p>⚠️ ${err.message || 'Errore nel calcolo dell\'affinità'}</p>
                 </div>
             `;
         }
@@ -260,7 +260,7 @@ export async function handleCompatSubmit(e) {
         if (resultDiv) {
             resultDiv.innerHTML = `
                 <div style="text-align:center; padding:1rem; color:var(--danger);">
-                    <p>⚠️ Impossibile trovare la città "${city}". Controlla l'ortografia.</p>
+                    <p>⚠️ Impossibile trovare la città "${city}". Controlla l\'ortografia.</p>
                     <button class="btn-gold btn-full" style="margin-top:1rem;" onclick="document.getElementById('compatBirthCity').focus()">Riprova</button>
                 </div>
             `;
