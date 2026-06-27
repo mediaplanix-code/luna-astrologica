@@ -230,17 +230,13 @@ function renderCompatInlineResult(data, partnerName) {
 export async function handleCompatSubmit(e) {
     e.preventDefault();
 
-    // Prova a leggere i campi inline (tendina) prima, poi quelli del modal
-    const name = document.getElementById('compatName_inline')?.value?.trim() 
-        || document.getElementById('compatName')?.value?.trim();
-    const birthDateRaw = document.getElementById('compatBirthDate_inline')?.value
-        || document.getElementById('compatBirthDate')?.value;
-    const birthTime = document.getElementById('compatBirthTime_inline')?.value
-        || document.getElementById('compatBirthTime')?.value;
-    const city = document.getElementById('compatBirthCity_inline')?.value?.trim()
-        || document.getElementById('compatBirthCity')?.value?.trim();
-    const country = document.getElementById('compatBirthCountry_inline')?.value
-        || document.getElementById('compatBirthCountry')?.value;
+    // Legge i campi dal form che ha triggerato l'evento
+    const form = e.target;
+    const name = form.querySelector('[id*="compatName"]')?.value?.trim();
+    const birthDateRaw = form.querySelector('[id*="compatBirthDate"]')?.value;
+    const birthTime = form.querySelector('[id*="compatBirthTime"]')?.value;
+    const city = form.querySelector('[id*="compatBirthCity"]')?.value?.trim();
+    const country = form.querySelector('[id*="compatBirthCountry"]')?.value;
 
     if (!name || !birthDateRaw || !city || !country) {
         alert('Compila tutti i campi obbligatori');
