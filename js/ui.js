@@ -389,11 +389,11 @@ export function renderCompatModal() {
             <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
                 <div class="form-group">
                     <label class="form-label">Nome</label>
-                    <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
+                    <input type="text" class="form-input" id="compatName_inline" placeholder="Nome della persona" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Sesso</label>
-                    <select class="form-input form-select" id="compatGender">
+                    <select class="form-input form-select" id="compatGender_inline">
                         <option value="">Seleziona</option>
                         <option value="M">Uomo</option>
                         <option value="F">Donna</option>
@@ -403,20 +403,20 @@ export function renderCompatModal() {
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Data nascita *</label>
-                        <input type="date" class="form-input" id="compatBirthDate" required>
+                        <input type="date" class="form-input" id="compatBirthDate_inline" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Ora nascita</label>
-                        <input type="time" class="form-input" id="compatBirthTime">
+                        <input type="time" class="form-input" id="compatBirthTime_inline">
                     </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Città nascita *</label>
-                    <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
+                    <input type="text" class="form-input" id="compatBirthCity_inline" placeholder="Città" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Nazione *</label>
-                    <select class="form-input form-select" id="compatBirthCountry" required>
+                    <select class="form-input form-select" id="compatBirthCountry_inline" required>
                         <option value="">Seleziona</option>
                         <option value="IT">Italia</option>
                         <option value="FR">Francia</option>
@@ -428,7 +428,7 @@ export function renderCompatModal() {
                 </div>
                 <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
             </form>
-            <div id="compatResult" style="margin-top:1rem; display:none;"></div>
+            <div id="compatResult_inline" style="margin-top:1rem; display:none;"></div>
         </div>
     `;
     setHTML("compatModal", html);
