@@ -230,11 +230,17 @@ function renderCompatInlineResult(data, partnerName) {
 export async function handleCompatSubmit(e) {
     e.preventDefault();
 
-    const name = document.getElementById('compatName')?.value?.trim();
-    const birthDateRaw = document.getElementById('compatBirthDate')?.value;
-    const birthTime = document.getElementById('compatBirthTime')?.value;
-    const city = document.getElementById('compatBirthCity')?.value?.trim();
-    const country = document.getElementById('compatBirthCountry')?.value;
+    // Prova a leggere i campi inline (tendina) prima, poi quelli del modal
+    const name = document.getElementById('compatName_inline')?.value?.trim() 
+        || document.getElementById('compatName')?.value?.trim();
+    const birthDateRaw = document.getElementById('compatBirthDate_inline')?.value
+        || document.getElementById('compatBirthDate')?.value;
+    const birthTime = document.getElementById('compatBirthTime_inline')?.value
+        || document.getElementById('compatBirthTime')?.value;
+    const city = document.getElementById('compatBirthCity_inline')?.value?.trim()
+        || document.getElementById('compatBirthCity')?.value?.trim();
+    const country = document.getElementById('compatBirthCountry_inline')?.value
+        || document.getElementById('compatBirthCountry')?.value;
 
     if (!name || !birthDateRaw || !city || !country) {
         alert('Compila tutti i campi obbligatori');
@@ -310,7 +316,8 @@ export async function handleCompatSubmit(e) {
 
 // ===== RENDER RISULTATO COMPATIBILITÀ =====
 function renderCompatResult(data, partnerName) {
-    const resultDiv = document.getElementById('compatResult');
+    const resultDiv = document.getElementById('compatResult_inline') 
+        || document.getElementById('compatResult');
     if (!resultDiv) return;
 
     const score = data.compatibility_score || 0;
