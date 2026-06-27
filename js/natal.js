@@ -174,7 +174,7 @@ function updateCompatibility(sunSign) {
  if (compat[idx]) {
  const sign = compat[idx];
  const sym = SIGN_SYMBOLS[sign] || '?';
- pill.setAttribute('onclick', `window.app.showCompat('${sign}')`);
+ // Rimosso onclick — i segni sono solo informativi
  const iconSpan = pill.querySelector('.compat-icon');
  if (iconSpan) {
  iconSpan.textContent = sym;
