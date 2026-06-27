@@ -76,7 +76,7 @@ export async function handleCompatInlineSubmit(e) {
         return;
     }
 
-    const resultDiv = document.getElementById('compatInlineResult');
+    const resultDiv = document.getElementById('compatResult');
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.innerHTML = '<div class="loading" style="margin:1rem auto;"></div><p style="text-align:center;color:var(--text-muted);">Luna sta cercando le coordinate del partner...</p>';
@@ -136,7 +136,7 @@ export async function handleCompatInlineSubmit(e) {
 
 // ===== RENDER RISULTATO COMPATIBILITÀ INLINE =====
 function renderCompatInlineResult(data, partnerName) {
-    const resultDiv = document.getElementById('compatInlineResult');
+    const resultDiv = document.getElementById('compatResult');
     if (!resultDiv) return;
 
     const score = data.compatibility_score || 0;
@@ -310,11 +310,7 @@ export async function handleCompatSubmit(e) {
 
 // ===== RENDER RISULTATO COMPATIBILITÀ =====
 function renderCompatResult(data, partnerName) {
-    // Se il modal è aperto, mostra nel modal; altrimenti mostra nella tendina inline
-    const modal = document.getElementById('compatModal');
-    const resultDiv = (modal && modal.classList.contains('active')) 
-        ? document.getElementById('compatResult')
-        : document.getElementById('compatInlineResult');
+    const resultDiv = document.getElementById('compatResult');
     if (!resultDiv) return;
 
     const score = data.compatibility_score || 0;
