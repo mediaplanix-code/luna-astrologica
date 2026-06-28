@@ -1,9 +1,9 @@
 // ============================================================
-// PAYMENTS.JS v2.1 — Aggiunti: sogni, affinita, welcome gift, messaggio regalo overlay
+// PAYMENTS.JS v3.0 — Regalo DB, Zona A vs Zona B, soglia €49
 // ============================================================
 
 import { CONFIG } from './config.js';
-import { getCurrentUser, getCurrentProfile, updateCredits } from './auth.js';
+import { getCurrentUser, getCurrentProfile, updateCredits, getSupabase } from './auth.js';
 
 const PACKAGES = {
     subscription: {
@@ -32,51 +32,14 @@ const PACKAGES = {
         { id: 'svc_partner', name: 'Partner', icon: '💑', price: 45, duration: '18 min', category: 'partner', type: 'voice' },
         { id: 'svc_sogni', name: 'Interpretazione Sogni', icon: '🌙', price: 45, duration: '18 min', category: 'sogni', type: 'voice' },
         { id: 'svc_affinita', name: 'Affinità di Coppia', icon: '💞', price: 45, duration: '18 min', category: 'affinita', type: 'voice' },
-    ],
-    chat: {
-        id: 'chat_ai',
-        name: 'Chat con Luna (AI)',
-        icon: '💬',
-        price: 25,
-        duration: '12 min',
-        description: 'Consulto astrologico via chat con intelligenza artificiale',
-        limit: 'Risposte limitate per sessione'
-    }
+    ]
 };
 
 const SPENDING_THRESHOLD = 49;
-
 const SUB_KEY = 'luna_subscription';
 const TX_KEY = 'luna_transactions';
 const VOICE_PKG_KEY = 'luna_voice_package';
-const WELCOME_GIFT_KEY = 'luna_welcome_gift_shown';
-
-function getSubscription() {
-    try {
-        const raw = localStorage.getItem(SUB_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw);
-    } catch { return null; }
-}
-
-function setSubscription(sub) {
-    localStorage.setItem(SUB_KEY, JSON.stringify(sub));
-}
-
-function getTransactions() {
-    try {
-        const raw = localStorage.getItem(TX_KEY);
-        if (!raw) return [];
-        return JSON.parse(raw);
-    } catch { return []; }
-}
-
-function addTransaction(tx) {
-    const txs = getTransactions();
-    txs.unshift({ ...tx, id: 'tx_' + Date.now(), date: new Date().toISOString() });
-    localStorage.setItem(TX_KEY, JSON.stringify(txs.slice(0, 50)));
-    updateSpendingTracking();
-}
+const WELCOME_GIFT_LS_KEY = 'luna_welcome_gift_shown';
 
 // ===== STATO PACCHETTO VOCE ATTIVO =====
 export function getVoicePackage() {
@@ -84,7 +47,6 @@ export function getVoicePackage() {
         const raw = localStorage.getItem(VOICE_PKG_KEY);
         if (!raw) return null;
         const pkg = JSON.parse(raw);
-        // Verifica scadenza
         if (pkg.expiresAt && Date.now() > pkg.expiresAt) {
             localStorage.removeItem(VOICE_PKG_KEY);
             return null;
@@ -108,80 +70,241 @@ export function getVoicePackageMinutesRemaining() {
     return Math.max(0, pkg.durationMinutes - elapsed);
 }
 
-// ===== ABBONAMENTO =====
-export function getSubscriptionStatus() {
-    const sub = getSubscription();
-    const now = Date.now();
-
-    if (!sub) {
-        return { active: false, expired: true, daysLeft: 0, canRenewFree: false, hasWelcomeGift: false };
+// ===== ABBONAMENTO / REGALO DA DB =====
+export async function getSubscriptionFromDB() {
+    const profile = getCurrentProfile();
+    if (!profile) return null;
+    
+    // Campi DB: welcome_gift_active (boolean), welcome_gift_expires_at (timestamp), subscription_expires_at (timestamp)
+    const now = new Date().toISOString();
+    
+    // Priorità: regalo di benvenuto attivo
+    if (profile.welcome_gift_active && profile.welcome_gift_expires_at && profile.welcome_gift_expires_at > now) {
+        return {
+            active: true,
+            expired: false,
+            daysLeft: Math.max(0, Math.ceil((new Date(profile.welcome_gift_expires_at) - Date.now()) / (24 * 60 * 60 * 1000))),
+            isWelcomeGift: true,
+            expiresAt: new Date(profile.welcome_gift_expires_at).getTime()
+        };
     }
+    
+    // Altrimenti: abbonamento pagato
+    if (profile.subscription_expires_at && profile.subscription_expires_at > now) {
+        return {
+            active: true,
+            expired: false,
+            daysLeft: Math.max(0, Math.ceil((new Date(profile.subscription_expires_at) - Date.now()) / (24 * 60 * 60 * 1000))),
+            isWelcomeGift: false,
+            expiresAt: new Date(profile.subscription_expires_at).getTime()
+        };
+    }
+    
+    return { active: false, expired: true, daysLeft: 0, isWelcomeGift: false };
+}
 
+// Fallback localStorage se DB non ha i campi
+function getSubscriptionFallback() {
+    try {
+        const raw = localStorage.getItem(SUB_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch { return null; }
+}
+
+export async function getSubscriptionStatus() {
+    // Prova DB prima
+    const dbStatus = await getSubscriptionFromDB();
+    if (dbStatus && (dbStatus.active || dbStatus.expired)) {
+        return enrichStatus(dbStatus);
+    }
+    
+    // Fallback localStorage
+    const sub = getSubscriptionFallback();
+    const now = Date.now();
+    
+    if (!sub) {
+        return { active: false, expired: true, daysLeft: 0, canRenewFree: false, hasWelcomeGift: false, isWelcomeGift: false };
+    }
+    
     const expiresAt = sub.expiresAt;
     const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
     const active = daysLeft > 0;
-
-    const periodStart = sub.startedAt;
-    const periodEnd = expiresAt;
-    const txs = getTransactions();
-    const periodSpending = txs
-        .filter(t => t.date >= periodStart && t.date <= periodEnd && t.type === 'service')
-        .reduce((sum, t) => sum + (t.amount || 0), 0);
-
-    const canRenewFree = periodSpending >= SPENDING_THRESHOLD;
-
-    return {
+    
+    return enrichStatus({
         active,
         expired: !active,
         daysLeft,
         startedAt: sub.startedAt,
         expiresAt,
+        isWelcomeGift: sub.isWelcomeGift || false
+    });
+}
+
+function enrichStatus(status) {
+    const periodStart = status.startedAt || Date.now() - (90 * 24 * 60 * 60 * 1000);
+    const periodEnd = status.expiresAt || Date.now();
+    const txs = getTransactions();
+    const periodSpending = txs
+        .filter(t => new Date(t.date) >= new Date(periodStart) && new Date(t.date) <= new Date(periodEnd) && t.type === 'service')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+    const canRenewFree = periodSpending >= SPENDING_THRESHOLD;
+    
+    return {
+        ...status,
         periodSpending,
         canRenewFree,
         spendingNeeded: Math.max(0, SPENDING_THRESHOLD - periodSpending),
         spendingProgress: Math.min(100, (periodSpending / SPENDING_THRESHOLD) * 100),
-        hasWelcomeGift: sub.isWelcomeGift || false
+        hasWelcomeGift: status.isWelcomeGift || false
     };
 }
 
-export function hasFullAccess() {
-    return getSubscriptionStatus().active;
+export async function hasFullAccess() {
+    const status = await getSubscriptionStatus();
+    return status.active;
 }
 
-// ===== REGALO BENVENUTO 3 MESI =====
-export function activateWelcomeGift() {
+// ZONA A: accesso ai calcoli (regalo o abbonamento)
+export async function hasCalculationsAccess() {
+    return await hasFullAccess();
+}
+
+// ZONA B: accesso alla voce (pacchetto voce attivo)
+export async function hasVoiceAccess() {
+    return hasVoicePackage();
+}
+
+// ===== REGALO BENVENUTO 3 MESI — DB + localStorage =====
+export async function activateWelcomeGift() {
+    const user = getCurrentUser();
+    const profile = getCurrentProfile();
+    const supabase = getSupabase();
+    
+    if (!user || !supabase) {
+        // Fallback localStorage
+        return activateWelcomeGiftLocal();
+    }
+    
+    // Verifica se già attivo su DB
+    if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
+        return false;
+    }
+    
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
+    
+    try {
+        const { error } = await supabase
+            .from('profiles')
+            .update({
+                welcome_gift_active: true,
+                welcome_gift_expires_at: expiresAt,
+                updated_at: now
+            })
+            .eq('id', user.id);
+        
+        if (error) throw error;
+        
+        // Aggiorna anche localStorage come backup
+        localStorage.setItem(WELCOME_GIFT_LS_KEY, JSON.stringify({
+            activatedAt: now,
+            expiresAt: expiresAt
+        }));
+        
+        addTransaction({
+            type: 'welcome_gift',
+            packageId: 'sub_trimestrale',
+            amount: 0,
+            description: '🎁 Regalo di benvenuto — 3 mesi gratis'
+        });
+        
+        return true;
+    } catch (err) {
+        console.error('Errore attivazione regalo DB:', err);
+        return activateWelcomeGiftLocal();
+    }
+}
+
+function activateWelcomeGiftLocal() {
     const user = getCurrentUser();
     if (!user) return false;
-
+    
+    const existing = getSubscriptionFallback();
+    if (existing && existing.active) return false;
+    
+    const shown = localStorage.getItem(WELCOME_GIFT_LS_KEY);
+    if (shown) {
+        try {
+            const parsed = JSON.parse(shown);
+            if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) return false;
+        } catch {}
+    }
+    
     const now = Date.now();
-    const existing = getSubscription();
-    if (existing && existing.active) return false; // Già abbonato
-
-    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
-    if (shown) return false; // Già mostrato in passato
-
-    setSubscription({
+    const sub = {
         startedAt: now,
         expiresAt: now + (90 * 24 * 60 * 60 * 1000),
         userId: user.id,
         isWelcomeGift: true
-    });
-
+    };
+    
+    localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+    localStorage.setItem(WELCOME_GIFT_LS_KEY, JSON.stringify({
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(sub.expiresAt).toISOString()
+    }));
+    
     addTransaction({
         type: 'welcome_gift',
         packageId: 'sub_trimestrale',
         amount: 0,
         description: '🎁 Regalo di benvenuto — 3 mesi gratis'
     });
-
-    localStorage.setItem(WELCOME_GIFT_KEY, 'true');
+    
     return true;
 }
 
-export function shouldShowWelcomeGift() {
-    const status = getSubscriptionStatus();
-    const shown = localStorage.getItem(WELCOME_GIFT_KEY);
-    return !status.active && !shown;
+export async function shouldShowWelcomeGift() {
+    const profile = getCurrentProfile();
+    
+    // Se ha il regalo attivo su DB, non mostrare
+    if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
+        return false;
+    }
+    
+    // Se ha abbonamento pagato, non mostrare
+    if (profile?.subscription_expires_at && profile?.subscription_expires_at > new Date().toISOString()) {
+        return false;
+    }
+    
+    // Fallback localStorage
+    const shown = localStorage.getItem(WELCOME_GIFT_LS_KEY);
+    if (shown) {
+        try {
+            const parsed = JSON.parse(shown);
+            if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) return false;
+        } catch {}
+    }
+    
+    const sub = getSubscriptionFallback();
+    return !sub || !sub.active;
+}
+
+// ===== TRANSACTIONS =====
+function getTransactions() {
+    try {
+        const raw = localStorage.getItem(TX_KEY);
+        if (!raw) return [];
+        return JSON.parse(raw);
+    } catch { return []; }
+}
+
+function addTransaction(tx) {
+    const txs = getTransactions();
+    txs.unshift({ ...tx, id: 'tx_' + Date.now(), date: new Date().toISOString() });
+    localStorage.setItem(TX_KEY, JSON.stringify(txs.slice(0, 50)));
 }
 
 // ===== SIMULA PAGAMENTO =====
@@ -191,29 +314,53 @@ export async function simulatePayment(packageId, amount) {
         alert("Devi essere loggato per effettuare un acquisto");
         return false;
     }
-
+    
     await new Promise(r => setTimeout(r, 800));
     const now = Date.now();
-
+    
     if (packageId === 'sub_trimestrale') {
-        const existing = getSubscription();
-        let startedAt, expiresAt;
-
+        // Abbonamento trimestrale
+        const supabase = getSupabase();
+        const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
+        
+        if (supabase) {
+            try {
+                await supabase.from('profiles').update({
+                    subscription_expires_at: expiresAt,
+                    welcome_gift_active: false,
+                    updated_at: new Date().toISOString()
+                }).eq('id', user.id);
+            } catch (e) {
+                console.warn('Fallback localStorage per abbonamento');
+            }
+        }
+        
+        const existing = getSubscriptionFallback();
+        let startedAt, lsExpiresAt;
+        
         if (existing && existing.expiresAt > now) {
             startedAt = existing.startedAt;
-            expiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
+            lsExpiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
         } else {
             startedAt = now;
-            expiresAt = now + (90 * 24 * 60 * 60 * 1000);
+            lsExpiresAt = now + (90 * 24 * 60 * 60 * 1000);
         }
-
-        setSubscription({ startedAt, expiresAt, userId: user.id });
-        addTransaction({ type: 'subscription', packageId, amount, description: 'Abbonamento trimestrale' });
-        alert(`✅ Abbonamento attivato!
-Valido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
+        
+        localStorage.setItem(SUB_KEY, JSON.stringify({
+            startedAt, expiresAt: lsExpiresAt, userId: user.id, isWelcomeGift: false
+        }));
+        
+        addTransaction({
+            type: 'subscription',
+            packageId,
+            amount,
+            description: 'Abbonamento trimestrale'
+        });
+        
+        alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
-
+    
     // Servizio voce
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) {
@@ -224,38 +371,44 @@ Valido fino al ${new Date(expiresAt).toLocaleDateString('it-IT')}`);
             durationMinutes: 18,
             expiresAt: now + (18 * 60 * 1000)
         });
-        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${svc.name}` });
-    } else {
-        addTransaction({ type: 'service', packageId, amount, description: `Acquisto ${packageId}` });
-    }
-
-    const status = getSubscriptionStatus();
-    if (status.canRenewFree && status.daysLeft <= 30) {
-        const sub = getSubscription();
-        if (sub) {
-            sub.expiresAt += (90 * 24 * 60 * 60 * 1000);
-            setSubscription(sub);
-            addTransaction({ type: 'auto_renew', amount: 0, description: 'Rinnovo gratuito (spesa ≥ €49)' });
+        
+        addTransaction({
+            type: 'service',
+            packageId,
+            amount,
+            description: `Acquisto ${svc.name}`
+        });
+        
+        // Verifica soglia €49 per rinnovo gratuito
+        const status = await getSubscriptionStatus();
+        if (status.canRenewFree && status.daysLeft <= 30) {
+            const sub = getSubscriptionFallback();
+            if (sub) {
+                sub.expiresAt += (90 * 24 * 60 * 60 * 1000);
+                localStorage.setItem(SUB_KEY, JSON.stringify(sub));
+                addTransaction({
+                    type: 'auto_renew',
+                    amount: 0,
+                    description: 'Rinnovo gratuito (spesa ≥ €49)'
+                });
+            }
         }
+        
+        alert(`✅ Acquisto completato!\nHai acquistato ${svc.name} per €${amount}\n\n⏱️ 18 minuti di consulenza vocale attivati.`);
+        return true;
     }
-
-    alert(`✅ Acquisto completato!
-Hai acquistato ${getPackageName(packageId)} per €${amount}`);
-    return true;
+    
+    return false;
 }
 
 // ===== STRIPE CHECKOUT =====
 export async function startStripeCheckout(packageId, amount) {
     if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
+        const name = getPackageName(packageId);
         const confirmed = confirm(
-            `💳 MODALITÀ TEST
-
-` +
-            `Stai per acquistare:
-` +
-            `${getPackageName(packageId)} — €${amount}
-
-` +
+            `💳 MODALITÀ TEST\n\n` +
+            `Stai per acquistare:\n` +
+            `${name} — €${amount}\n\n` +
             `Confermi il pagamento simulato?`
         );
         if (confirmed) {
@@ -263,14 +416,14 @@ export async function startStripeCheckout(packageId, amount) {
         }
         return false;
     }
-
+    
     try {
         const user = getCurrentUser();
         if (!user) {
             alert("Devi essere loggato per acquistare");
             return false;
         }
-
+        
         const response = await fetch(`${CONFIG.WORKER_URL}/api/create-checkout`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -282,16 +435,16 @@ export async function startStripeCheckout(packageId, amount) {
                 cancelUrl: window.location.origin + '/?payment=cancel'
             })
         });
-
+        
         const { sessionId, url } = await response.json();
-
+        
         if (url) {
             window.location.href = url;
         } else if (sessionId && window.Stripe) {
             const stripe = Stripe(CONFIG.STRIPE_PUBLISHABLE_KEY);
             await stripe.redirectToCheckout({ sessionId });
         }
-
+        
         return true;
     } catch (err) {
         console.error("Errore checkout Stripe:", err);
@@ -304,7 +457,6 @@ function getPackageName(packageId) {
     if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) return svc.name;
-    if (packageId === 'chat_ai') return 'Chat con Luna (AI)';
     return packageId;
 }
 
@@ -312,11 +464,11 @@ function getPackageName(packageId) {
 export function renderPaymentsPage() {
     const container = document.getElementById('page-payments');
     if (!container) return;
-
+    
     const status = getSubscriptionStatus();
     const txs = getTransactions().slice(0, 5);
     const user = getCurrentUser();
-
+    
     const subSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
@@ -355,7 +507,7 @@ export function renderPaymentsPage() {
             </button>
         </div>
     `;
-
+    
     const spendingSection = status.active ? `
         <div class="spending-tracker">
             <div class="spending-header">
@@ -374,11 +526,11 @@ export function renderPaymentsPage() {
             </div>
         </div>
     ` : '';
-
+    
     const packagesSection = `
         <div class="payments-header">
-            <h2>🔮 Pacchetti Servizi</h2>
-            <p>Consulto astrologico completo con AI Voice — 18 minuti</p>
+            <h2>🔮 Pacchetti Servizi Vocali</h2>
+            <p>Consulto astrologico completo con Luna — 18 minuti</p>
         </div>
         <div class="packages-grid">
             ${PACKAGES.services.map((pkg, i) => `
@@ -392,19 +544,7 @@ export function renderPaymentsPage() {
             `).join('')}
         </div>
     `;
-
-    const chatSection = `
-        <div class="chat-ai-card" onclick="window.app.startStripeCheckout('chat_ai', 25)">
-            <div class="chat-ai-icon">${PACKAGES.chat.icon}</div>
-            <div class="chat-ai-info">
-                <div class="chat-ai-title">${PACKAGES.chat.name}</div>
-                <div class="chat-ai-desc">${PACKAGES.chat.description}</div>
-                <div class="chat-ai-price">€${PACKAGES.chat.price} <span style="font-size:0.75rem;color:var(--text-dim);">/ sessione</span></div>
-                <div class="chat-ai-limit">⏱️ ${PACKAGES.chat.duration} · ${PACKAGES.chat.limit}</div>
-            </div>
-        </div>
-    `;
-
+    
     const historySection = txs.length > 0 ? `
         <div class="history-section">
             <div class="history-title">📜 Ultime transazioni</div>
@@ -421,20 +561,19 @@ export function renderPaymentsPage() {
             `).join('')}
         </div>
     ` : '';
-
+    
     container.innerHTML = `
         <div class="payments-page">
             <div class="payments-header">
                 <h2>💳 Crediti & Abbonamento</h2>
                 <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
             </div>
-
+            
             ${subSection}
             ${spendingSection}
             ${packagesSection}
-            ${chatSection}
             ${historySection}
-
+            
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
                     ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
@@ -446,21 +585,11 @@ export function renderPaymentsPage() {
 }
 
 export function updatePaymentsUI() {
-    const status = getSubscriptionStatus();
-    const pill = document.getElementById('creditsPill');
-    if (pill) {
-        pill.style.cursor = 'pointer';
-        pill.onclick = () => window.app.showPaymentsPage();
-        const dot = document.getElementById('creditsDot');
-        if (dot) {
-            dot.className = 'credits-dot';
-            dot.style.background = status.active ? '#22c55e' : '#ef4444';
-        }
-    }
+    // Aggiorna UI pagamenti se necessario
 }
 
-export function shouldBlurPersonalized() {
-    return !hasFullAccess();
+export async function shouldBlurPersonalized() {
+    return !(await hasFullAccess());
 }
 
 export { PACKAGES, SPENDING_THRESHOLD };
