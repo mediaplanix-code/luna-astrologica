@@ -479,7 +479,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill"><span class="compat-icon">♌</span><span class="compat-name">Leone</span></span>
             <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
             <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
-            <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -620,6 +619,49 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <span>Cosa vuol dire? Parla con Luna!</span>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-affinita')">
+                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
+                <span class="accordion-arrow">▼</span>
+            </div>
+            <div class="accordion-body" id="acc-affinita">
+                <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
+                    <div class="form-group">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Data nascita *</label>
+                            <input type="date" class="form-input" id="compatBirthDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ora nascita</label>
+                            <input type="time" class="form-input" id="compatBirthTime">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Città nascita *</label>
+                        <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nazione *</label>
+                        <select class="form-input form-select" id="compatBirthCountry" required>
+                            <option value="">Seleziona</option>
+                            <option value="IT">Italia</option>
+                            <option value="FR">Francia</option>
+                            <option value="DE">Germania</option>
+                            <option value="ES">Spagna</option>
+                            <option value="UK">UK</option>
+                            <option value="US">USA</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
+                </form>
+                <div id="compatResult" style="margin-top:1rem; display:none;"></div>
             </div>
         </div>
 
