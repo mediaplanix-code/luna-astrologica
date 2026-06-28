@@ -1,5 +1,5 @@
 // ============================================================
-// UI.JS v6.3 — Pill compatibilità dinamici, accordion Affinità, banner regalo, logo Telegram
+// UI.JS v6.4 — Fix: pill visibili, UN solo regalo, Telegram logo solo
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -172,15 +172,6 @@ export function renderHomePage() {
                     <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Funziona tutto da browser, <strong style="color:var(--gold-light);">senza scaricare nulla</strong></li>
                 </ul>
             </div>
-        </div>
-        <!-- BANNER TELEGRAM -->
-        <div class="telegram-banner" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
-            <div class="telegram-icon">📱</div>
-            <div class="telegram-text">
-                <div class="telegram-title">Telegram</div>
-                <div class="telegram-sub">Oroscopo quotidiano e alert eventi</div>
-            </div>
-            <div class="telegram-arrow">→</div>
         </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
@@ -466,8 +457,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    let sunSign = "...";
-    let sunSymbol = "✨";
+    // FIX: usa profile.sun_sign come fallback se natalData non è ancora caricato
+    let sunSign = profile?.sun_sign || "...";
+    let sunSymbol = ZODIAC_SIGNS[sunSign]?.symbol || "✨";
     let moonSign = "...";
     let ascSign = "...";
     let ascDeg = "";
@@ -508,7 +500,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
 
         <div class="compat-row" id="compatRow">
             <span class="compat-label">👤 Compatibilità:</span>
-            ${sunSign !== "..." ? generateCompatPills(sunSign) : '<span class="compat-pill">...</span>'}
+            ${generateCompatPills(sunSign)}
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -542,6 +534,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 </div>
             </div>
         </div>
+
+        <!-- UN SOLO PACCO REGALO — sovrasta tutta la Zona A -->
+        <div id="zoneA-gift-overlay" style="display:none;"></div>
 
         <div class="accordion" id="acc-wheel-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
@@ -710,14 +705,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <!-- BANNER TELEGRAM -->
-        <div class="telegram-banner" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
-            <div class="telegram-icon">📱</div>
-            <div class="telegram-text">
-                <div class="telegram-title">Telegram</div>
-                <div class="telegram-sub">Oroscopo quotidiano e alert eventi</div>
-            </div>
-            <div class="telegram-arrow">→</div>
+        <!-- LOGO TELEGRAM SOLO — cliccabile -->
+        <div class="telegram-logo-wrap" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
+            <span class="telegram-logo-icon">📱</span>
         </div>
 
         <footer class="footer">
