@@ -1,5 +1,5 @@
 // ============================================================
-// APP.JS v13.3 — Overlay regalo Zona A, blocco Zona B voce, logica DB
+// APP.JS v13.4 — Fix: UN solo regalo, blocco voce, pill visibili
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -251,89 +251,104 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO ZONA A + REGALO + BLOCCO ZONA B =====
+// ===== OFFUSCAMENTO ZONA A + UN SOLO REGALO + BLOCCO ZONA B =====
 async function applyPersonalizedBlur() {
  const hasAccess = await hasCalculationsAccess();
  const showGift = await shouldShowWelcomeGift();
 
- // Zona A: calcoli astrologici (offusca se non ha accesso)
- const zoneAWrappers = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
+ // Rimuovi vecchio overlay se presente
+ const oldOverlay = document.getElementById('zoneA-gift-overlay');
+ if (oldOverlay) {
+ oldOverlay.remove();
+ }
 
- zoneAWrappers.forEach(selector => {
- const wrapper = document.querySelector(selector);
- if (!wrapper) return;
-
- // Rimuovi overlay precedente
- const oldOverlay = wrapper.querySelector('.gift-overlay');
- if (oldOverlay) oldOverlay.remove();
-
+ // Zona A: se non ha accesso, mostra UN SOLO overlay che copre tutte le accordion
  if (!hasAccess) {
- wrapper.classList.add('blur-section-locked');
+ const zoneAContainer = document.getElementById('page-personalized');
+ if (!zoneAContainer) return;
+
+ // Trova il punto dove inserire l'overlay (dopo l'oroscopo, prima delle accordion)
+ const firstAccordion = zoneAContainer.querySelector('.accordion');
+ if (!firstAccordion) return;
+
+ const overlay = document.createElement('div');
+ overlay.id = 'zoneA-gift-overlay';
+ overlay.className = 'zone-a-gift-overlay';
 
  if (showGift) {
- const overlay = document.createElement('div');
- overlay.className = 'gift-overlay';
  overlay.innerHTML = `
- <div class="gift-icon">🎁</div>
- <div class="gift-title">Regalo di Benvenuto</div>
- <div class="gift-subtitle">3 mesi di accesso completo gratis<br>(valore €15)</div>
- <button class="gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Apri il regalo</button>
+ <div class="zone-a-gift-box">
+ <div class="zone-a-gift-icon">🎁</div>
+ <div class="zone-a-gift-title">Regalo di Benvenuto</div>
+ <div class="zone-a-gift-sub">3 mesi di accesso completo gratis<br>Valore €15 — clicca per sbloccare</div>
+ <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Apri il regalo</button>
+ </div>
  `;
- wrapper.appendChild(overlay);
  } else {
- const overlay = document.createElement('div');
- overlay.className = 'gift-overlay';
  overlay.innerHTML = `
- <div class="gift-icon">🔒</div>
- <div class="gift-title">Accesso Scaduto</div>
- <div class="gift-subtitle">Rinnova per €15/trimestre<br>o acquista una consulenza</div>
- <button class="gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
+ <div class="zone-a-gift-box">
+ <div class="zone-a-gift-icon">🔒</div>
+ <div class="zone-a-gift-title">Accesso Scaduto</div>
+ <div class="zone-a-gift-sub">Rinnova per €15/trimestre<br>o acquista una consulenza</div>
+ <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
+ </div>
  `;
- wrapper.appendChild(overlay);
  }
- } else {
- wrapper.classList.remove('blur-section-locked');
- }
+
+ // Inserisci prima della prima accordion
+ firstAccordion.parentNode.insertBefore(overlay, firstAccordion);
+
+ // Offusca tutte le accordion della Zona A
+ const zoneAAccordions = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
+ zoneAAccordions.forEach(selector => {
+ const el = document.querySelector(selector);
+ if (el) el.classList.add('blur-section-locked');
  });
+ } else {
+ // Accesso attivo, rimuovi offuscamento
+ const zoneAAccordions = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
+ zoneAAccordions.forEach(selector => {
+ const el = document.querySelector(selector);
+ if (el) el.classList.remove('blur-section-locked');
+ });
+ }
 
  // Zona B: voce — blocca se non ha pacchetto voce
  const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
  if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
- const hasVoice = hasVoiceAccess();
+ const hasVoice = await hasVoiceAccess();
  if (!hasVoice) {
  voiceBtn.onclick = (e) => {
  e.preventDefault();
  e.stopPropagation();
- alert('🔒 Per parlare con Luna acquista una consulenza da €45');
+ alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
  window.app.showPaymentsPage();
  };
- voiceBtn.style.position = 'relative';
- // Aggiungi badge blocco
- let badge = voiceBtn.querySelector('.voice-lock-badge');
- if (!badge) {
- badge = document.createElement('span');
+ // Aggiungi badge
+ if (!voiceBtn.querySelector('.voice-lock-badge')) {
+ const badge = document.createElement('span');
  badge.className = 'voice-lock-badge';
  badge.textContent = '🔒 €45';
+ voiceBtn.style.position = 'relative';
  voiceBtn.appendChild(badge);
  }
  }
  }
 
- // Blocca anche le categorie sotto
+ // Blocca categorie sotto
  const catCards = document.querySelectorAll('#page-personalized .grid .card');
- catCards.forEach(card => {
- const hasVoice = hasVoiceAccess();
+ for (const card of catCards) {
+ const hasVoice = await hasVoiceAccess();
  if (!hasVoice) {
  card.classList.add('voice-blocked');
- const oldClick = card.onclick;
  card.onclick = (e) => {
  e.preventDefault();
  e.stopPropagation();
- alert('🔒 Per parlare con Luna acquista una consulenza da €45');
+ alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
  window.app.showPaymentsPage();
  };
  }
- });
+ }
 }
 
 function goHome() {
@@ -380,10 +395,10 @@ async function startVoiceSession(category) {
  return;
  }
 
- // Blocco Zona B: se non ha pacchetto voce, manda al pagamento
- const hasVoice = hasVoiceAccess();
+ // BLOCCO ZONA B: se non ha pacchetto voce, manda al carrello
+ const hasVoice = await hasVoiceAccess();
  if (!hasVoice) {
- alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
+ alert('🔒 Per parlare con Luna devi prima acquistare una consulenza.\n\nCosto: €45 per 18 minuti\n\nSarai indirizzato ai pagamenti.');
  showPaymentsPage();
  return;
  }
