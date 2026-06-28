@@ -1,5 +1,5 @@
 // ============================================================
-// UI.JS v6.2 — Aggiunte: sogni, affinita, messaggio regalo overlay
+// UI.JS v6.3 — Pill compatibilità dinamici, accordion Affinità, banner regalo, logo Telegram
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -106,7 +106,7 @@ export function renderHomePage() {
                 <span class="accordion-arrow">▼</span>
             </div>
             <div class="accordion-body" id="acc-preso-regalo">
-                <p>Appena entri, il sito ti fa un regalo: <strong>3 mesi di accesso completo gratis</strong>. Sblocchi tutti i calcoli del tuo tema natale: la ruota, le case, gli aspetti, i transiti, il dossier.</p>
+                <p>Appena entri, il sito ti fa un regalo: <strong>3 mesi di accesso completo gratis</strong> (valore €15). Sblocchi tutti i calcoli del tuo tema natale: la ruota, le case, gli aspetti, i transiti, il dossier.</p>
                 <p>Se non lo attivi, quei contenuti restano offuscati — li vedi sfocati dietro una vetrata, con un bottone dorato che dice <strong>"Attiva il regalo"</strong>. Clicchi e tutto si sblocca.</p>
                 <p style="margin-top:0.75rem; color:var(--gold);"><strong>Perché?</strong> Perché tu possa toccare con mano la potenza dei calcoli reali prima di decidere se vuoi anche l'interpretazione.</p>
             </div>
@@ -172,6 +172,15 @@ export function renderHomePage() {
                     <li style="padding-left:1.25rem; position:relative; margin-bottom:0.45rem; color:var(--text-dim);"><span style="position:absolute; left:0; color:var(--gold); font-size:0.7rem;">✦</span> Funziona tutto da browser, <strong style="color:var(--gold-light);">senza scaricare nulla</strong></li>
                 </ul>
             </div>
+        </div>
+        <!-- BANNER TELEGRAM -->
+        <div class="telegram-banner" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
+            <div class="telegram-icon">📱</div>
+            <div class="telegram-text">
+                <div class="telegram-title">Telegram</div>
+                <div class="telegram-sub">Oroscopo quotidiano e alert eventi</div>
+            </div>
+            <div class="telegram-arrow">→</div>
         </div>
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
@@ -427,6 +436,29 @@ export function renderCompatModal() {
 
 const VOICE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
 
+const COMPAT_MAP = {
+    "Ariete": ["Leone", "Sagittario", "Gemelli"],
+    "Toro": ["Vergine", "Capricorno", "Cancro"],
+    "Gemelli": ["Bilancia", "Acquario", "Leone"],
+    "Cancro": ["Scorpione", "Pesci", "Toro"],
+    "Leone": ["Ariete", "Sagittario", "Bilancia"],
+    "Vergine": ["Toro", "Capricorno", "Scorpione"],
+    "Bilancia": ["Gemelli", "Acquario", "Leone"],
+    "Scorpione": ["Cancro", "Pesci", "Vergine"],
+    "Sagittario": ["Ariete", "Leone", "Acquario"],
+    "Capricorno": ["Toro", "Vergine", "Scorpione"],
+    "Acquario": ["Gemelli", "Bilancia", "Sagittario"],
+    "Pesci": ["Cancro", "Scorpione", "Capricorno"]
+};
+
+function generateCompatPills(sunSign) {
+    const signs = COMPAT_MAP[sunSign] || ["Leone", "Toro", "Acquario"];
+    return signs.map(s => {
+        const sym = ZODIAC_SIGNS[s]?.symbol || '✨';
+        return `<span class="compat-pill"><span class="compat-icon">${sym}</span><span class="compat-name">${s}</span></span>`;
+    }).join('');
+}
+
 export function renderPersonalizedPage(profile, user, natalData) {
     const name = profile?.full_name || (user?.email?.split("@")[0]) || "Utente";
     const bd = profile?.birth_date ? new Date(profile.birth_date).toLocaleDateString("it-IT", {day:"numeric", month:"long", year:"numeric"}) : "--";
@@ -474,11 +506,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span>🏠 MC <span class="astro-gold">${mcSign} ${mcDeg}</span></span>
         </div>
 
-        <div class="compat-row">
+        <div class="compat-row" id="compatRow">
             <span class="compat-label">👤 Compatibilità:</span>
-            <span class="compat-pill"><span class="compat-icon">♌</span><span class="compat-name">Leone</span></span>
-            <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
-            <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
+            ${sunSign !== "..." ? generateCompatPills(sunSign) : '<span class="compat-pill">...</span>'}
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -513,7 +543,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-wheel-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
                 <div class="accordion-title"><span class="acc-icon">🎯</span> RUOTA DEL TEMA NATALE</div>
                 <span class="accordion-arrow">▼</span>
@@ -530,7 +560,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-planets-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-planets')">
                 <div class="accordion-title"><span class="acc-icon">🪐</span> POSIZIONE DEI PIANETI</div>
                 <span class="accordion-arrow">▼</span>
@@ -557,7 +587,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-houses-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-houses')">
                 <div class="accordion-title"><span class="acc-icon">🏠</span> CASE ASTROLOGICHE</div>
                 <span class="accordion-arrow">▼</span>
@@ -586,7 +616,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-aspects-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-aspects')">
                 <div class="accordion-title"><span class="acc-icon">⚡</span> ASPETTI PLANETARI</div>
                 <span class="accordion-arrow">▼</span>
@@ -604,7 +634,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-transits-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-transits')">
                 <div class="accordion-title"><span class="acc-icon">🌙</span> TRANSITI PLANETARI — <span id="transitDate">${new Date().toLocaleDateString('it-IT')}</span></div>
                 <span class="accordion-arrow">▼</span>
@@ -622,7 +652,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <div class="accordion">
+        <div class="accordion" id="acc-affinita-wrap">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-affinita')">
                 <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
                 <span class="accordion-arrow">▼</span>
@@ -678,6 +708,16 @@ export function renderPersonalizedPage(profile, user, natalData) {
                     </div>
                 `).join("")}
             </div>
+        </div>
+
+        <!-- BANNER TELEGRAM -->
+        <div class="telegram-banner" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
+            <div class="telegram-icon">📱</div>
+            <div class="telegram-text">
+                <div class="telegram-title">Telegram</div>
+                <div class="telegram-sub">Oroscopo quotidiano e alert eventi</div>
+            </div>
+            <div class="telegram-arrow">→</div>
         </div>
 
         <footer class="footer">
