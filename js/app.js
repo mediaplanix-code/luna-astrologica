@@ -7,7 +7,7 @@ import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
- renderAuthModal, renderCompatModal,
+ renderAuthModal,
  renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
  showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
@@ -81,7 +81,6 @@ function loadNatalChartFromStorage() {
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
  renderAuthModal();
- renderCompatModal();
  renderHomePage();
  renderVoicePage();
 
