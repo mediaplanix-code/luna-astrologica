@@ -1,5 +1,5 @@
 // ============================================================
-// APP.JS v13.4 — Fix: UN solo regalo, blocco voce, pill visibili
+// APP.JS v13.5 — Fix: overlay UNICO sovrapposto, voce→carrello diretto, no badge prezzo
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -251,69 +251,52 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO ZONA A + UN SOLO REGALO + BLOCCO ZONA B =====
+// ===== OFFUSCAMENTO ZONA A — UN SOLO OVERLAY SOVRAPPOSTO A TUTTE LE TENDINE =====
 async function applyPersonalizedBlur() {
  const hasAccess = await hasCalculationsAccess();
  const showGift = await shouldShowWelcomeGift();
 
- // Rimuovi vecchio overlay se presente
- const oldOverlay = document.getElementById('zoneA-gift-overlay');
- if (oldOverlay) {
- oldOverlay.remove();
- }
-
- // Zona A: se non ha accesso, mostra UN SOLO overlay che copre tutte le accordion
- if (!hasAccess) {
- const zoneAContainer = document.getElementById('page-personalized');
+ const zoneAContainer = document.getElementById('zoneAContainer');
  if (!zoneAContainer) return;
 
- // Trova il punto dove inserire l'overlay (dopo l'oroscopo, prima delle accordion)
- const firstAccordion = zoneAContainer.querySelector('.accordion');
- if (!firstAccordion) return;
+ // Rimuovi vecchio overlay se presente
+ const oldOverlay = zoneAContainer.querySelector('.zone-a-overlay');
+ if (oldOverlay) oldOverlay.remove();
 
+ if (!hasAccess) {
+ // Crea UN SOLO overlay che copre tutta la Zona A
  const overlay = document.createElement('div');
- overlay.id = 'zoneA-gift-overlay';
- overlay.className = 'zone-a-gift-overlay';
+ overlay.className = 'zone-a-overlay';
 
  if (showGift) {
  overlay.innerHTML = `
+ <div class="zone-a-blur-bg"></div>
  <div class="zone-a-gift-box">
  <div class="zone-a-gift-icon">🎁</div>
  <div class="zone-a-gift-title">Regalo di Benvenuto</div>
- <div class="zone-a-gift-sub">3 mesi di accesso completo gratis<br>Valore €15 — clicca per sbloccare</div>
- <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Apri il regalo</button>
+ <div class="zone-a-gift-sub">Clicca per sbloccare 3 mesi gratis</div>
+ <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
  </div>
  `;
  } else {
  overlay.innerHTML = `
+ <div class="zone-a-blur-bg"></div>
  <div class="zone-a-gift-box">
  <div class="zone-a-gift-icon">🔒</div>
  <div class="zone-a-gift-title">Accesso Scaduto</div>
- <div class="zone-a-gift-sub">Rinnova per €15/trimestre<br>o acquista una consulenza</div>
+ <div class="zone-a-gift-sub">Rinnova per €15/trimestre</div>
  <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
  </div>
  `;
  }
 
- // Inserisci prima della prima accordion
- firstAccordion.parentNode.insertBefore(overlay, firstAccordion);
-
- // Offusca tutte le accordion della Zona A
- const zoneAAccordions = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
- zoneAAccordions.forEach(selector => {
- const el = document.querySelector(selector);
- if (el) el.classList.add('blur-section-locked');
- });
+ zoneAContainer.appendChild(overlay);
+ zoneAContainer.classList.add('zone-a-locked');
  } else {
- // Accesso attivo, rimuovi offuscamento
- const zoneAAccordions = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
- zoneAAccordions.forEach(selector => {
- const el = document.querySelector(selector);
- if (el) el.classList.remove('blur-section-locked');
- });
+ zoneAContainer.classList.remove('zone-a-locked');
  }
 
- // Zona B: voce — blocca se non ha pacchetto voce
+ // Zona B: voce — blocca se non ha pacchetto voce, SENZA badge prezzo
  const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
  if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
  const hasVoice = await hasVoiceAccess();
@@ -321,21 +304,12 @@ async function applyPersonalizedBlur() {
  voiceBtn.onclick = (e) => {
  e.preventDefault();
  e.stopPropagation();
- alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
  window.app.showPaymentsPage();
  };
- // Aggiungi badge
- if (!voiceBtn.querySelector('.voice-lock-badge')) {
- const badge = document.createElement('span');
- badge.className = 'voice-lock-badge';
- badge.textContent = '🔒 €45';
- voiceBtn.style.position = 'relative';
- voiceBtn.appendChild(badge);
- }
  }
  }
 
- // Blocca categorie sotto
+ // Blocca categorie sotto — diretto al carrello, no alert
  const catCards = document.querySelectorAll('#page-personalized .grid .card');
  for (const card of catCards) {
  const hasVoice = await hasVoiceAccess();
@@ -344,7 +318,6 @@ async function applyPersonalizedBlur() {
  card.onclick = (e) => {
  e.preventDefault();
  e.stopPropagation();
- alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
  window.app.showPaymentsPage();
  };
  }
@@ -395,10 +368,9 @@ async function startVoiceSession(category) {
  return;
  }
 
- // BLOCCO ZONA B: se non ha pacchetto voce, manda al carrello
+ // BLOCCO ZONA B: se non ha pacchetto voce, VAI DIRETTO AL CARRELLO — no alert
  const hasVoice = await hasVoiceAccess();
  if (!hasVoice) {
- alert('🔒 Per parlare con Luna devi prima acquistare una consulenza.\n\nCosto: €45 per 18 minuti\n\nSarai indirizzato ai pagamenti.');
  showPaymentsPage();
  return;
  }
