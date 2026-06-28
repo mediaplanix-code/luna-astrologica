@@ -1,5 +1,5 @@
 // ============================================================
-// UI.JS v6.4 — Fix: pill visibili, UN solo regalo, Telegram logo solo
+// UI.JS v6.5 — Fix: regalo sovrapposto, Telegram solo logo, no testo
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
@@ -87,7 +87,6 @@ export function renderHomePage() {
         <div class="banner-cta">
             <button class="btn-gold" onclick="window.app.startVoiceSession('generale')">🎙️ PARLA CON LE TUE STELLE</button>
         </div>
-        <!-- SEZIONE PRESENTAZIONE -->
         <div class="section-title">Scopri Luna Astrologica</div>
         <div class="accordion" style="margin-bottom:0.625rem;">
             <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-preso-cosae')">
@@ -457,7 +456,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
     const bc = profile?.birth_city || "--";
     const bco = profile?.birth_country || "";
 
-    // FIX: usa profile.sun_sign come fallback se natalData non è ancora caricato
     let sunSign = profile?.sun_sign || "...";
     let sunSymbol = ZODIAC_SIGNS[sunSign]?.symbol || "✨";
     let moonSign = "...";
@@ -535,158 +533,158 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <!-- UN SOLO PACCO REGALO — sovrasta tutta la Zona A -->
-        <div id="zoneA-gift-overlay" style="display:none;"></div>
-
-        <div class="accordion" id="acc-wheel-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
-                <div class="accordion-title"><span class="acc-icon">🎯</span> RUOTA DEL TEMA NATALE</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-wheel">
-                <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
-                <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna</span>
-                    </button>
+        <!-- ZONA A: container con overlay regalo sovrapposto -->
+        <div class="zone-a-container" id="zoneAContainer">
+            <div class="accordion" id="acc-wheel-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
+                    <div class="accordion-title"><span class="acc-icon">🎯</span> RUOTA DEL TEMA NATALE</div>
+                    <span class="accordion-arrow">▼</span>
                 </div>
-                <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">Tema natale calcolato con effemeridi svizzere</p>
-            </div>
-        </div>
-
-        <div class="accordion" id="acc-planets-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-planets')">
-                <div class="accordion-title"><span class="acc-icon">🪐</span> POSIZIONE DEI PIANETI</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-planets">
-                <div class="planet-grid">
-                    <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos" id="pos-sun">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
-                </div>
-                <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="accordion" id="acc-houses-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-houses')">
-                <div class="accordion-title"><span class="acc-icon">🏠</span> CASE ASTROLOGICHE</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-houses">
-                <div class="planet-grid">
-                    <div class="planet-item"><span class="planet-symbol">1</span><span class="planet-name">Casa I</span><span class="planet-pos" id="house-1">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">2</span><span class="planet-name">Casa II</span><span class="planet-pos" id="house-2">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">3</span><span class="planet-name">Casa III</span><span class="planet-pos" id="house-3">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">4</span><span class="planet-name">Casa IV</span><span class="planet-pos" id="house-4">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">5</span><span class="planet-name">Casa V</span><span class="planet-pos" id="house-5">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">6</span><span class="planet-name">Casa VI</span><span class="planet-pos" id="house-6">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">7</span><span class="planet-name">Casa VII</span><span class="planet-pos" id="house-7">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">8</span><span class="planet-name">Casa VIII</span><span class="planet-pos" id="house-8">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">9</span><span class="planet-name">Casa IX</span><span class="planet-pos" id="house-9">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">10</span><span class="planet-name">Casa X (MC)</span><span class="planet-pos" id="house-10">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">11</span><span class="planet-name">Casa XI</span><span class="planet-pos" id="house-11">--</span></div>
-                    <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
-                </div>
-                <div class="action-btn-row">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="accordion" id="acc-aspects-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-aspects')">
-                <div class="accordion-title"><span class="acc-icon">⚡</span> ASPETTI PLANETARI</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-aspects">
-                <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
-                    <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
-                </div>
-                <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna!</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="accordion" id="acc-transits-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-transits')">
-                <div class="accordion-title"><span class="acc-icon">🌙</span> TRANSITI PLANETARI — <span id="transitDate">${new Date().toLocaleDateString('it-IT')}</span></div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-transits">
-                <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
-                    <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
-                </div>
-                <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                    <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
-                        ${VOICE_ICON}
-                        <span>Cosa vuol dire? Parla con Luna!</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div class="accordion" id="acc-affinita-wrap">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-affinita')">
-                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-affinita">
-                <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
-                    <div class="form-group">
-                        <label class="form-label">Nome</label>
-                        <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
+                <div class="accordion-body" id="acc-wheel">
+                    <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
+                    <div class="action-btn-row">
+                        <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
+                            ${VOICE_ICON}
+                            <span>Cosa vuol dire? Parla con Luna</span>
+                        </button>
                     </div>
-                    <div class="form-row">
+                    <p style="text-align:center; font-size:0.75rem; color:var(--text-dim); margin-top:0.75rem;">Tema natale calcolato con effemeridi svizzere</p>
+                </div>
+            </div>
+
+            <div class="accordion" id="acc-planets-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-planets')">
+                    <div class="accordion-title"><span class="acc-icon">🪐</span> POSIZIONE DEI PIANETI</div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-body" id="acc-planets">
+                    <div class="planet-grid">
+                        <div class="planet-item"><span class="planet-symbol">☉</span><span class="planet-name">Sole</span><span class="planet-pos" id="pos-sun">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">☽</span><span class="planet-name">Luna</span><span class="planet-pos" id="pos-moon">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">☿</span><span class="planet-name">Mercurio</span><span class="planet-pos" id="pos-mercury">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♀</span><span class="planet-name">Venere</span><span class="planet-pos" id="pos-venus">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♂</span><span class="planet-name">Marte</span><span class="planet-pos" id="pos-mars">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♃</span><span class="planet-name">Giove</span><span class="planet-pos" id="pos-jupiter">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♄</span><span class="planet-name">Saturno</span><span class="planet-pos" id="pos-saturn">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♅</span><span class="planet-name">Urano</span><span class="planet-pos" id="pos-uranus">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♆</span><span class="planet-name">Nettuno</span><span class="planet-pos" id="pos-neptune">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
+                    </div>
+                    <div class="action-btn-row">
+                        <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
+                            ${VOICE_ICON}
+                            <span>Cosa vuol dire? Parla con Luna</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion" id="acc-houses-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-houses')">
+                    <div class="accordion-title"><span class="acc-icon">🏠</span> CASE ASTROLOGICHE</div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-body" id="acc-houses">
+                    <div class="planet-grid">
+                        <div class="planet-item"><span class="planet-symbol">1</span><span class="planet-name">Casa I</span><span class="planet-pos" id="house-1">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">2</span><span class="planet-name">Casa II</span><span class="planet-pos" id="house-2">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">3</span><span class="planet-name">Casa III</span><span class="planet-pos" id="house-3">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">4</span><span class="planet-name">Casa IV</span><span class="planet-pos" id="house-4">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">5</span><span class="planet-name">Casa V</span><span class="planet-pos" id="house-5">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">6</span><span class="planet-name">Casa VI</span><span class="planet-pos" id="house-6">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">7</span><span class="planet-name">Casa VII</span><span class="planet-pos" id="house-7">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">8</span><span class="planet-name">Casa VIII</span><span class="planet-pos" id="house-8">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">9</span><span class="planet-name">Casa IX</span><span class="planet-pos" id="house-9">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">10</span><span class="planet-name">Casa X (MC)</span><span class="planet-pos" id="house-10">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">11</span><span class="planet-name">Casa XI</span><span class="planet-pos" id="house-11">--</span></div>
+                        <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
+                    </div>
+                    <div class="action-btn-row">
+                        <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
+                            ${VOICE_ICON}
+                            <span>Cosa vuol dire? Parla con Luna</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion" id="acc-aspects-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-aspects')">
+                    <div class="accordion-title"><span class="acc-icon">⚡</span> ASPETTI PLANETARI</div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-body" id="acc-aspects">
+                    <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
+                        <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
+                    </div>
+                    <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
+                        <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
+                            ${VOICE_ICON}
+                            <span>Cosa vuol dire? Parla con Luna!</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion" id="acc-transits-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-transits')">
+                    <div class="accordion-title"><span class="acc-icon">🌙</span> TRANSITI PLANETARI — <span id="transitDate">${new Date().toLocaleDateString('it-IT')}</span></div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-body" id="acc-transits">
+                    <div class="acc-static-content" style="font-size:0.875rem; line-height:1.7;">
+                        <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
+                    </div>
+                    <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
+                        <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
+                            ${VOICE_ICON}
+                            <span>Cosa vuol dire? Parla con Luna!</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion" id="acc-affinita-wrap">
+                <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-affinita')">
+                    <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-body" id="acc-affinita">
+                    <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
                         <div class="form-group">
-                            <label class="form-label">Data nascita *</label>
-                            <input type="date" class="form-input" id="compatBirthDate" required>
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Data nascita *</label>
+                                <input type="date" class="form-input" id="compatBirthDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ora nascita</label>
+                                <input type="time" class="form-input" id="compatBirthTime">
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Ora nascita</label>
-                            <input type="time" class="form-input" id="compatBirthTime">
+                            <label class="form-label">Città nascita *</label>
+                            <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Città nascita *</label>
-                        <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Nazione *</label>
-                        <select class="form-input form-select" id="compatBirthCountry" required>
-                            <option value="">Seleziona</option>
-                            <option value="IT">Italia</option>
-                            <option value="FR">Francia</option>
-                            <option value="DE">Germania</option>
-                            <option value="ES">Spagna</option>
-                            <option value="UK">UK</option>
-                            <option value="US">USA</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
-                </form>
-                <div id="compatResult" style="margin-top:1rem; display:none;"></div>
+                        <div class="form-group">
+                            <label class="form-label">Nazione *</label>
+                            <select class="form-input form-select" id="compatBirthCountry" required>
+                                <option value="">Seleziona</option>
+                                <option value="IT">Italia</option>
+                                <option value="FR">Francia</option>
+                                <option value="DE">Germania</option>
+                                <option value="ES">Spagna</option>
+                                <option value="UK">UK</option>
+                                <option value="US">USA</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
+                    </form>
+                    <div id="compatResult" style="margin-top:1rem; display:none;"></div>
+                </div>
             </div>
         </div>
 
@@ -705,10 +703,8 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <!-- LOGO TELEGRAM SOLO — cliccabile -->
-        <div class="telegram-logo-wrap" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">
-            <span class="telegram-logo-icon">📱</span>
-        </div>
+        <!-- LOGO TELEGRAM SOLO — niente testo -->
+        <div class="telegram-logo-only" onclick="window.open('https://t.me/LunaAstrologicaBot','_blank')">📱</div>
 
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
