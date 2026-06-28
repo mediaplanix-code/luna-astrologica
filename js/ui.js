@@ -380,7 +380,52 @@ export function renderAuthModal() {
     setHTML("authModal", html);
 }
 
-// renderCompatModal rimossa — form spostato in tendina AFFINITÀ
+export function renderCompatModal() {
+    const html = `
+        <div class="modal">
+            <button class="modal-close" onclick="window.app.closeCompatModal()">✕</button>
+            <div class="modal-title">🔮 Affinità</div>
+            <div class="modal-subtitle">Inserisci i dati della persona da confrontare</div>
+            <form id="compatForm" onsubmit="window.app.handleCompatSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Nome</label>
+                    <input type="text" class="form-input" id="compatName" placeholder="Nome della persona" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Data nascita *</label>
+                        <input type="date" class="form-input" id="compatBirthDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ora nascita</label>
+                        <input type="time" class="form-input" id="compatBirthTime">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Città nascita *</label>
+                    <input type="text" class="form-input" id="compatBirthCity" placeholder="Città" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Nazione *</label>
+                    <select class="form-input form-select" id="compatBirthCountry" required>
+                        <option value="">Seleziona</option>
+                        <option value="IT">Italia</option>
+                        <option value="FR">Francia</option>
+                        <option value="DE">Germania</option>
+                        <option value="ES">Spagna</option>
+                        <option value="UK">UK</option>
+                        <option value="US">USA</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-gold btn-full">Calcola affinità</button>
+            </form>
+            <div id="compatResult" style="margin-top:1rem; display:none;"></div>
+        </div>
+    `;
+    setHTML("compatModal", html);
+}
+
+const VOICE_ICON = `<svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
 
 export function renderPersonalizedPage(profile, user, natalData) {
     const name = profile?.full_name || (user?.email?.split("@")[0]) || "Utente";
@@ -434,6 +479,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
             <span class="compat-pill"><span class="compat-icon">♌</span><span class="compat-name">Leone</span></span>
             <span class="compat-pill"><span class="compat-icon">♉</span><span class="compat-name">Toro</span></span>
             <span class="compat-pill"><span class="compat-icon">♒</span><span class="compat-name">Acquario</span></span>
+            <span class="compat-pill clickable" onclick="window.app.openCompatModal()"><span style="font-size:0.875rem;">🔮</span><span class="compat-name">Affinità</span></span>
         </div>
 
         <div style="padding: 0 1rem; margin-top:1rem;">
@@ -574,58 +620,6 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <span>Cosa vuol dire? Parla con Luna!</span>
                     </button>
                 </div>
-            </div>
-        </div>
-
-        <div class="accordion">
-            <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-compat')">
-                <div class="accordion-title"><span class="acc-icon">💞</span> AFFINITÀ</div>
-                <span class="accordion-arrow">▼</span>
-            </div>
-            <div class="accordion-body" id="acc-compat">
-                <form id="compatInlineForm" onsubmit="window.app.handleCompatSubmit(event)">
-                    <div class="form-group">
-                        <label class="form-label">Nome</label>
-                        <input type="text" class="form-input" id="compatInlineName" placeholder="Nome della persona" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Sesso</label>
-                        <select class="form-input form-select" id="compatInlineGender" required>
-                            <option value="">Seleziona</option>
-                            <option value="M">Uomo</option>
-                            <option value="F">Donna</option>
-                            <option value="O">Altro</option>
-                        </select>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Data nascita *</label>
-                            <input type="date" class="form-input" id="compatInlineBirthDate" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Ora nascita</label>
-                            <input type="time" class="form-input" id="compatInlineBirthTime">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Città nascita *</label>
-                        <input type="text" class="form-input" id="compatInlineBirthCity" placeholder="Città" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Nazione *</label>
-                        <select class="form-input form-select" id="compatInlineBirthCountry" required>
-                            <option value="">Seleziona</option>
-                            <option value="IT">Italia</option>
-                            <option value="FR">Francia</option>
-                            <option value="DE">Germania</option>
-                            <option value="ES">Spagna</option>
-                            <option value="UK">UK</option>
-                            <option value="US">USA</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn-gold btn-full" style="margin-top:0.75rem;">Calcola affinità</button>
-                </form>
-                <div id="compatInlineResult" style="margin-top:1rem; display:none;"></div>
             </div>
         </div>
 
