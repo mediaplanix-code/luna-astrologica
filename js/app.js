@@ -1,5 +1,5 @@
 // ============================================================
-// APP.JS v13.2 — Overlay regalo, benvenuto, categorie sogni/affinita
+// APP.JS v13.3 — Overlay regalo Zona A, blocco Zona B voce, logica DB
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
@@ -27,10 +27,13 @@ import {
  startStripeCheckout,
  getSubscriptionStatus,
  hasFullAccess,
+ hasCalculationsAccess,
+ hasVoiceAccess,
  updatePaymentsUI,
  shouldBlurPersonalized,
  activateWelcomeGift,
- shouldShowWelcomeGift
+ shouldShowWelcomeGift,
+ simulatePayment
 } from './payments.js';
 import {
  startVoiceSession as startRealVoiceSession,
@@ -248,41 +251,88 @@ function showPage(pageId) {
  }
 }
 
-// ===== OFFUSCAMENTO PAGINA PERSONALIZZATA — CON MESSAGGIO REGALO =====
-function applyPersonalizedBlur() {
- // OFFUSCAMENTO DISABILITATO — tutto in chiaro
- const blurSelectors = [
- '#acc-wheel',
- '#acc-planets',
- '#acc-houses',
- '#acc-aspects',
- '#acc-transits'
- ];
+// ===== OFFUSCAMENTO ZONA A + REGALO + BLOCCO ZONA B =====
+async function applyPersonalizedBlur() {
+ const hasAccess = await hasCalculationsAccess();
+ const showGift = await shouldShowWelcomeGift();
 
- blurSelectors.forEach(selector => {
- const el = document.querySelector(selector);
- if (!el) return;
+ // Zona A: calcoli astrologici (offusca se non ha accesso)
+ const zoneAWrappers = ['#acc-wheel-wrap', '#acc-planets-wrap', '#acc-houses-wrap', '#acc-aspects-wrap', '#acc-transits-wrap', '#acc-affinita-wrap'];
 
- // Rimuovi blur-content wrapper se presente
- const contentWrapper = el.querySelector('.blur-content');
- if (contentWrapper) {
- while (contentWrapper.firstChild) {
- el.insertBefore(contentWrapper.firstChild, contentWrapper);
+ zoneAWrappers.forEach(selector => {
+ const wrapper = document.querySelector(selector);
+ if (!wrapper) return;
+
+ // Rimuovi overlay precedente
+ const oldOverlay = wrapper.querySelector('.gift-overlay');
+ if (oldOverlay) oldOverlay.remove();
+
+ if (!hasAccess) {
+ wrapper.classList.add('blur-section-locked');
+
+ if (showGift) {
+ const overlay = document.createElement('div');
+ overlay.className = 'gift-overlay';
+ overlay.innerHTML = `
+ <div class="gift-icon">🎁</div>
+ <div class="gift-title">Regalo di Benvenuto</div>
+ <div class="gift-subtitle">3 mesi di accesso completo gratis<br>(valore €15)</div>
+ <button class="gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Apri il regalo</button>
+ `;
+ wrapper.appendChild(overlay);
+ } else {
+ const overlay = document.createElement('div');
+ overlay.className = 'gift-overlay';
+ overlay.innerHTML = `
+ <div class="gift-icon">🔒</div>
+ <div class="gift-title">Accesso Scaduto</div>
+ <div class="gift-subtitle">Rinnova per €15/trimestre<br>o acquista una consulenza</div>
+ <button class="gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
+ `;
+ wrapper.appendChild(overlay);
  }
- contentWrapper.remove();
+ } else {
+ wrapper.classList.remove('blur-section-locked');
+ }
+ });
+
+ // Zona B: voce — blocca se non ha pacchetto voce
+ const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
+ if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
+ const hasVoice = hasVoiceAccess();
+ if (!hasVoice) {
+ voiceBtn.onclick = (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ alert('🔒 Per parlare con Luna acquista una consulenza da €45');
+ window.app.showPaymentsPage();
+ };
+ voiceBtn.style.position = 'relative';
+ // Aggiungi badge blocco
+ let badge = voiceBtn.querySelector('.voice-lock-badge');
+ if (!badge) {
+ badge = document.createElement('span');
+ badge.className = 'voice-lock-badge';
+ badge.textContent = '🔒 €45';
+ voiceBtn.appendChild(badge);
+ }
+ }
  }
 
- // Rimuovi overlay
- const overlay = el.querySelector('.blur-overlay');
- if (overlay) overlay.remove();
-
- // Pulisci tutti gli stili
- el.classList.remove('blur-section');
- el.style.filter = '';
- el.style.userSelect = '';
- el.style.pointerEvents = '';
- el.style.opacity = '';
- el.style.position = '';
+ // Blocca anche le categorie sotto
+ const catCards = document.querySelectorAll('#page-personalized .grid .card');
+ catCards.forEach(card => {
+ const hasVoice = hasVoiceAccess();
+ if (!hasVoice) {
+ card.classList.add('voice-blocked');
+ const oldClick = card.onclick;
+ card.onclick = (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ alert('🔒 Per parlare con Luna acquista una consulenza da €45');
+ window.app.showPaymentsPage();
+ };
+ }
  });
 }
 
@@ -327,6 +377,14 @@ async function startVoiceSession(category) {
  const title = $("authModalTitle");
  if (title) title.textContent = "Registrati";
  }, 50);
+ return;
+ }
+
+ // Blocco Zona B: se non ha pacchetto voce, manda al pagamento
+ const hasVoice = hasVoiceAccess();
+ if (!hasVoice) {
+ alert('🔒 Per parlare con Luna acquista una consulenza da €45\n\nSarai indirizzato ai pagamenti.');
+ showPaymentsPage();
  return;
  }
 
@@ -519,7 +577,15 @@ window.app = {
  loadNatalChart,
  geocodeProfileIfNeeded,
  startStripeCheckout,
- activateWelcomeGift,
+ activateWelcomeGift: async () => {
+ const ok = await activateWelcomeGift();
+ if (ok) {
+ alert('🎁 Regalo attivato! 3 mesi di accesso completo.');
+ window.location.reload();
+ } else {
+ alert('⚠️ Regalo già attivo o errore nell\'attivazione.');
+ }
+ },
  // Voce reale
  startVoiceSession,
  endVoiceSession: () => {
