@@ -273,8 +273,8 @@ async function applyPersonalizedBlur() {
  <div class="zone-a-blur-bg"></div>
  <div class="zone-a-gift-box">
  <div class="zone-a-gift-icon">🎁</div>
- <div class="zone-a-gift-title">Regalo di Benvenuto</div>
- <div class="zone-a-gift-sub">Clicca per sbloccare 3 mesi gratis</div>
+ <div class="zone-a-gift-title">Regalo di benvenuto del valore di € 15</div>
+ <div class="zone-a-gift-sub">Clicca per sbloccare 1 mese gratis</div>
  <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
  </div>
  `;
@@ -283,7 +283,7 @@ async function applyPersonalizedBlur() {
  <div class="zone-a-blur-bg"></div>
  <div class="zone-a-gift-box">
  <div class="zone-a-gift-icon">🔒</div>
- <div class="zone-a-gift-title">Accesso Scaduto</div>
+ <div class="zone-a-gift-title">Accesso scaduto</div>
  <div class="zone-a-gift-sub">Rinnova per €15/trimestre</div>
  <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
  </div>
@@ -567,10 +567,15 @@ window.app = {
  activateWelcomeGift: async () => {
  const ok = await activateWelcomeGift();
  if (ok) {
- alert('🎁 Regalo attivato! 3 mesi di accesso completo.');
- window.location.reload();
+ // Rimuovi overlay senza ricaricare
+ const zoneA = document.getElementById('zoneAContainer');
+ if (zoneA) {
+ zoneA.classList.remove('zone-a-locked');
+ const overlay = zoneA.querySelector('.zone-a-overlay');
+ if (overlay) overlay.remove();
+ }
  } else {
- alert('⚠️ Regalo già attivo o errore nell\'attivazione.');
+ console.log('Regalo già attivo');
  }
  },
  // Voce reale
@@ -596,6 +601,12 @@ window.app = {
  resultDiv.style.display = "none";
  resultDiv.innerHTML = "";
  }
+ },
+ openTelegram: function() {
+ window.open('https://t.me/LunaAstrologicaBot', '_blank');
+ // Nascondi card Telegram dopo click
+ const card = document.getElementById('telegramCard');
+ if (card) card.style.display = 'none';
  },
  _resetState: function() {
  cachedNatalChart = null;
