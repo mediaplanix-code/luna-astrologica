@@ -3,7 +3,7 @@
 // ============================================================
 
 import { CONFIG } from './config.js';
-import { getCurrentUser, getCurrentProfile, updateCredits, getSupabase } from './auth.js';
+import { getCurrentUser, getCurrentProfile, getSupabase } from './auth.js';
 
 const PACKAGES = {
     subscription: {
@@ -74,10 +74,9 @@ export function getVoicePackageMinutesRemaining() {
 export async function getSubscriptionFromDB() {
     const profile = getCurrentProfile();
     if (!profile) return null;
-    
-    // Campi DB: welcome_gift_active (boolean), welcome_gift_expires_at (timestamp), subscription_expires_at (timestamp)
+
     const now = new Date().toISOString();
-    
+
     // Priorità: regalo di benvenuto attivo
     if (profile.welcome_gift_active && profile.welcome_gift_expires_at && profile.welcome_gift_expires_at > now) {
         return {
@@ -88,7 +87,7 @@ export async function getSubscriptionFromDB() {
             expiresAt: new Date(profile.welcome_gift_expires_at).getTime()
         };
     }
-    
+
     // Altrimenti: abbonamento pagato
     if (profile.subscription_expires_at && profile.subscription_expires_at > now) {
         return {
@@ -99,7 +98,7 @@ export async function getSubscriptionFromDB() {
             expiresAt: new Date(profile.subscription_expires_at).getTime()
         };
     }
-    
+
     return { active: false, expired: true, daysLeft: 0, isWelcomeGift: false };
 }
 
@@ -118,19 +117,19 @@ export async function getSubscriptionStatus() {
     if (dbStatus && (dbStatus.active || dbStatus.expired)) {
         return enrichStatus(dbStatus);
     }
-    
+
     // Fallback localStorage
     const sub = getSubscriptionFallback();
     const now = Date.now();
-    
+
     if (!sub) {
         return { active: false, expired: true, daysLeft: 0, canRenewFree: false, hasWelcomeGift: false, isWelcomeGift: false };
     }
-    
+
     const expiresAt = sub.expiresAt;
     const daysLeft = Math.max(0, Math.ceil((expiresAt - now) / (24 * 60 * 60 * 1000)));
     const active = daysLeft > 0;
-    
+
     return enrichStatus({
         active,
         expired: !active,
@@ -148,9 +147,9 @@ function enrichStatus(status) {
     const periodSpending = txs
         .filter(t => new Date(t.date) >= new Date(periodStart) && new Date(t.date) <= new Date(periodEnd) && t.type === 'service')
         .reduce((sum, t) => sum + (t.amount || 0), 0);
-    
+
     const canRenewFree = periodSpending >= SPENDING_THRESHOLD;
-    
+
     return {
         ...status,
         periodSpending,
@@ -181,20 +180,20 @@ export async function activateWelcomeGift() {
     const user = getCurrentUser();
     const profile = getCurrentProfile();
     const supabase = getSupabase();
-    
+
     if (!user || !supabase) {
         // Fallback localStorage
         return activateWelcomeGiftLocal();
     }
-    
+
     // Verifica se già attivo su DB
     if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
         return false;
     }
-    
+
     const now = new Date().toISOString();
     const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
-    
+
     try {
         const { error } = await supabase
             .from('profiles')
@@ -204,22 +203,22 @@ export async function activateWelcomeGift() {
                 updated_at: now
             })
             .eq('id', user.id);
-        
+
         if (error) throw error;
-        
+
         // Aggiorna anche localStorage come backup
         localStorage.setItem(WELCOME_GIFT_LS_KEY, JSON.stringify({
             activatedAt: now,
             expiresAt: expiresAt
         }));
-        
+
         addTransaction({
             type: 'welcome_gift',
             packageId: 'sub_trimestrale',
             amount: 0,
             description: '🎁 Regalo di benvenuto — 3 mesi gratis'
         });
-        
+
         return true;
     } catch (err) {
         console.error('Errore attivazione regalo DB:', err);
@@ -230,10 +229,10 @@ export async function activateWelcomeGift() {
 function activateWelcomeGiftLocal() {
     const user = getCurrentUser();
     if (!user) return false;
-    
+
     const existing = getSubscriptionFallback();
     if (existing && existing.active) return false;
-    
+
     const shown = localStorage.getItem(WELCOME_GIFT_LS_KEY);
     if (shown) {
         try {
@@ -241,7 +240,7 @@ function activateWelcomeGiftLocal() {
             if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) return false;
         } catch {}
     }
-    
+
     const now = Date.now();
     const sub = {
         startedAt: now,
@@ -249,36 +248,36 @@ function activateWelcomeGiftLocal() {
         userId: user.id,
         isWelcomeGift: true
     };
-    
+
     localStorage.setItem(SUB_KEY, JSON.stringify(sub));
     localStorage.setItem(WELCOME_GIFT_LS_KEY, JSON.stringify({
         activatedAt: new Date().toISOString(),
         expiresAt: new Date(sub.expiresAt).toISOString()
     }));
-    
+
     addTransaction({
         type: 'welcome_gift',
         packageId: 'sub_trimestrale',
         amount: 0,
         description: '🎁 Regalo di benvenuto — 3 mesi gratis'
     });
-    
+
     return true;
 }
 
 export async function shouldShowWelcomeGift() {
     const profile = getCurrentProfile();
-    
+
     // Se ha il regalo attivo su DB, non mostrare
     if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
         return false;
     }
-    
+
     // Se ha abbonamento pagato, non mostrare
     if (profile?.subscription_expires_at && profile?.subscription_expires_at > new Date().toISOString()) {
         return false;
     }
-    
+
     // Fallback localStorage
     const shown = localStorage.getItem(WELCOME_GIFT_LS_KEY);
     if (shown) {
@@ -287,7 +286,7 @@ export async function shouldShowWelcomeGift() {
             if (parsed.expiresAt && new Date(parsed.expiresAt) > new Date()) return false;
         } catch {}
     }
-    
+
     const sub = getSubscriptionFallback();
     return !sub || !sub.active;
 }
@@ -314,15 +313,15 @@ export async function simulatePayment(packageId, amount) {
         alert("Devi essere loggato per effettuare un acquisto");
         return false;
     }
-    
+
     await new Promise(r => setTimeout(r, 800));
     const now = Date.now();
-    
+
     if (packageId === 'sub_trimestrale') {
         // Abbonamento trimestrale
         const supabase = getSupabase();
         const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
-        
+
         if (supabase) {
             try {
                 await supabase.from('profiles').update({
@@ -334,10 +333,10 @@ export async function simulatePayment(packageId, amount) {
                 console.warn('Fallback localStorage per abbonamento');
             }
         }
-        
+
         const existing = getSubscriptionFallback();
         let startedAt, lsExpiresAt;
-        
+
         if (existing && existing.expiresAt > now) {
             startedAt = existing.startedAt;
             lsExpiresAt = existing.expiresAt + (90 * 24 * 60 * 60 * 1000);
@@ -345,22 +344,22 @@ export async function simulatePayment(packageId, amount) {
             startedAt = now;
             lsExpiresAt = now + (90 * 24 * 60 * 60 * 1000);
         }
-        
+
         localStorage.setItem(SUB_KEY, JSON.stringify({
             startedAt, expiresAt: lsExpiresAt, userId: user.id, isWelcomeGift: false
         }));
-        
+
         addTransaction({
             type: 'subscription',
             packageId,
             amount,
             description: 'Abbonamento trimestrale'
         });
-        
+
         alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
-    
+
     // Servizio voce
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) {
@@ -371,14 +370,14 @@ export async function simulatePayment(packageId, amount) {
             durationMinutes: 18,
             expiresAt: now + (18 * 60 * 1000)
         });
-        
+
         addTransaction({
             type: 'service',
             packageId,
             amount,
             description: `Acquisto ${svc.name}`
         });
-        
+
         // Verifica soglia €49 per rinnovo gratuito
         const status = await getSubscriptionStatus();
         if (status.canRenewFree && status.daysLeft <= 30) {
@@ -393,11 +392,11 @@ export async function simulatePayment(packageId, amount) {
                 });
             }
         }
-        
+
         alert(`✅ Acquisto completato!\nHai acquistato ${svc.name} per €${amount}\n\n⏱️ 18 minuti di consulenza vocale attivati.`);
         return true;
     }
-    
+
     return false;
 }
 
@@ -416,14 +415,14 @@ export async function startStripeCheckout(packageId, amount) {
         }
         return false;
     }
-    
+
     try {
         const user = getCurrentUser();
         if (!user) {
             alert("Devi essere loggato per acquistare");
             return false;
         }
-        
+
         const response = await fetch(`${CONFIG.WORKER_URL}/api/create-checkout`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -435,16 +434,16 @@ export async function startStripeCheckout(packageId, amount) {
                 cancelUrl: window.location.origin + '/?payment=cancel'
             })
         });
-        
+
         const { sessionId, url } = await response.json();
-        
+
         if (url) {
             window.location.href = url;
         } else if (sessionId && window.Stripe) {
             const stripe = Stripe(CONFIG.STRIPE_PUBLISHABLE_KEY);
             await stripe.redirectToCheckout({ sessionId });
         }
-        
+
         return true;
     } catch (err) {
         console.error("Errore checkout Stripe:", err);
@@ -461,14 +460,14 @@ function getPackageName(packageId) {
 }
 
 // ===== RENDER PAGINA PAGAMENTI =====
-export function renderPaymentsPage() {
+export async function renderPaymentsPage() {
     const container = document.getElementById('page-payments');
     if (!container) return;
-    
-    const status = getSubscriptionStatus();
+
+    const status = await getSubscriptionStatus();
     const txs = getTransactions().slice(0, 5);
     const user = getCurrentUser();
-    
+
     const subSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
@@ -507,7 +506,7 @@ export function renderPaymentsPage() {
             </button>
         </div>
     `;
-    
+
     const spendingSection = status.active ? `
         <div class="spending-tracker">
             <div class="spending-header">
@@ -526,7 +525,7 @@ export function renderPaymentsPage() {
             </div>
         </div>
     ` : '';
-    
+
     const packagesSection = `
         <div class="payments-header">
             <h2>🔮 Pacchetti Servizi Vocali</h2>
@@ -544,7 +543,7 @@ export function renderPaymentsPage() {
             `).join('')}
         </div>
     `;
-    
+
     const historySection = txs.length > 0 ? `
         <div class="history-section">
             <div class="history-title">📜 Ultime transazioni</div>
@@ -561,19 +560,19 @@ export function renderPaymentsPage() {
             `).join('')}
         </div>
     ` : '';
-    
+
     container.innerHTML = `
         <div class="payments-page">
             <div class="payments-header">
                 <h2>💳 Crediti & Abbonamento</h2>
                 <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
             </div>
-            
+
             ${subSection}
             ${spendingSection}
             ${packagesSection}
             ${historySection}
-            
+
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
                     ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
