@@ -1,6 +1,5 @@
 // ============================================================
-// AUTH.JS v9 — Autenticazione Supabase
-// FIX: logout pulizia completa localStorage
+// AUTH.JS v9.1 — FIX: logout pulito, nessun riferimento a window.app
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -171,7 +170,7 @@ export async function handleLogin(e) {
 }
 
 // ============================================================
-// HANDLE LOGOUT
+// HANDLE LOGOUT — SOLO PULIZIA AUTH, nessun riferimento a window.app
 // ============================================================
 export async function handleLogout() {
   console.log('Logout avviato...');
@@ -179,6 +178,7 @@ export async function handleLogout() {
   if (supabase) {
     try {
       await supabase.auth.signOut();
+      console.log('SignOut Supabase completato');
     } catch (e) {
       console.error("Logout Supabase error:", e);
     }
@@ -197,14 +197,6 @@ export async function handleLogout() {
   localStorage.removeItem('luna_welcome_gift_shown');
 
   notifyChange();
-
-  if (window.app && window.app._resetState) {
-    window.app._resetState();
-  }
-
-  if (window.app) {
-    window.app.showPage("home");
-  }
 
   console.log('Logout completato');
 }
