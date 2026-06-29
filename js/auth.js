@@ -1,636 +1,425 @@
 // ============================================================
-// APP.JS v13.6 — FIX: import voice robusto, logout protetto
+// AUTH.JS v9 — Autenticazione Supabase
+// FIX: logout pulizia completa localStorage
 // ============================================================
 
-import { loadNatalChart, updateNatalChartUI } from './natal.js';
 import { CONFIG } from './config.js';
-import { $, hideAlerts } from './utils.js';
-import {
- renderHeader, renderNav, renderHomePage, renderHoroscopePage,
- renderAuthModal,
- renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
- showServiceChoice, closeServiceChoice, getServiceChoiceCategory
-} from './ui.js';
-import {
- initAuth, handleRegister, handleLogin, handleLogout,
- loadUserData, getCurrentUser, getCurrentProfile, getCredits,
- updateCredits, geocodeProfileIfNeeded
-} from './auth.js';
-import { switchHoroTab } from './horoscope.js';
-import {
- openCompatModal, closeCompatModal, handleCompatSubmit,
- showCompat, openProfileEdit, toggleAccordion
-} from './profile.js';
-import { loadTransits } from './transits.js';
-import {
- renderPaymentsPage,
- startStripeCheckout,
- getSubscriptionStatus,
- hasFullAccess,
- hasCalculationsAccess,
- hasVoiceAccess,
- updatePaymentsUI,
- shouldBlurPersonalized,
- activateWelcomeGift,
- shouldShowWelcomeGift,
- simulatePayment
-} from './payments.js';
-import * as voiceModule from './voice.js';
 
-const startRealVoiceSession = voiceModule.startVoiceSession || (() => {});
-const endRealVoiceSession = voiceModule.endVoiceSession || voiceModule.endSession || (() => {});
-const getVoiceSessionStatus = voiceModule.getVoiceSessionStatus || voiceModule.getStatus || (() => ({}));
+let supabase = null;
+let currentUser = null;
+let currentProfile = null;
+let credits = 0;
+let onAuthChange = null;
 
-let state = {
- currentPage: "home",
- lastPage: "home",
- voiceCategory: null
-};
+const PROFILE_BACKUP_KEY = 'luna_profile_backup';
 
-let cachedNatalChart = null;
-let isLoadingChart = false;
+// ============================================================
+// INIT
+// ============================================================
+export async function initAuth(callback) {
+  onAuthChange = callback;
 
-const NATAL_CHART_KEY = 'luna_natal_chart';
-const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
-const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+  if (!CONFIG.SUPABASE_URL || CONFIG.SUPABASE_ANON_KEY.includes("YOUR")) {
+    console.warn("Configura SUPABASE_URL e SUPABASE_ANON_KEY in js/config.js");
+    notifyChange();
+    return false;
+  }
 
-function saveNatalChartToStorage(chartData) {
- if (!chartData) return;
- try {
- localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chartData));
- localStorage.setItem(NATAL_CHART_TIMESTAMP_KEY, Date.now().toString());
- } catch (err) {
- console.warn('Errore salvataggio chart:', err);
- }
+  try {
+    supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        currentUser = session?.user ?? null;
+        await loadUserData();
+      } else if (event === "SIGNED_OUT") {
+        currentUser = null;
+        currentProfile = null;
+        credits = 0;
+        notifyChange();
+      }
+    });
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      currentUser = session.user;
+      await loadUserData();
+    } else {
+      notifyChange();
+    }
+    return true;
+  } catch (err) {
+    console.error("Errore init Supabase:", err);
+    notifyChange();
+    return false;
+  }
 }
 
-function loadNatalChartFromStorage() {
- try {
- const saved = localStorage.getItem(NATAL_CHART_KEY);
- const timestamp = localStorage.getItem(NATAL_CHART_TIMESTAMP_KEY);
- if (!saved || !timestamp) return null;
- const age = Date.now() - parseInt(timestamp);
- if (age > CACHE_DURATION_MS) {
- localStorage.removeItem(NATAL_CHART_KEY);
- localStorage.removeItem(NATAL_CHART_TIMESTAMP_KEY);
- return null;
- }
- return JSON.parse(saved);
- } catch (err) {
- return null;
- }
+// ============================================================
+// HANDLE REGISTER
+// ============================================================
+export async function handleRegister(e) {
+  e.preventDefault();
+
+  const btn = document.getElementById("regSubmitBtn");
+  const orig = btn?.innerHTML || "Crea account";
+  if (btn) {
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+  }
+
+  hideAlerts();
+
+  const fullName = document.getElementById("regName")?.value?.trim();
+  const email = document.getElementById("regEmail")?.value?.trim();
+  const password = document.getElementById("regPassword")?.value;
+  const gender = document.getElementById("regGender")?.value || null;
+  const birthDate = document.getElementById("regBirthDate")?.value;
+  const birthTime = document.getElementById("regBirthTime")?.value || null;
+  const birthCity = document.getElementById("regBirthCity")?.value?.trim();
+  const birthCountry = document.getElementById("regBirthCountry")?.value;
+
+  if (!fullName || !email || !password || !birthDate || !birthCity || !birthCountry) {
+    showAlert("auth", "error", "Compila tutti i campi obbligatori (*)");
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+    return;
+  }
+  if (password.length < 6) {
+    showAlert("auth", "error", "La password deve essere di almeno 6 caratteri");
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+    return;
+  }
+
+  try {
+    const { data: authData, error: authErr } = await supabase.auth.signUp({
+      email: email,
+      password: password,
+      options: {
+        data: {
+          full_name: fullName,
+          birth_date: birthDate,
+          birth_time: birthTime,
+          birth_city: birthCity,
+          birth_country: birthCountry,
+          gender: gender
+        },
+        emailRedirectTo: window.location.origin + '/?verified=true'
+      }
+    });
+
+    if (authErr) throw authErr;
+
+    showAlert("auth", "success",
+      "Account creato! Controlla la tua email e clicca il link di conferma.");
+
+    const regForm = document.getElementById("registerForm");
+    if (regForm) regForm.reset();
+
+    const authTabs = document.querySelector(".auth-tabs");
+    if (authTabs) authTabs.style.display = "none";
+
+  } catch (err) {
+    console.error("Errore registrazione:", err);
+    showAlert("auth", "error", err.message || "Errore durante la registrazione");
+  } finally {
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+  }
 }
 
-// ===== INIT =====
-document.addEventListener("DOMContentLoaded", async () => {
- renderAuthModal();
- renderHomePage();
- renderVoicePage();
+// ============================================================
+// HANDLE LOGIN
+// ============================================================
+export async function handleLogin(e) {
+  e.preventDefault();
 
- const urlParams = new URLSearchParams(window.location.search);
- const isVerified = urlParams.get("verified");
- if (isVerified === "true") {
- window.history.replaceState({}, document.title, window.location.pathname);
- }
+  const btn = document.getElementById("loginSubmitBtn");
+  const orig = btn?.innerHTML || "Accedi";
+  if (btn) {
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+  }
 
- const paymentStatus = urlParams.get("payment");
- if (paymentStatus === "success") {
- alert("✅ Pagamento completato con successo!");
- window.history.replaceState({}, document.title, window.location.pathname);
- } else if (paymentStatus === "cancel") {
- alert("❌ Pagamento annullato.");
- window.history.replaceState({}, document.title, window.location.pathname);
- }
+  hideAlerts();
 
- await initAuth(onAuthStateChange);
+  const email = document.getElementById("loginEmail")?.value?.trim();
+  const password = document.getElementById("loginPassword")?.value;
 
- let user = getCurrentUser();
- let profile = getCurrentProfile();
+  if (!email || !password) {
+    showAlert("auth", "error", "Inserisci email e password");
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+    return;
+  }
 
- let attempts = 0;
- while (user && !profile && attempts < 5) {
- console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
- await new Promise(r => setTimeout(r, 400));
- await loadUserData();
- user = getCurrentUser();
- profile = getCurrentProfile();
- attempts++;
- }
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
 
- if (user && profile?.id) {
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
+    currentUser = data.user;
+    await loadUserData();
 
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(profile, user, cachedNatalChart);
- console.log('🎨 DOM personalized costruito');
- } else if (cachedNatalChart) {
- updateNatalChartUI(cachedNatalChart);
- console.log('🎨 DOM personalized aggiornato da cache');
- }
+    if (window.app) {
+      window.app.closeAuthModal();
+      window.app.showPage("personalized");
+    }
 
- const creditsValue = getCredits() || profile?.credits || 0;
- console.log('💰 Crediti inizializzati:', creditsValue);
-
- updateUI({
- isLoggedIn: true,
- user: user,
- profile: profile,
- credits: creditsValue
- });
-
- showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(profile), 600);
- console.log("🌙 Sessione attiva — personalized caricata");
- } else {
- updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
- showPage("home");
- console.log("🌙 Nessuna sessione — home caricata");
- }
-});
-
-// ===== AUTH STATE =====
-function onAuthStateChange(authState) {
- updateUI(authState);
- updatePaymentsUI();
-
- if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
- }
- showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(authState.profile), 600);
- }
+  } catch (err) {
+    console.error("Errore login:", err);
+    showAlert("auth", "error", err.message || "Credenziali non valide");
+  } finally {
+    if (btn) { btn.innerHTML = orig; btn.disabled = false; }
+  }
 }
 
-// ===== GEO + CHART =====
-async function ensureGeocodingAndChart(profile) {
- if (isLoadingChart) {
- console.log('⏳ Calcolo tema già in corso, skip');
- return;
- }
- if (!profile) {
- console.warn('❌ ensureGeocodingAndChart: profilo non fornito');
- return;
- }
+// ============================================================
+// HANDLE LOGOUT
+// ============================================================
+export async function handleLogout() {
+  console.log('Logout avviato...');
 
- isLoadingChart = true;
- try {
- if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
- console.log('🌍 Geocoding necessario per:', profile.birth_city);
- const geoOk = await geocodeProfileIfNeeded();
- if (!geoOk) {
- console.warn('❌ Geocoding fallito');
- return;
- }
- console.log('✅ Geocoding completato');
- profile = getCurrentProfile() || profile;
- }
+  if (supabase) {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Logout Supabase error:", e);
+    }
+  }
 
- console.log('🔮 Avvio calcolo tema natale...');
- const chart = await loadNatalChart();
- if (chart) {
- cachedNatalChart = chart;
- saveNatalChartToStorage(chart);
- console.log('✅ Tema natale calcolato e salvato');
- } else {
- console.warn('❌ Tema natale non calcolato');
- }
+  currentUser = null;
+  currentProfile = null;
+  credits = 0;
 
- console.log('🌙 Avvio caricamento transiti...');
- await loadTransits();
- } catch (err) {
- console.error('❌ Errore ensureGeocodingAndChart:', err);
- } finally {
- isLoadingChart = false;
- }
+  localStorage.removeItem('luna_natal_chart');
+  localStorage.removeItem('luna_natal_chart_ts');
+  localStorage.removeItem(PROFILE_BACKUP_KEY);
+  localStorage.removeItem('luna_subscription');
+  localStorage.removeItem('luna_transactions');
+  localStorage.removeItem('luna_voice_package');
+  localStorage.removeItem('luna_welcome_gift_shown');
+
+  notifyChange();
+
+  if (window.app && window.app._resetState) {
+    window.app._resetState();
+  }
+
+  if (window.app) {
+    window.app.showPage("home");
+  }
+
+  console.log('Logout completato');
 }
 
-// ===== UI =====
-function updateUI(authState) {
- const isLoggedIn = authState?.isLoggedIn || false;
- const profile = authState?.profile || null;
- const user = authState?.user || null;
+// ============================================================
+// LOAD USER DATA
+// ============================================================
+export async function loadUserData() {
+  if (!currentUser || !supabase) {
+    console.warn('loadUserData: nessun user o supabase');
+    return;
+  }
 
- renderHeader(isLoggedIn, profile || user || null);
- renderNav(state.currentPage);
+  try {
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (error) {
+      console.error("Errore loadUserData:", error);
+      if (error.code === "PGRST116") {
+        console.warn("Profilo non trovato per utente:", currentUser.id);
+      }
+      const backup = loadProfileBackup();
+      if (backup && backup.id === currentUser.id) {
+        currentProfile = backup;
+        credits = backup.credits || 0;
+        notifyChange();
+        return;
+      }
+      currentProfile = null;
+      credits = 0;
+      notifyChange();
+      return;
+    }
+
+    let displayName = profile.full_name;
+    if (!displayName) {
+      displayName = currentUser.user_metadata?.full_name;
+      if (displayName) {
+        await supabase.from("profiles")
+          .update({ full_name: displayName, updated_at: new Date().toISOString() })
+          .eq("id", currentUser.id);
+        profile.full_name = displayName;
+      } else {
+        displayName = currentUser.email?.split("@")[0] || "Utente";
+        profile.full_name = displayName;
+      }
+    }
+
+    currentProfile = profile;
+    const dbCredits = profile?.credits;
+    credits = (dbCredits !== undefined && dbCredits !== null) ? dbCredits : 0;
+
+    saveProfileBackup(profile);
+    notifyChange();
+  } catch (err) {
+    console.error('Eccezione loadUserData:', err);
+    const backup = loadProfileBackup();
+    if (backup && backup.id === currentUser?.id) {
+      currentProfile = backup;
+      credits = backup.credits || 0;
+      notifyChange();
+    }
+  }
 }
 
-function showPage(pageId) {
- if (pageId !== "voice") state.lastPage = pageId;
- state.currentPage = pageId;
- uiShowPage(pageId, state.lastPage);
- renderNav(pageId);
-
- const user = getCurrentUser();
- const profile = getCurrentProfile();
-
- updateUI({
- isLoggedIn: !!user,
- user: user,
- profile: profile,
- credits: getCredits()
- });
-
- if (pageId === "personalized") {
- if (cachedNatalChart) {
- updateNatalChartUI(cachedNatalChart);
- console.log('🎨 Dati natal ridisegnati su personalized');
- } else if (profile) {
- console.log('⏳ Dati natal mancanti, avvio caricamento...');
- setTimeout(() => ensureGeocodingAndChart(profile), 100);
- }
- applyPersonalizedBlur();
- }
-
- if (pageId === "payments") {
- renderPaymentsPage();
- updatePaymentsUI();
- }
+// ============================================================
+// BACKUP / RESTORE PROFILO
+// ============================================================
+function saveProfileBackup(profile) {
+  if (!profile) return;
+  try {
+    localStorage.setItem(PROFILE_BACKUP_KEY, JSON.stringify(profile));
+  } catch (e) {
+    console.warn('Errore backup profilo:', e);
+  }
 }
 
-// ===== OFFUSCAMENTO ZONA A — UN SOLO OVERLAY SOVRAPPOSTO A TUTTE LE TENDINE =====
-async function applyPersonalizedBlur() {
- const hasAccess = await hasCalculationsAccess();
- const showGift = await shouldShowWelcomeGift();
-
- const zoneAContainer = document.getElementById('zoneAContainer');
- if (!zoneAContainer) return;
-
- // Rimuovi vecchio overlay se presente
- const oldOverlay = zoneAContainer.querySelector('.zone-a-overlay');
- if (oldOverlay) oldOverlay.remove();
-
- if (!hasAccess) {
- // Crea UN SOLO overlay che copre tutta la Zona A
- const overlay = document.createElement('div');
- overlay.className = 'zone-a-overlay';
-
- if (showGift) {
- overlay.innerHTML = `
- <div class="zone-a-blur-bg"></div>
- <div class="zone-a-gift-box">
- <div class="zone-a-gift-icon">🎁</div>
- <div class="zone-a-gift-title">Regalo di benvenuto del valore di € 15</div>
- <div class="zone-a-gift-sub">Clicca per sbloccare 1 mese gratis</div>
- <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
- </div>
- `;
- } else {
- overlay.innerHTML = `
- <div class="zone-a-blur-bg"></div>
- <div class="zone-a-gift-box">
- <div class="zone-a-gift-icon">🔒</div>
- <div class="zone-a-gift-title">Accesso scaduto</div>
- <div class="zone-a-gift-sub">Rinnova per €15/trimestre</div>
- <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
- </div>
- `;
- }
-
- zoneAContainer.appendChild(overlay);
- zoneAContainer.classList.add('zone-a-locked');
- } else {
- zoneAContainer.classList.remove('zone-a-locked');
- }
-
- // Zona B: voce — blocca se non ha pacchetto voce, SENZA badge prezzo
- const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
- if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- voiceBtn.onclick = (e) => {
- e.preventDefault();
- e.stopPropagation();
- window.app.showPaymentsPage();
- };
- }
- }
-
- // Blocca categorie sotto — diretto al carrello, no alert
- const catCards = document.querySelectorAll('#page-personalized .grid .card');
- for (const card of catCards) {
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- card.classList.add('voice-blocked');
- card.onclick = (e) => {
- e.preventDefault();
- e.stopPropagation();
- window.app.showPaymentsPage();
- };
- }
- }
+function loadProfileBackup() {
+  try {
+    const saved = localStorage.getItem(PROFILE_BACKUP_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (e) {
+    return null;
+  }
 }
 
-function goHome() {
- showPage("home");
+// ============================================================
+// CREDITS
+// ============================================================
+export async function updateCredits(delta) {
+  if (!supabase || !currentUser) return false;
+
+  const newCredits = Math.max(0, credits + delta);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ credits: newCredits, updated_at: new Date().toISOString() })
+    .eq("id", currentUser.id);
+
+  if (error) {
+    console.error("Errore aggiornamento crediti:", error);
+    return false;
+  }
+
+  credits = newCredits;
+  if (currentProfile) {
+    currentProfile.credits = newCredits;
+    saveProfileBackup(currentProfile);
+  }
+  notifyChange();
+  return true;
 }
 
-function requireAuthOrModal() {
- const user = getCurrentUser();
- if (user) {
- const profile = getCurrentProfile();
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(profile, user, cachedNatalChart);
- }
- showPage("personalized");
- } else {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- }
+export function setCredits(newCredits) {
+  credits = Math.max(0, newCredits);
+  notifyChange();
 }
 
-// ===== SPAZIO VOCE DEDICATO =====
-async function startVoiceSession(category) {
- const user = getCurrentUser();
- if (!user) {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- return;
- }
+// ============================================================
+// GEOCODING
+// ============================================================
+export async function geocodeProfileIfNeeded() {
+  if (!currentUser || !currentProfile) {
+    console.warn('Geocoding: no user/profile');
+    return false;
+  }
+  if (currentProfile.birth_latitude) {
+    console.log('Geocoding: already has coordinates');
+    return true;
+  }
+  if (!currentProfile.birth_city) {
+    console.warn('Geocoding: no city');
+    return false;
+  }
 
- // BLOCCO ZONA B: se non ha pacchetto voce, VAI DIRETTO AL CARRELLO — no alert
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- showPaymentsPage();
- return;
- }
+  try {
+    const url = `${CONFIG.WORKER_URL || CONFIG.API_URL}/api/geocode?city=${encodeURIComponent(currentProfile.birth_city)}&country=${encodeURIComponent(currentProfile.birth_country || '')}`;
+    console.log('Geocoding:', url);
 
- state.voiceCategory = category;
- showPage("voice");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Geocoding failed: ' + res.status);
 
- const started = await startRealVoiceSession(category);
- if (!started) {
- const statusEl = document.getElementById('voiceStatus');
- if (statusEl) {
- statusEl.textContent = '⚠️ Errore caricamento voce';
- statusEl.style.color = '#ef4444';
- }
- }
+    const data = await res.json();
+    if (data.lat != null && data.lng != null) {
+      const { error } = await supabase.from('profiles').update({
+        birth_latitude: data.lat,
+        birth_longitude: data.lng,
+        birth_timezone: data.timezone || 'Europe/Rome',
+        updated_at: new Date().toISOString(),
+      }).eq('id', currentUser.id);
+
+      if (error) throw error;
+      await loadUserData();
+      return true;
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err);
+  }
+  return false;
 }
 
-function goBackFromVoice() {
- endRealVoiceSession();
- showPage(state.lastPage || "home");
+// ============================================================
+// HELPERS
+// ============================================================
+function notifyChange() {
+  if (onAuthChange) {
+    onAuthChange({
+      isLoggedIn: !!currentUser,
+      user: currentUser,
+      profile: currentProfile,
+      credits: credits
+    });
+  }
 }
 
-function toggleVoiceListening() {
- console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
+function showAlert(scope, type, message) {
+  const el = document.getElementById(scope + "Error") || document.getElementById(scope + "Success");
+  if (!el) return;
+  el.textContent = message;
+  el.className = "alert alert-" + type;
+  el.style.display = "block";
 }
 
-function openAuthModal() {
- const modal = $("authModal");
- if (modal) {
- modal.classList.add("active");
- document.body.style.overflow = "hidden";
- }
+function hideAlerts() {
+  document.querySelectorAll(".alert").forEach(el => {
+    el.style.display = "none";
+  });
 }
 
-function closeAuthModal() {
- const modal = $("authModal");
- if (modal) {
- modal.classList.remove("active");
- document.body.style.overflow = "";
- }
- hideAlerts();
+// ============================================================
+// EXPORT
+// ============================================================
+export function getCurrentUser() { return currentUser; }
+
+export function getCurrentProfile() {
+  if (currentProfile) return currentProfile;
+  const backup = loadProfileBackup();
+  if (backup && currentUser && backup.id === currentUser.id) {
+    currentProfile = backup;
+    return currentProfile;
+  }
+  return null;
 }
 
-function switchAuthTab(tab) {
- const loginTab = $("tab-login");
- const regTab = $("tab-register");
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
-
- if (loginTab) loginTab.classList.toggle("active", tab === "login");
- if (regTab) regTab.classList.toggle("active", tab === "register");
- if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
- if (regForm) regForm.classList.toggle("hidden", tab !== "register");
-
- const title = $("authModalTitle");
- if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
-
- hideAlerts();
+export function getCredits() {
+  if (credits > 0) return credits;
+  if (currentProfile?.credits > 0) return currentProfile.credits;
+  const backup = loadProfileBackup();
+  if (backup?.credits > 0) return backup.credits;
+  return credits;
 }
 
-function handleShowHoroscopePage(signName) {
- renderHoroscopePage(signName);
- showPage("horoscope");
-}
-
-function handleShowServiceChoice(category) {
- const user = getCurrentUser();
- if (!user) {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- return;
- }
- startVoiceSession(category);
-}
-
-function handleChooseService(mode) {
- const category = getServiceChoiceCategory();
- closeServiceChoice();
- if (!category) return;
-
- if (mode === 'voice') {
- startVoiceSession(category);
- }
-}
-
-// ===== PAGINA PAGAMENTI =====
-function showPaymentsPage() {
- const page = document.getElementById('page-payments');
- if (!page || page.innerHTML.trim() === '') {
- renderPaymentsPage();
- }
- showPage("payments");
-}
-
-function toggleLang() {
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.toggle("open");
-}
-
-function setLang(lang) {
- const flags = { it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
- const flagEl = $("currentFlag");
- if (flagEl) flagEl.textContent = flags[lang] || "🇮🇹";
-
- document.querySelectorAll(".lang-option").forEach(o => {
- o.classList.toggle("active", o.dataset.lang === lang);
- });
-
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.remove("open");
-}
-
-document.addEventListener("click", (e) => {
- if (!e.target.closest(".lang-dropdown")) {
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.remove("open");
- }
-});
-
-// ===== LOGOUT CORRETTO =====
-async function handleLogoutClick() {
- console.log('🚪 Logout richiesto...');
-
- try {
- // FIX v13.6: voice cleanup sicuro anche se voice.js è assente o ha export diversi
- try {
- if (typeof endRealVoiceSession === 'function') {
- endRealVoiceSession();
- }
- } catch (e) {
- console.warn('Voice cleanup:', e);
- }
-
- await handleLogout();
-
- cachedNatalChart = null;
- isLoadingChart = false;
- state.currentPage = "home";
- state.lastPage = "home";
-
- const personalized = document.getElementById('page-personalized');
- if (personalized) personalized.innerHTML = '';
-
- const payments = document.getElementById('page-payments');
- if (payments) payments.innerHTML = '';
-
- renderHomePage();
- showPage("home");
-
- console.log('✅ Logout completato con successo');
- } catch (err) {
- console.error('❌ Errore durante logout:', err);
- }
-}
-
-window.app = {
- showPage,
- goHome,
- requireAuthOrModal,
- openAuthModal,
- closeAuthModal,
- switchAuthTab,
- handleRegister,
- handleLogin,
- handleLogout: handleLogoutClick,
- showHoroscopePage: handleShowHoroscopePage,
- switchHoroTab,
- openProfileEdit,
- showCompat,
- openCompatModal,
- closeCompatModal,
- handleCompatSubmit,
- toggleAccordion,
- showPaymentsPage,
- toggleLang,
- setLang,
- switchPersonalHoroTab: (tab) => {
- const tabs = ["day", "week", "month", "year"];
- tabs.forEach(t => {
- const tabBtn = document.getElementById("ph-tab-" + t);
- const textEl = document.getElementById("ph-text-" + t);
- if (tabBtn) tabBtn.classList.toggle("active", t === tab);
- if (textEl) textEl.classList.toggle("hidden", t !== tab);
- });
- },
- showServiceChoice: handleShowServiceChoice,
- closeServiceChoice,
- chooseService: handleChooseService,
- getCurrentProfile,
- getCurrentUser,
- loadNatalChart,
- geocodeProfileIfNeeded,
- startStripeCheckout,
- activateWelcomeGift: async () => {
- const ok = await activateWelcomeGift();
- if (ok) {
- // Rimuovi overlay senza ricaricare
- const zoneA = document.getElementById('zoneAContainer');
- if (zoneA) {
- zoneA.classList.remove('zone-a-locked');
- const overlay = zoneA.querySelector('.zone-a-overlay');
- if (overlay) overlay.remove();
- }
- } else {
- console.log('Regalo già attivo');
- }
- },
- // Voce reale
- startVoiceSession,
- endVoiceSession: () => {
- try {
- if (typeof endRealVoiceSession === 'function') {
- endRealVoiceSession();
- }
- } catch (e) {
- console.warn('Voice end:', e);
- }
- showPage(state.lastPage || "home");
- },
- goBackFromVoice,
- toggleVoiceListening,
- startVoiceRecording: () => {
- alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
- },
- openLunaFromCompat: function(category) {
- window.app.closeCompatModal();
- window.app.startVoiceSession(category);
- },
- resetCompatForm: function() {
- var form = document.getElementById("compatForm");
- if (form) form.reset();
- var resultDiv = document.getElementById("compatResult");
- if (resultDiv) {
- resultDiv.style.display = "none";
- resultDiv.innerHTML = "";
- }
- },
- openTelegram: function() {
- window.open('https://t.me/LunaAstrologicaBot', '_blank');
- // Nascondi card Telegram dopo click
- const card = document.getElementById('telegramCard');
- if (card) card.style.display = 'none';
- },
- _resetState: function() {
- cachedNatalChart = null;
- isLoadingChart = false;
- state.currentPage = "home";
- state.lastPage = "home";
- const page = document.getElementById('page-personalized');
- if (page) page.innerHTML = '';
- const payPage = document.getElementById('page-payments');
- if (payPage) payPage.innerHTML = '';
- console.log('🔁 Stato app resettato');
- }
-};
+export function getSupabase() { return supabase; }
+export function getUserId() { return currentUser?.id || null; }
