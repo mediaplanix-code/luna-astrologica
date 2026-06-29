@@ -1,6 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
-// FIX v8: logout senza reload (pulizia manuale SPA), getCredits robusto,
+// FIX v9: logout pulizia completa localStorage (subscription, transactions, voice, gift)
+//         logout senza reload (pulizia manuale SPA), getCredits robusto,
 //         triple fallback nome, backup profilo in localStorage
 // ============================================================
 
@@ -180,6 +181,7 @@ export async function handleLogin(e) {
 
 // ============================================================
 // HANDLE LOGOUT — PULIZIA MANUALE SPA (senza reload)
+// FIX v9: pulizia completa localStorage (subscription, transactions, voice, gift)
 // ============================================================
 export async function handleLogout() {
  console.log('🚪 Avvio logout...');
@@ -204,7 +206,12 @@ export async function handleLogout() {
  localStorage.removeItem('luna_natal_chart');
  localStorage.removeItem('luna_natal_chart_ts');
  localStorage.removeItem(PROFILE_BACKUP_KEY);
- console.log('🧹 Cache localStorage pulita');
+ // FIX v9: pulisci anche chiavi pagamenti/regalo per evitare dati sporchi al ri-login
+ localStorage.removeItem('luna_subscription');
+ localStorage.removeItem('luna_transactions');
+ localStorage.removeItem('luna_voice_package');
+ localStorage.removeItem('luna_welcome_gift_shown');
+ console.log('🧹 Cache localStorage pulita (completa)');
 
  // 4. Notifica cambio stato (aggiorna header, nav, etc)
  notifyChange();
