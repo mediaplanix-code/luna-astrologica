@@ -1,5 +1,5 @@
 // ============================================================
-// PAYMENTS.JS v3.0 — Regalo DB, Zona A vs Zona B, soglia €49
+// PAYMENTS.JS v3.1 — FIX: regalo DB robusto, pagina riordinata, no transazioni visibili
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -8,7 +8,7 @@ import { getCurrentUser, getCurrentProfile, getSupabase } from './auth.js';
 const PACKAGES = {
     subscription: {
         id: 'sub_trimestrale',
-        name: 'Abbonamento Completo',
+        name: 'Accesso Trimestrale',
         price: 15,
         periodDays: 90,
         description: 'Sblocca tema natale, case, pianeti, aspetti, transiti e dossier',
@@ -77,7 +77,7 @@ export async function getSubscriptionFromDB() {
 
     const now = new Date().toISOString();
 
-    // Priorità: regalo di benvenuto attivo
+    // Priorita: regalo di benvenuto attivo
     if (profile.welcome_gift_active && profile.welcome_gift_expires_at && profile.welcome_gift_expires_at > now) {
         return {
             active: true,
@@ -112,9 +112,9 @@ function getSubscriptionFallback() {
 }
 
 export async function getSubscriptionStatus() {
-    // Prova DB prima
+    // FIX v3.1: Prova DB solo se ha un abbonamento ATTIVO
     const dbStatus = await getSubscriptionFromDB();
-    if (dbStatus && (dbStatus.active || dbStatus.expired)) {
+    if (dbStatus && dbStatus.active) {
         return enrichStatus(dbStatus);
     }
 
@@ -186,7 +186,7 @@ export async function activateWelcomeGift() {
         return activateWelcomeGiftLocal();
     }
 
-    // Verifica se già attivo su DB
+    // Verifica se gia attivo su DB
     if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
         return false;
     }
@@ -216,7 +216,7 @@ export async function activateWelcomeGift() {
             type: 'welcome_gift',
             packageId: 'sub_trimestrale',
             amount: 0,
-            description: '🎁 Regalo di benvenuto — 3 mesi gratis'
+            description: 'Regalo di benvenuto — 3 mesi gratis'
         });
 
         return true;
@@ -259,7 +259,7 @@ function activateWelcomeGiftLocal() {
         type: 'welcome_gift',
         packageId: 'sub_trimestrale',
         amount: 0,
-        description: '🎁 Regalo di benvenuto — 3 mesi gratis'
+        description: 'Regalo di benvenuto — 3 mesi gratis'
     });
 
     return true;
@@ -291,7 +291,7 @@ export async function shouldShowWelcomeGift() {
     return !sub || !sub.active;
 }
 
-// ===== TRANSACTIONS =====
+// ===== TRANSACTIONS (solo interno, non visibile all'utente) =====
 function getTransactions() {
     try {
         const raw = localStorage.getItem(TX_KEY);
@@ -318,7 +318,7 @@ export async function simulatePayment(packageId, amount) {
     const now = Date.now();
 
     if (packageId === 'sub_trimestrale') {
-        // Abbonamento trimestrale
+        // Accesso trimestrale
         const supabase = getSupabase();
         const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
 
@@ -330,7 +330,7 @@ export async function simulatePayment(packageId, amount) {
                     updated_at: new Date().toISOString()
                 }).eq('id', user.id);
             } catch (e) {
-                console.warn('Fallback localStorage per abbonamento');
+                console.warn('Fallback localStorage per accesso');
             }
         }
 
@@ -353,10 +353,10 @@ export async function simulatePayment(packageId, amount) {
             type: 'subscription',
             packageId,
             amount,
-            description: 'Abbonamento trimestrale'
+            description: 'Accesso trimestrale'
         });
 
-        alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
+        alert(`Accesso attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
 
@@ -378,7 +378,7 @@ export async function simulatePayment(packageId, amount) {
             description: `Acquisto ${svc.name}`
         });
 
-        // Verifica soglia €49 per rinnovo gratuito
+        // Verifica soglia 49 per rinnovo gratuito
         const status = await getSubscriptionStatus();
         if (status.canRenewFree && status.daysLeft <= 30) {
             const sub = getSubscriptionFallback();
@@ -388,12 +388,12 @@ export async function simulatePayment(packageId, amount) {
                 addTransaction({
                     type: 'auto_renew',
                     amount: 0,
-                    description: 'Rinnovo gratuito (spesa ≥ €49)'
+                    description: 'Rinnovo gratuito (spesa >= 49)'
                 });
             }
         }
 
-        alert(`✅ Acquisto completato!\nHai acquistato ${svc.name} per €${amount}\n\n⏱️ 18 minuti di consulenza vocale attivati.`);
+        alert(`Acquisto completato!\nHai acquistato ${svc.name} per ${amount}\n\n18 minuti di consulenza vocale attivati.`);
         return true;
     }
 
@@ -405,9 +405,9 @@ export async function startStripeCheckout(packageId, amount) {
     if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
         const name = getPackageName(packageId);
         const confirmed = confirm(
-            `💳 MODALITÀ TEST\n\n` +
+            `MODALITA TEST\n\n` +
             `Stai per acquistare:\n` +
-            `${name} — €${amount}\n\n` +
+            `${name} — ${amount}\n\n` +
             `Confermi il pagamento simulato?`
         );
         if (confirmed) {
@@ -453,7 +453,7 @@ export async function startStripeCheckout(packageId, amount) {
 }
 
 function getPackageName(packageId) {
-    if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
+    if (packageId === 'sub_trimestrale') return 'Accesso Trimestrale';
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) return svc.name;
     return packageId;
@@ -465,70 +465,12 @@ export async function renderPaymentsPage() {
     if (!container) return;
 
     const status = await getSubscriptionStatus();
-    const txs = getTransactions().slice(0, 5);
     const user = getCurrentUser();
 
-    const subSection = status.active ? `
-        <div class="sub-card">
-            <div class="sub-status active dot">Attivo</div>
-            <div class="sub-title">Abbonamento Completo</div>
-            <div class="sub-price">€15 <span>/ trimestre</span></div>
-            <ul class="sub-features">
-                ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
-            </ul>
-            <div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
-                ⏳ Scade il <strong style="color:var(--gold)">${new Date(status.expiresAt).toLocaleDateString('it-IT')}</strong> 
-                (${status.daysLeft} giorni rimasti)
-            </div>
-            ${status.canRenewFree 
-                ? `<div style="font-size:0.8125rem;color:#4ade80;margin-bottom:0.75rem;">✅ Rinnovo gratuito garantito! Hai speso €${status.periodSpending}</div>`
-                : `<div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
-                    💰 Hai speso €${status.periodSpending}/€${SPENDING_THRESHOLD} in questo periodo
-                   </div>`
-            }
-            <button class="sub-btn secondary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Rinnova ora (€15)
-            </button>
-        </div>
-    ` : `
-        <div class="sub-card" style="border-color:#ef4444;">
-            <div class="sub-status expired">Offuscato</div>
-            <div class="sub-title">Abbonamento Completo</div>
-            <div class="sub-price">€15 <span>/ trimestre</span></div>
-            <ul class="sub-features">
-                ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
-            </ul>
-            <div style="font-size:0.8125rem;color:#f87171;margin-bottom:0.75rem;">
-                🔒 La tua pagina personale mostra solo l'oroscopo giornaliero
-            </div>
-            <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Sblocca ora per €15
-            </button>
-        </div>
-    `;
-
-    const spendingSection = status.active ? `
-        <div class="spending-tracker">
-            <div class="spending-header">
-                <span class="spending-label">💰 Spesa nel periodo attuale</span>
-                <span class="spending-amount">€${status.periodSpending} / €${SPENDING_THRESHOLD}</span>
-            </div>
-            <div class="spending-bar">
-                <div class="spending-fill ${status.spendingProgress >= 100 ? 'complete' : ''}" 
-                     style="width:${status.spendingProgress}%"></div>
-            </div>
-            <div class="spending-note ${status.spendingProgress >= 100 ? 'complete' : ''}">
-                ${status.spendingProgress >= 100 
-                    ? '🎉 Complimenti! Il prossimo trimestre è gratuito' 
-                    : `Mancano €${status.spendingNeeded} per il rinnovo gratuito`
-                }
-            </div>
-        </div>
-    ` : '';
-
+    // FIX v3.1: Pacchetti servizi IN CIMA, accesso trimestrale SOTTO
     const packagesSection = `
         <div class="payments-header">
-            <h2>🔮 Pacchetti Servizi Vocali</h2>
+            <h2>Pacchetti Servizi Vocali</h2>
             <p>Consulto astrologico completo con Luna — 18 minuti</p>
         </div>
         <div class="packages-grid">
@@ -537,46 +479,88 @@ export async function renderPaymentsPage() {
                      onclick="window.app.startStripeCheckout('${pkg.id}', ${pkg.price})">
                     <div class="package-icon">${pkg.icon}</div>
                     <div class="package-name">${pkg.name}</div>
-                    <div class="package-price">€${pkg.price}</div>
-                    <div class="package-duration">⏱️ ${pkg.duration}</div>
+                    <div class="package-price">${pkg.price}</div>
+                    <div class="package-duration">${pkg.duration}</div>
                 </div>
             `).join('')}
         </div>
     `;
 
-    const historySection = txs.length > 0 ? `
-        <div class="history-section">
-            <div class="history-title">📜 Ultime transazioni</div>
-            ${txs.map(t => `
-                <div class="history-item">
-                    <div>
-                        <div class="history-desc">${t.description}</div>
-                        <div class="history-date">${new Date(t.date).toLocaleDateString('it-IT')}</div>
-                    </div>
-                    <div class="history-amount ${t.amount === 0 ? '' : 'negative'}">
-                        ${t.amount === 0 ? 'GRATIS' : '-€' + t.amount}
-                    </div>
-                </div>
-            `).join('')}
+    // Accesso trimestrale SOTTO
+    const subSection = status.active ? `
+        <div class="sub-card">
+            <div class="sub-status active dot">Attivo</div>
+            <div class="sub-title">Accesso Completo</div>
+            <div class="sub-price">15 <span>/ trimestre</span></div>
+            <ul class="sub-features">
+                ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
+            </ul>
+            <div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
+                Scade il <strong style="color:var(--gold)">${new Date(status.expiresAt).toLocaleDateString('it-IT')}</strong> 
+                (${status.daysLeft} giorni rimasti)
+            </div>
+            ${status.canRenewFree 
+                ? `<div style="font-size:0.8125rem;color:#4ade80;margin-bottom:0.75rem;">Rinnovo gratuito garantito! Hai speso ${status.periodSpending}</div>`
+                : `<div style="font-size:0.8125rem;color:var(--text-dim);margin-bottom:0.75rem;">
+                    Hai speso ${status.periodSpending}/${SPENDING_THRESHOLD} in questo periodo
+                   </div>`
+            }
+            <button class="sub-btn secondary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
+                Rinova accesso (15)
+            </button>
+        </div>
+    ` : `
+        <div class="sub-card" style="border-color:#ef4444;">
+            <div class="sub-status expired">Accesso limitato</div>
+            <div class="sub-title">Accesso Completo</div>
+            <div class="sub-price">15 <span>/ trimestre</span></div>
+            <ul class="sub-features">
+                ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
+            </ul>
+            <div style="font-size:0.8125rem;color:#f87171;margin-bottom:0.75rem;">
+                La tua pagina personale mostra solo l'oroscopo giornaliero
+            </div>
+            <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
+                Attiva accesso trimestrale
+            </button>
+        </div>
+    `;
+
+    const spendingSection = status.active ? `
+        <div class="spending-tracker">
+            <div class="spending-header">
+                <span class="spending-label">Spesa nel periodo attuale</span>
+                <span class="spending-amount">${status.periodSpending} / ${SPENDING_THRESHOLD}</span>
+            </div>
+            <div class="spending-bar">
+                <div class="spending-fill ${status.spendingProgress >= 100 ? 'complete' : ''}" 
+                     style="width:${status.spendingProgress}%"></div>
+            </div>
+            <div class="spending-note ${status.spendingProgress >= 100 ? 'complete' : ''}">
+                ${status.spendingProgress >= 100 
+                    ? 'Complimenti! Il prossimo trimestre e gratuito' 
+                    : `Mancano ${status.spendingNeeded} per il rinnovo gratuito`
+                }
+            </div>
         </div>
     ` : '';
+
+    // FIX v3.1: Nessuna sezione transazioni visibile all'utente
 
     container.innerHTML = `
         <div class="payments-page">
             <div class="payments-header">
-                <h2>💳 Crediti & Abbonamento</h2>
-                <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
+                <h2>Servizi e Accesso</h2>
+                <p>Gestisci i tuoi servizi vocali e l'accesso ai calcoli</p>
             </div>
 
-            ${subSection}
-            ${spendingSection}
             ${packagesSection}
-            ${historySection}
+            ${spendingSection}
+            ${subSection}
 
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
-                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
-                    Se spendi almeno €49 in servizi, il rinnovo è gratuito.
+                    I pagamenti sono gestiti in modo sicuro. Se spendi almeno 49 in servizi, il trimestre successivo e gratuito.
                 </p>
             </footer>
         </div>
