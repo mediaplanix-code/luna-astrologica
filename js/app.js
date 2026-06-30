@@ -1,539 +1,622 @@
 // ============================================================
-// APP.JS v14.0 — A prova di errore. Logout robusto. No crash.
+// APP.JS v13.5 — Fix: overlay UNICO sovrapposto, voce→carrello diretto, no badge prezzo
 // ============================================================
 
 import { loadNatalChart, updateNatalChartUI } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
-  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
-  renderAuthModal, renderPersonalizedPage, renderVoicePage,
-  showPage as uiShowPage, showServiceChoice, closeServiceChoice,
-  getServiceChoiceCategory
+ renderHeader, renderNav, renderHomePage, renderHoroscopePage,
+ renderAuthModal,
+ renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
+ showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
 import {
-  initAuth, handleRegister, handleLogin, handleLogout,
-  loadUserData, getCurrentUser, getCurrentProfile, getCredits,
-  updateCredits, geocodeProfileIfNeeded
+ initAuth, handleRegister, handleLogin, handleLogout,
+ loadUserData, getCurrentUser, getCurrentProfile, getCredits,
+ updateCredits, geocodeProfileIfNeeded
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
-  openCompatModal, closeCompatModal, handleCompatSubmit,
-  showCompat, openProfileEdit, toggleAccordion
+ openCompatModal, closeCompatModal, handleCompatSubmit,
+ showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
 import { loadTransits } from './transits.js';
 import {
-  renderPaymentsPage, startStripeCheckout, getSubscriptionStatus,
-  hasFullAccess, hasCalculationsAccess, hasVoiceAccess,
-  updatePaymentsUI, shouldBlurPersonalized, activateWelcomeGift,
-  shouldShowWelcomeGift, simulatePayment
+ renderPaymentsPage,
+ startStripeCheckout,
+ getSubscriptionStatus,
+ hasFullAccess,
+ hasCalculationsAccess,
+ hasVoiceAccess,
+ updatePaymentsUI,
+ shouldBlurPersonalized,
+ activateWelcomeGift,
+ shouldShowWelcomeGift,
+ simulatePayment
 } from './payments.js';
-
-// Voice module — import sicuro con fallback
-let voiceModule = {};
-try {
-  voiceModule = await import('./voice.js');
-} catch (e) {
-  console.warn('Voice module non disponibile:', e);
-}
-
-const startRealVoiceSession = voiceModule.startVoiceSession || (() => false);
-const endRealVoiceSession = voiceModule.endVoiceSession || voiceModule.endSession || (() => {});
-const getVoiceStatus = voiceModule.getVoiceSessionStatus || voiceModule.getStatus || (() => ({}));
+import {
+ startVoiceSession as startRealVoiceSession,
+ endSession as endRealVoiceSession,
+ getStatus as getVoiceSessionStatus
+} from './voice.js';
 
 let state = {
-  currentPage: "home",
-  lastPage: "home",
-  voiceCategory: null
+ currentPage: "home",
+ lastPage: "home",
+ voiceCategory: null
 };
 
 let cachedNatalChart = null;
 let isLoadingChart = false;
 
 const NATAL_CHART_KEY = 'luna_natal_chart';
-const NATAL_CHART_TS_KEY = 'luna_natal_chart_ts';
-const CACHE_MS = 24 * 60 * 60 * 1000;
+const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
 
-function saveChart(chart) {
-  if (!chart) return;
-  try {
-    localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chart));
-    localStorage.setItem(NATAL_CHART_TS_KEY, Date.now().toString());
-  } catch (e) {}
+function saveNatalChartToStorage(chartData) {
+ if (!chartData) return;
+ try {
+ localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chartData));
+ localStorage.setItem(NATAL_CHART_TIMESTAMP_KEY, Date.now().toString());
+ } catch (err) {
+ console.warn('Errore salvataggio chart:', err);
+ }
 }
 
-function loadChart() {
-  try {
-    const saved = localStorage.getItem(NATAL_CHART_KEY);
-    const ts = localStorage.getItem(NATAL_CHART_TS_KEY);
-    if (!saved || !ts) return null;
-    if (Date.now() - parseInt(ts) > CACHE_MS) {
-      localStorage.removeItem(NATAL_CHART_KEY);
-      localStorage.removeItem(NATAL_CHART_TS_KEY);
-      return null;
-    }
-    return JSON.parse(saved);
-  } catch (e) {
-    return null;
-  }
+function loadNatalChartFromStorage() {
+ try {
+ const saved = localStorage.getItem(NATAL_CHART_KEY);
+ const timestamp = localStorage.getItem(NATAL_CHART_TIMESTAMP_KEY);
+ if (!saved || !timestamp) return null;
+ const age = Date.now() - parseInt(timestamp);
+ if (age > CACHE_DURATION_MS) {
+ localStorage.removeItem(NATAL_CHART_KEY);
+ localStorage.removeItem(NATAL_CHART_TIMESTAMP_KEY);
+ return null;
+ }
+ return JSON.parse(saved);
+ } catch (err) {
+ return null;
+ }
 }
 
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
-  renderAuthModal();
-  renderHomePage();
-  renderVoicePage();
+ renderAuthModal();
+ renderHomePage();
+ renderVoicePage();
 
-  const url = new URLSearchParams(window.location.search);
-  if (url.get("verified") === "true") {
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-  if (url.get("payment") === "success") {
-    alert("Pagamento completato!");
-    window.history.replaceState({}, document.title, window.location.pathname);
-  } else if (url.get("payment") === "cancel") {
-    alert("Pagamento annullato.");
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
+ const urlParams = new URLSearchParams(window.location.search);
+ const isVerified = urlParams.get("verified");
+ if (isVerified === "true") {
+ window.history.replaceState({}, document.title, window.location.pathname);
+ }
 
-  await initAuth(onAuthStateChange);
+ const paymentStatus = urlParams.get("payment");
+ if (paymentStatus === "success") {
+ alert("✅ Pagamento completato con successo!");
+ window.history.replaceState({}, document.title, window.location.pathname);
+ } else if (paymentStatus === "cancel") {
+ alert("❌ Pagamento annullato.");
+ window.history.replaceState({}, document.title, window.location.pathname);
+ }
 
-  let user = getCurrentUser();
-  let profile = getCurrentProfile();
+ await initAuth(onAuthStateChange);
 
-  let attempts = 0;
-  while (user && !profile && attempts < 5) {
-    await new Promise(r => setTimeout(r, 400));
-    await loadUserData();
-    user = getCurrentUser();
-    profile = getCurrentProfile();
-    attempts++;
-  }
+ let user = getCurrentUser();
+ let profile = getCurrentProfile();
 
-  if (user && profile?.id) {
-    if (!cachedNatalChart) cachedNatalChart = loadChart();
-    const page = document.getElementById('page-personalized');
-    if (!page || page.innerHTML.trim() === '') {
-      renderPersonalizedPage(profile, user, cachedNatalChart);
-    } else if (cachedNatalChart) {
-      updateNatalChartUI(cachedNatalChart);
-    }
-    updateUI({ isLoggedIn: true, user, profile, credits: getCredits() || profile?.credits || 0 });
-    showPage("personalized");
-    setTimeout(() => ensureGeocodingAndChart(profile), 600);
-  } else {
-    updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
-    showPage("home");
-  }
+ let attempts = 0;
+ while (user && !profile && attempts < 5) {
+ console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
+ await new Promise(r => setTimeout(r, 400));
+ await loadUserData();
+ user = getCurrentUser();
+ profile = getCurrentProfile();
+ attempts++;
+ }
+
+ if (user && profile?.id) {
+ if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
+
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPersonalizedPage(profile, user, cachedNatalChart);
+ console.log('🎨 DOM personalized costruito');
+ } else if (cachedNatalChart) {
+ updateNatalChartUI(cachedNatalChart);
+ console.log('🎨 DOM personalized aggiornato da cache');
+ }
+
+ const creditsValue = getCredits() || profile?.credits || 0;
+ console.log('💰 Crediti inizializzati:', creditsValue);
+
+ updateUI({
+ isLoggedIn: true,
+ user: user,
+ profile: profile,
+ credits: creditsValue
+ });
+
+ showPage("personalized");
+ setTimeout(() => ensureGeocodingAndChart(profile), 600);
+ console.log("🌙 Sessione attiva — personalized caricata");
+ } else {
+ updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
+ showPage("home");
+ console.log("🌙 Nessuna sessione — home caricata");
+ }
 });
 
 // ===== AUTH STATE =====
 function onAuthStateChange(authState) {
-  updateUI(authState);
-  try { updatePaymentsUI(); } catch (e) {}
+ updateUI(authState);
+ updatePaymentsUI();
 
-  if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
-    if (!cachedNatalChart) cachedNatalChart = loadChart();
-    const page = document.getElementById('page-personalized');
-    if (!page || page.innerHTML.trim() === '') {
-      renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
-    }
-    showPage("personalized");
-    setTimeout(() => ensureGeocodingAndChart(authState.profile), 600);
-  }
+ if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
+ if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
+ }
+ showPage("personalized");
+ setTimeout(() => ensureGeocodingAndChart(authState.profile), 600);
+ }
 }
 
 // ===== GEO + CHART =====
 async function ensureGeocodingAndChart(profile) {
-  if (isLoadingChart || !profile) return;
-  isLoadingChart = true;
-  try {
-    if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
-      await geocodeProfileIfNeeded();
-      profile = getCurrentProfile() || profile;
-    }
-    const chart = await loadNatalChart();
-    if (chart) {
-      cachedNatalChart = chart;
-      saveChart(chart);
-    }
-    await loadTransits();
-  } catch (err) {
-    console.error('Errore geo/chart:', err);
-  } finally {
-    isLoadingChart = false;
-  }
+ if (isLoadingChart) {
+ console.log('⏳ Calcolo tema già in corso, skip');
+ return;
+ }
+ if (!profile) {
+ console.warn('❌ ensureGeocodingAndChart: profilo non fornito');
+ return;
+ }
+
+ isLoadingChart = true;
+ try {
+ if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
+ console.log('🌍 Geocoding necessario per:', profile.birth_city);
+ const geoOk = await geocodeProfileIfNeeded();
+ if (!geoOk) {
+ console.warn('❌ Geocoding fallito');
+ return;
+ }
+ console.log('✅ Geocoding completato');
+ profile = getCurrentProfile() || profile;
+ }
+
+ console.log('🔮 Avvio calcolo tema natale...');
+ const chart = await loadNatalChart();
+ if (chart) {
+ cachedNatalChart = chart;
+ saveNatalChartToStorage(chart);
+ console.log('✅ Tema natale calcolato e salvato');
+ } else {
+ console.warn('❌ Tema natale non calcolato');
+ }
+
+ console.log('🌙 Avvio caricamento transiti...');
+ await loadTransits();
+ } catch (err) {
+ console.error('❌ Errore ensureGeocodingAndChart:', err);
+ } finally {
+ isLoadingChart = false;
+ }
 }
 
 // ===== UI =====
 function updateUI(authState) {
-  const isLoggedIn = authState?.isLoggedIn || false;
-  const profile = authState?.profile || null;
-  const user = authState?.user || null;
-  renderHeader(isLoggedIn, profile || user || null);
-  renderNav(state.currentPage);
+ const isLoggedIn = authState?.isLoggedIn || false;
+ const profile = authState?.profile || null;
+ const user = authState?.user || null;
+
+ renderHeader(isLoggedIn, profile || user || null);
+ renderNav(state.currentPage);
 }
 
 function showPage(pageId) {
-  if (pageId !== "voice") state.lastPage = pageId;
-  state.currentPage = pageId;
-  uiShowPage(pageId, state.lastPage);
-  renderNav(pageId);
+ if (pageId !== "voice") state.lastPage = pageId;
+ state.currentPage = pageId;
+ uiShowPage(pageId, state.lastPage);
+ renderNav(pageId);
 
-  const user = getCurrentUser();
-  const profile = getCurrentProfile();
-  updateUI({ isLoggedIn: !!user, user, profile, credits: getCredits() });
+ const user = getCurrentUser();
+ const profile = getCurrentProfile();
 
-  if (pageId === "personalized") {
-    if (cachedNatalChart) {
-      try { updateNatalChartUI(cachedNatalChart); } catch (e) {}
-    } else if (profile) {
-      setTimeout(() => ensureGeocodingAndChart(profile), 100);
-    }
-    try { applyPersonalizedBlur(); } catch (e) {}
-  }
+ updateUI({
+ isLoggedIn: !!user,
+ user: user,
+ profile: profile,
+ credits: getCredits()
+ });
 
-  if (pageId === "payments") {
-    try {
-      renderPaymentsPage();
-      updatePaymentsUI();
-    } catch (e) {}
-  }
+ if (pageId === "personalized") {
+ if (cachedNatalChart) {
+ updateNatalChartUI(cachedNatalChart);
+ console.log('🎨 Dati natal ridisegnati su personalized');
+ } else if (profile) {
+ console.log('⏳ Dati natal mancanti, avvio caricamento...');
+ setTimeout(() => ensureGeocodingAndChart(profile), 100);
+ }
+ applyPersonalizedBlur();
+ }
+
+ if (pageId === "payments") {
+ renderPaymentsPage();
+ updatePaymentsUI();
+ }
 }
 
-// ===== OFFUSCAMENTO =====
+// ===== OFFUSCAMENTO ZONA A — UN SOLO OVERLAY SOVRAPPOSTO A TUTTE LE TENDINE =====
 async function applyPersonalizedBlur() {
-  let hasAccess = false;
-  let showGift = false;
-  try {
-    hasAccess = await hasCalculationsAccess();
-    showGift = await shouldShowWelcomeGift();
-  } catch (e) { return; }
+ const hasAccess = await hasCalculationsAccess();
+ const showGift = await shouldShowWelcomeGift();
 
-  const zoneA = document.getElementById('zoneAContainer');
-  if (!zoneA) return;
+ const zoneAContainer = document.getElementById('zoneAContainer');
+ if (!zoneAContainer) return;
 
-  const old = zoneA.querySelector('.zone-a-overlay');
-  if (old) old.remove();
+ // Rimuovi vecchio overlay se presente
+ const oldOverlay = zoneAContainer.querySelector('.zone-a-overlay');
+ if (oldOverlay) oldOverlay.remove();
 
-  if (!hasAccess) {
-    const overlay = document.createElement('div');
-    overlay.className = 'zone-a-overlay';
-    if (showGift) {
-      overlay.innerHTML = `
-        <div class="zone-a-blur-bg"></div>
-        <div class="zone-a-gift-box">
-          <div class="zone-a-gift-icon">🎁</div>
-          <div class="zone-a-gift-title">Regalo di benvenuto</div>
-          <div class="zone-a-gift-sub">3 mesi di accesso completo gratuito</div>
-          <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Attiva</button>
-        </div>
-      `;
-    } else {
-      overlay.innerHTML = `
-        <div class="zone-a-blur-bg"></div>
-        <div class="zone-a-gift-box">
-          <div class="zone-a-gift-icon">🔒</div>
-          <div class="zone-a-gift-title">Accesso scaduto</div>
-          <div class="zone-a-gift-sub">Rinnova l'accesso per 15/trimestre</div>
-          <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai servizi</button>
-        </div>
-      `;
-    }
-    zoneA.appendChild(overlay);
-    zoneA.classList.add('zone-a-locked');
-  } else {
-    zoneA.classList.remove('zone-a-locked');
-  }
+ if (!hasAccess) {
+ // Crea UN SOLO overlay che copre tutta la Zona A
+ const overlay = document.createElement('div');
+ overlay.className = 'zone-a-overlay';
 
-  try {
-    const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
-    if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
-      const hasVoice = await hasVoiceAccess();
-      if (!hasVoice) {
-        voiceBtn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); window.app.showPaymentsPage(); };
-      }
-    }
-    const cards = document.querySelectorAll('#page-personalized .grid .card');
-    for (const card of cards) {
-      const hasVoice = await hasVoiceAccess();
-      if (!hasVoice) {
-        card.classList.add('voice-blocked');
-        card.onclick = (e) => { e.preventDefault(); e.stopPropagation(); window.app.showPaymentsPage(); };
-      }
-    }
-  } catch (e) {}
+ if (showGift) {
+ overlay.innerHTML = `
+ <div class="zone-a-blur-bg"></div>
+ <div class="zone-a-gift-box">
+ <div class="zone-a-gift-icon">🎁</div>
+ <div class="zone-a-gift-title">Regalo di benvenuto del valore di € 15</div>
+ <div class="zone-a-gift-sub">Clicca per sbloccare 1 mese gratis</div>
+ <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
+ </div>
+ `;
+ } else {
+ overlay.innerHTML = `
+ <div class="zone-a-blur-bg"></div>
+ <div class="zone-a-gift-box">
+ <div class="zone-a-gift-icon">🔒</div>
+ <div class="zone-a-gift-title">Accesso scaduto</div>
+ <div class="zone-a-gift-sub">Rinnova per €15/trimestre</div>
+ <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
+ </div>
+ `;
+ }
+
+ zoneAContainer.appendChild(overlay);
+ zoneAContainer.classList.add('zone-a-locked');
+ } else {
+ zoneAContainer.classList.remove('zone-a-locked');
+ }
+
+ // Zona B: voce — blocca se non ha pacchetto voce, SENZA badge prezzo
+ const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
+ if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
+ const hasVoice = await hasVoiceAccess();
+ if (!hasVoice) {
+ voiceBtn.onclick = (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ window.app.showPaymentsPage();
+ };
+ }
+ }
+
+ // Blocca categorie sotto — diretto al carrello, no alert
+ const catCards = document.querySelectorAll('#page-personalized .grid .card');
+ for (const card of catCards) {
+ const hasVoice = await hasVoiceAccess();
+ if (!hasVoice) {
+ card.classList.add('voice-blocked');
+ card.onclick = (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ window.app.showPaymentsPage();
+ };
+ }
+ }
 }
 
 function goHome() {
-  showPage("home");
+ showPage("home");
 }
 
 function requireAuthOrModal() {
-  const user = getCurrentUser();
-  if (user) {
-    const profile = getCurrentProfile();
-    const page = document.getElementById('page-personalized');
-    if (!page || page.innerHTML.trim() === '') {
-      renderPersonalizedPage(profile, user, cachedNatalChart);
-    }
-    showPage("personalized");
-  } else {
-    openAuthModal();
-    setTimeout(() => {
-      switchAuthTab('register');
-      const lf = $("loginForm"), rf = $("registerForm");
-      if (lf) lf.classList.add("hidden");
-      if (rf) rf.classList.remove("hidden");
-      const t = $("authModalTitle");
-      if (t) t.textContent = "Registrati";
-    }, 50);
-  }
+ const user = getCurrentUser();
+ if (user) {
+ const profile = getCurrentProfile();
+ const page = document.getElementById('page-personalized');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPersonalizedPage(profile, user, cachedNatalChart);
+ }
+ showPage("personalized");
+ } else {
+ openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("registerForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
+ }
 }
 
-// ===== VOCE =====
+// ===== SPAZIO VOCE DEDICATO =====
 async function startVoiceSession(category) {
-  const user = getCurrentUser();
-  if (!user) {
-    openAuthModal();
-    setTimeout(() => {
-      switchAuthTab('register');
-      const lf = $("loginForm"), rf = $("registerForm");
-      if (lf) lf.classList.add("hidden");
-      if (rf) rf.classList.remove("hidden");
-      const t = $("authModalTitle");
-      if (t) t.textContent = "Registrati";
-    }, 50);
-    return;
-  }
+ const user = getCurrentUser();
+ if (!user) {
+ openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("registerForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
+ return;
+ }
 
-  const hasVoice = await hasVoiceAccess();
-  if (!hasVoice) {
-    showPaymentsPage();
-    return;
-  }
+ // BLOCCO ZONA B: se non ha pacchetto voce, VAI DIRETTO AL CARRELLO — no alert
+ const hasVoice = await hasVoiceAccess();
+ if (!hasVoice) {
+ showPaymentsPage();
+ return;
+ }
 
-  state.voiceCategory = category;
-  showPage("voice");
+ state.voiceCategory = category;
+ showPage("voice");
 
-  try {
-    const started = await startRealVoiceSession(category);
-    if (!started) {
-      const el = document.getElementById('voiceStatus');
-      if (el) { el.textContent = 'Errore caricamento voce'; el.style.color = '#ef4444'; }
-    }
-  } catch (e) {
-    const el = document.getElementById('voiceStatus');
-    if (el) { el.textContent = 'Errore caricamento voce'; el.style.color = '#ef4444'; }
-  }
+ const started = await startRealVoiceSession(category);
+ if (!started) {
+ const statusEl = document.getElementById('voiceStatus');
+ if (statusEl) {
+ statusEl.textContent = '⚠️ Errore caricamento voce';
+ statusEl.style.color = '#ef4444';
+ }
+ }
 }
 
 function goBackFromVoice() {
-  try { endRealVoiceSession(); } catch (e) {}
-  showPage(state.lastPage || "home");
+ endRealVoiceSession();
+ showPage(state.lastPage || "home");
 }
 
 function toggleVoiceListening() {
-  console.log('toggleVoiceListening');
+ console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
 }
 
 function openAuthModal() {
-  const m = $("authModal");
-  if (m) { m.classList.add("active"); document.body.style.overflow = "hidden"; }
+ const modal = $("authModal");
+ if (modal) {
+ modal.classList.add("active");
+ document.body.style.overflow = "hidden";
+ }
 }
 
 function closeAuthModal() {
-  const m = $("authModal");
-  if (m) { m.classList.remove("active"); document.body.style.overflow = ""; }
-  hideAlerts();
+ const modal = $("authModal");
+ if (modal) {
+ modal.classList.remove("active");
+ document.body.style.overflow = "";
+ }
+ hideAlerts();
 }
 
 function switchAuthTab(tab) {
-  const lt = $("tab-login"), rt = $("tab-register");
-  const lf = $("loginForm"), rf = $("registerForm");
-  if (lt) lt.classList.toggle("active", tab === "login");
-  if (rt) rt.classList.toggle("active", tab === "register");
-  if (lf) lf.classList.toggle("hidden", tab !== "login");
-  if (rf) rf.classList.toggle("hidden", tab !== "register");
-  const t = $("authModalTitle");
-  if (t) t.textContent = tab === "login" ? "Accedi" : "Registrati";
-  hideAlerts();
+ const loginTab = $("tab-login");
+ const regTab = $("tab-register");
+ const loginForm = $("loginForm");
+ const regForm = $("registerForm");
+
+ if (loginTab) loginTab.classList.toggle("active", tab === "login");
+ if (regTab) regTab.classList.toggle("active", tab === "register");
+ if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
+ if (regForm) regForm.classList.toggle("hidden", tab !== "register");
+
+ const title = $("authModalTitle");
+ if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
+
+ hideAlerts();
 }
 
 function handleShowHoroscopePage(signName) {
-  renderHoroscopePage(signName);
-  showPage("horoscope");
+ renderHoroscopePage(signName);
+ showPage("horoscope");
 }
 
 function handleShowServiceChoice(category) {
-  const user = getCurrentUser();
-  if (!user) {
-    openAuthModal();
-    setTimeout(() => {
-      switchAuthTab('register');
-      const lf = $("loginForm"), rf = $("registerForm");
-      if (lf) lf.classList.add("hidden");
-      if (rf) rf.classList.remove("hidden");
-      const t = $("authModalTitle");
-      if (t) t.textContent = "Registrati";
-    }, 50);
-    return;
-  }
-  startVoiceSession(category);
+ const user = getCurrentUser();
+ if (!user) {
+ openAuthModal();
+ setTimeout(() => {
+ switchAuthTab('register');
+ const loginForm = $("loginForm");
+ const regForm = $("registerForm");
+ if (loginForm) loginForm.classList.add("hidden");
+ if (regForm) regForm.classList.remove("hidden");
+ const title = $("authModalTitle");
+ if (title) title.textContent = "Registrati";
+ }, 50);
+ return;
+ }
+ startVoiceSession(category);
 }
 
 function handleChooseService(mode) {
-  const category = getServiceChoiceCategory();
-  closeServiceChoice();
-  if (!category) return;
-  if (mode === 'voice') startVoiceSession(category);
+ const category = getServiceChoiceCategory();
+ closeServiceChoice();
+ if (!category) return;
+
+ if (mode === 'voice') {
+ startVoiceSession(category);
+ }
 }
 
+// ===== PAGINA PAGAMENTI =====
 function showPaymentsPage() {
-  const page = document.getElementById('page-payments');
-  if (!page || page.innerHTML.trim() === '') {
-    try { renderPaymentsPage(); } catch (e) {}
-  }
-  showPage("payments");
+ const page = document.getElementById('page-payments');
+ if (!page || page.innerHTML.trim() === '') {
+ renderPaymentsPage();
+ }
+ showPage("payments");
 }
 
 function toggleLang() {
-  const d = $("langDropdown");
-  if (d) d.classList.toggle("open");
+ const dropdown = $("langDropdown");
+ if (dropdown) dropdown.classList.toggle("open");
 }
 
 function setLang(lang) {
-  const flags = { it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
-  const f = $("currentFlag");
-  if (f) f.textContent = flags[lang] || "🇮🇹";
-  document.querySelectorAll(".lang-option").forEach(o => {
-    o.classList.toggle("active", o.dataset.lang === lang);
-  });
-  const d = $("langDropdown");
-  if (d) d.classList.remove("open");
+ const flags = { it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
+ const flagEl = $("currentFlag");
+ if (flagEl) flagEl.textContent = flags[lang] || "🇮🇹";
+
+ document.querySelectorAll(".lang-option").forEach(o => {
+ o.classList.toggle("active", o.dataset.lang === lang);
+ });
+
+ const dropdown = $("langDropdown");
+ if (dropdown) dropdown.classList.remove("open");
 }
 
 document.addEventListener("click", (e) => {
-  if (!e.target.closest(".lang-dropdown")) {
-    const d = $("langDropdown");
-    if (d) d.classList.remove("open");
-  }
+ if (!e.target.closest(".lang-dropdown")) {
+ const dropdown = $("langDropdown");
+ if (dropdown) dropdown.classList.remove("open");
+ }
 });
 
-// ===== LOGOUT — INTERRUTTORE SEMPLICE =====
+// ===== LOGOUT CORRETTO =====
 async function handleLogoutClick() {
-  console.log('Logout...');
+ console.log('🚪 Logout richiesto...');
 
-  // 1. Ferma voce
-  try { endRealVoiceSession(); } catch (e) {}
+ try {
+ endRealVoiceSession();
+ await handleLogout();
 
-  // 2. Signout Supabase + pulizia variabili
-  try { await handleLogout(); } catch (e) {}
+ cachedNatalChart = null;
+ isLoadingChart = false;
+ state.currentPage = "home";
+ state.lastPage = "home";
 
-  // 3. Reset stato
-  cachedNatalChart = null;
-  isLoadingChart = false;
-  state.currentPage = "home";
-  state.lastPage = "home";
+ const personalized = document.getElementById('page-personalized');
+ if (personalized) personalized.innerHTML = '';
 
-  // 4. Svuota pagine
-  const p = document.getElementById('page-personalized');
-  if (p) p.innerHTML = '';
-  const pay = document.getElementById('page-payments');
-  if (pay) pay.innerHTML = '';
+ const payments = document.getElementById('page-payments');
+ if (payments) payments.innerHTML = '';
 
-  // 5. Ricostruisci e mostra home
-  try { renderHomePage(); } catch (e) {}
-  showPage("home");
+ renderHomePage();
+ showPage("home");
 
-  console.log('Logout fatto.');
+ console.log('✅ Logout completato con successo');
+ } catch (err) {
+ console.error('❌ Errore durante logout:', err);
+ }
 }
 
-// ===== WINDOW.APP =====
 window.app = {
-  showPage,
-  goHome,
-  requireAuthOrModal,
-  openAuthModal,
-  closeAuthModal,
-  switchAuthTab,
-  handleRegister,
-  handleLogin,
-  handleLogout: handleLogoutClick,
-  showHoroscopePage: handleShowHoroscopePage,
-  switchHoroTab,
-  openProfileEdit,
-  showCompat,
-  openCompatModal,
-  closeCompatModal,
-  handleCompatSubmit,
-  toggleAccordion,
-  showPaymentsPage,
-  toggleLang,
-  setLang,
-  switchPersonalHoroTab: (tab) => {
-    const tabs = ["day", "week", "month", "year"];
-    tabs.forEach(t => {
-      const b = document.getElementById("ph-tab-" + t);
-      const e = document.getElementById("ph-text-" + t);
-      if (b) b.classList.toggle("active", t === tab);
-      if (e) e.classList.toggle("hidden", t !== tab);
-    });
-  },
-  showServiceChoice: handleShowServiceChoice,
-  closeServiceChoice,
-  chooseService: handleChooseService,
-  getCurrentProfile,
-  getCurrentUser,
-  loadNatalChart,
-  geocodeProfileIfNeeded,
-  startStripeCheckout,
-  activateWelcomeGift: async () => {
-    try {
-      const ok = await activateWelcomeGift();
-      if (ok) {
-        const zoneA = document.getElementById('zoneAContainer');
-        if (zoneA) {
-          zoneA.classList.remove('zone-a-locked');
-          const ov = zoneA.querySelector('.zone-a-overlay');
-          if (ov) ov.remove();
-        }
-      }
-    } catch (e) {}
-  },
-  startVoiceSession,
-  endVoiceSession: () => {
-    try { endRealVoiceSession(); } catch (e) {}
-    showPage(state.lastPage || "home");
-  },
-  goBackFromVoice,
-  toggleVoiceListening,
-  startVoiceRecording: () => {
-    alert('Registrazione avanzata in preparazione. Usa il microfono del browser.');
-  },
-  openLunaFromCompat: (category) => {
-    window.app.closeCompatModal();
-    window.app.startVoiceSession(category);
-  },
-  resetCompatForm: () => {
-    const f = document.getElementById("compatForm");
-    if (f) f.reset();
-    const r = document.getElementById("compatResult");
-    if (r) { r.style.display = "none"; r.innerHTML = ""; }
-  },
-  openTelegram: () => {
-    window.open('https://t.me/LunaAstrologicaBot', '_blank');
-    const c = document.getElementById('telegramCard');
-    if (c) c.style.display = 'none';
-  },
-  _resetState: () => {
-    cachedNatalChart = null;
-    isLoadingChart = false;
-    state.currentPage = "home";
-    state.lastPage = "home";
-    const p = document.getElementById('page-personalized');
-    if (p) p.innerHTML = '';
-    const pay = document.getElementById('page-payments');
-    if (pay) pay.innerHTML = '';
-  }
+ showPage,
+ goHome,
+ requireAuthOrModal,
+ openAuthModal,
+ closeAuthModal,
+ switchAuthTab,
+ handleRegister,
+ handleLogin,
+ handleLogout: handleLogoutClick,
+ showHoroscopePage: handleShowHoroscopePage,
+ switchHoroTab,
+ openProfileEdit,
+ showCompat,
+ openCompatModal,
+ closeCompatModal,
+ handleCompatSubmit,
+ toggleAccordion,
+ showPaymentsPage,
+ toggleLang,
+ setLang,
+ switchPersonalHoroTab: (tab) => {
+ const tabs = ["day", "week", "month", "year"];
+ tabs.forEach(t => {
+ const tabBtn = document.getElementById("ph-tab-" + t);
+ const textEl = document.getElementById("ph-text-" + t);
+ if (tabBtn) tabBtn.classList.toggle("active", t === tab);
+ if (textEl) textEl.classList.toggle("hidden", t !== tab);
+ });
+ },
+ showServiceChoice: handleShowServiceChoice,
+ closeServiceChoice,
+ chooseService: handleChooseService,
+ getCurrentProfile,
+ getCurrentUser,
+ loadNatalChart,
+ geocodeProfileIfNeeded,
+ startStripeCheckout,
+ activateWelcomeGift: async () => {
+ const ok = await activateWelcomeGift();
+ if (ok) {
+ // Rimuovi overlay senza ricaricare
+ const zoneA = document.getElementById('zoneAContainer');
+ if (zoneA) {
+ zoneA.classList.remove('zone-a-locked');
+ const overlay = zoneA.querySelector('.zone-a-overlay');
+ if (overlay) overlay.remove();
+ }
+ } else {
+ console.log('Regalo già attivo');
+ }
+ },
+ // Voce reale
+ startVoiceSession,
+ endVoiceSession: () => {
+ endRealVoiceSession();
+ showPage(state.lastPage || "home");
+ },
+ goBackFromVoice,
+ toggleVoiceListening,
+ startVoiceRecording: () => {
+ alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
+ },
+ openLunaFromCompat: function(category) {
+ window.app.closeCompatModal();
+ window.app.startVoiceSession(category);
+ },
+ resetCompatForm: function() {
+ var form = document.getElementById("compatForm");
+ if (form) form.reset();
+ var resultDiv = document.getElementById("compatResult");
+ if (resultDiv) {
+ resultDiv.style.display = "none";
+ resultDiv.innerHTML = "";
+ }
+ },
+ openTelegram: function() {
+ window.open('https://t.me/LunaAstrologicaBot', '_blank');
+ // Nascondi card Telegram dopo click
+ const card = document.getElementById('telegramCard');
+ if (card) card.style.display = 'none';
+ },
+ _resetState: function() {
+ cachedNatalChart = null;
+ isLoadingChart = false;
+ state.currentPage = "home";
+ state.lastPage = "home";
+ const page = document.getElementById('page-personalized');
+ if (page) page.innerHTML = '';
+ const payPage = document.getElementById('page-payments');
+ if (payPage) payPage.innerHTML = '';
+ console.log('🔁 Stato app resettato');
+ }
 };
