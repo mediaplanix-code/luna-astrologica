@@ -1,9 +1,15 @@
 // ============================================================
-// UI.JS v6.5 — Fix: regalo sovrapposto, Telegram solo logo, no testo
+// UI.JS v6.6 — Fix: startVoiceSession nelle tendine, logo Telegram ufficiale
 // ============================================================
 
 import { CONFIG, ZODIAC_SIGNS, ZODIAC_TAGS, CATEGORY_LABELS, LANGUAGE_FLAGS } from './config.js';
 import { $, setText, setHTML } from './utils.js';
+
+// Logo Telegram ufficiale (SVG)
+const TELEGRAM_LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="12" cy="12" r="12" fill="#38BDF8"/>
+  <path d="M5.5 12.5L9.5 14.5L17.5 8.5L10.5 15.5L10.5 18.5L12.5 16.5L16.5 18.5L18.5 7.5L5.5 12.5Z" fill="white" stroke="white" stroke-width="0.5" stroke-linejoin="round"/>
+</svg>`;
 
 export function renderHeader(isLoggedIn, userData) {
     const avatarInitial = userData?.full_name
@@ -479,6 +485,9 @@ export function renderPersonalizedPage(profile, user, natalData) {
         mcDeg = natalData.mc.degree + "°" + (natalData.mc.minutes || "0") + "'";
     }
 
+    // Verifica se il logo Telegram è già stato cliccato
+    const telegramClicked = localStorage.getItem('luna_telegram_clicked') === 'true';
+
     const html = `
         <div class="personal-header">
             <div class="personal-sign" id="personalSignIcon">${sunSymbol}</div>
@@ -543,7 +552,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 <div class="accordion-body" id="acc-wheel">
                     <div id="natalWheel" style="width:100%;min-height:350px;display:flex;align-items:center;justify-content:center;padding:0.5rem 0;">✨</div>
                     <div class="action-btn-row">
-                        <button class="action-btn" onclick="window.app.startVoiceAbout('ruota')">
+                        <button class="action-btn" onclick="window.app.startVoiceSession('ruota')">
                             ${VOICE_ICON}
                             <span>Cosa vuol dire? Parla con Luna</span>
                         </button>
@@ -571,7 +580,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <div class="planet-item"><span class="planet-symbol">♇</span><span class="planet-name">Plutone</span><span class="planet-pos" id="pos-pluto">--</span></div>
                     </div>
                     <div class="action-btn-row">
-                        <button class="action-btn" onclick="window.app.startVoiceAbout('pianeti')">
+                        <button class="action-btn" onclick="window.app.startVoiceSession('pianeti')">
                             ${VOICE_ICON}
                             <span>Cosa vuol dire? Parla con Luna</span>
                         </button>
@@ -600,7 +609,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <div class="planet-item"><span class="planet-symbol">12</span><span class="planet-name">Casa XII</span><span class="planet-pos" id="house-12">--</span></div>
                     </div>
                     <div class="action-btn-row">
-                        <button class="action-btn" onclick="window.app.startVoiceAbout('case')">
+                        <button class="action-btn" onclick="window.app.startVoiceSession('case')">
                             ${VOICE_ICON}
                             <span>Cosa vuol dire? Parla con Luna</span>
                         </button>
@@ -618,7 +627,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <p style="color:var(--text-dim);"><em>🔮 Gli aspetti planetari vengono calcolati automaticamente in base alla posizione dei pianeti nel tuo tema natale.</em></p>
                     </div>
                     <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                        <button class="action-btn" onclick="window.app.startVoiceAbout('aspetti')">
+                        <button class="action-btn" onclick="window.app.startVoiceSession('aspetti')">
                             ${VOICE_ICON}
                             <span>Cosa vuol dire? Parla con Luna!</span>
                         </button>
@@ -636,7 +645,7 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <p style="color:var(--text-dim);"><em>🌙 I transiti planetari vengono aggiornati quotidianamente in base alla posizione attuale dei pianeti rispetto al tuo tema natale. Torna a trovarci domani per le previsioni aggiornate.</em></p>
                     </div>
                     <div class="action-btn-row" style="margin-top:1rem; text-align:center;">
-                        <button class="action-btn" onclick="window.app.startVoiceAbout('transiti')">
+                        <button class="action-btn" onclick="window.app.startVoiceSession('transiti')">
                             ${VOICE_ICON}
                             <span>Cosa vuol dire? Parla con Luna!</span>
                         </button>
@@ -700,14 +709,15 @@ export function renderPersonalizedPage(profile, user, natalData) {
                         <div class="card-label">${label}</div>
                     </div>
                 `).join("")}
-                <div class="card cat-telegram" id="telegramCard" onclick="window.app.openTelegram()">
-                    <div class="card-icon">✈️</div>
-                    <div class="card-label">Telegram</div>
-                </div>
             </div>
         </div>
 
-
+        <!-- Logo Telegram ufficiale — visibile solo se non ancora cliccato -->
+        ${!telegramClicked ? `
+        <div class="telegram-float-btn" id="telegramFloatBtn" onclick="window.app.openTelegram()">
+            ${TELEGRAM_LOGO_SVG}
+        </div>
+        ` : ''}
 
         <footer class="footer">
             <p>⚠️ Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.</p>
