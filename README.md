@@ -1,55 +1,141 @@
-🌙 LUNA ASTROLOGICA — Deploy v2.0 Completo
-File da sostituire (5 file totali)
-1. NUOVI FILE (carica nella repo)
-Table
-File	Destinazione	Note
-payments.js	js/payments.js	Modulo completo abbonamento + pacchetti
-2. FILE DA SOSTITUIRE
-Table
-File	Destinazione	Note
-app_v9.js	js/app.js	Orchestratore con pagamenti integrati
-config_v2.js	js/config.js	Config con feature flags abbonamento
-ui_v2.js	js/ui.js	UI con 9 categorie, apertura diretta voce
-index.html	index.html	Con page-payments e script payments.js
-3. CSS — già fatto da te
-Hai già aggiunto styles_payments.css in fondo a styles.css. ✅
-Cosa cambia rispetto a prima
-✅ Home
-Tolta scelta Chat/Voce (mode-toggle rimosso)
-Cliccando una categoria → apre DIRETTAMENTE voce (non più modale scelta)
-Cliccando "PARLA CON LE TUE STELLE" → apre voce
-9 categorie complete (Amore, Denaro, Lavoro, Salute, Amici, Famiglia, Viaggi, Partner, Carriera)
-✅ Pagina Personalizzata
-Mostra SOLO oroscopo giornaliero (gratis)
-Sezioni Ruota, Pianeti, Case, Aspetti, Transiti sono OFFUSCATE (blur) se non abbonato
-Overlay "🔒 Abbonamento richiesto — Sblocca per €15/trimestre"
-✅ Pagina Pagamenti (nuova)
-Card abbonamento €15/trimestre (stato attivo/scaduto)
-Barra progresso spesa €0/€49 per rinnovo gratuito
-Pacchetti servizi €45 (18 min AI Voice) — 6 categorie
-Chat AI €25 (12 min, risposte limitate)
-Storico transazioni
-✅ Header
-Pill crediti cliccabile → va a pagina pagamenti
-Dot verde = abbonato, rosso = scaduto
-Modello Business
-Table
-Servizio	Prezzo	Durata	Note
-Abbonamento	€15	90 giorni	Sblocca tema natale completo
-Rinnovo gratis	€0	90 giorni	Se spesa ≥€49 nel trimestre
-Pacchetti	€45	18 min AI Voice	Amore, Lavoro, Carriera, Salute, Denaro, Famiglia
-Chat AI	€25	12 min	Risposte limitate
-Test Rapido
-Registrati → vedi pagina personalizzata
-Verifica che Ruota/Pianeti/Case siano offuscati
-Clicca pill crediti → vai a pagina pagamenti
-Clicca "Sblocca ora per €15" → conferma (modalità test)
-Torna a personalized → verifica sezioni sbloccate
-Acquista un servizio €45 → verifica progresso spesa
-Clicca una categoria in home → deve aprire voce direttamente
-Prossimi Step (quando avrai Stripe)
-Crea account Stripe → ottieni chiavi
-Aggiorna config.js: STRIPE_PAYMENTS: true, inserisci chiavi
-Backend: endpoint /api/create-checkout-session
-Backend: webhook /api/stripe-webhook
-Passa da localStorage a Supabase per abbonamenti
+[README_LUNA_ASTROLOGICA.md](https://github.com/user-attachments/files/29521822/README_LUNA_ASTROLOGICA.md)
+# 🌙 LUNA ASTROLOGICA
+
+**Consultorio astrologico digitale** con calcoli reali del tema natale, transiti, sinastria e consulenza vocale AI.
+
+> ⚠️ **Stato attuale:** v2.0 funzionante. Stripe in modalità test. Alcuni fix in corso.
+
+---
+
+## ✨ Cosa fa
+
+- **Tema natale reale** — Ruota astrologica SVG, 12 case, posizione pianeti, ascendente, segno lunare, Medio Cielo, aspetti
+- **Transiti personalizzati** — Cosa sta succedendo oggi nel cielo rispetto alla tua carta
+- **Sinastria di coppia** — Affinità calcolata con due temi natali reali
+- **Consulenza vocale AI** — 18 minuti con Luna (ElevenLabs) basati sui tuoi dati astrologici
+- **Regalo benvenuto** — 3 mesi di accesso completo gratis (valore €15)
+
+---
+
+## 🏗️ Architettura
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Cloudflare     │────▶│  Render API      │────▶│  Supabase       │
+│  Pages (SPA)    │◄────│  (Swiss Ephemeris│◄────│  (Auth + DB)    │
+│                 │     │   + Geocoding)   │     │                 │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+        │
+        ▼
+┌─────────────────┐
+│  ElevenLabs     │
+│  (Voce AI Luna) │
+└─────────────────┘
+```
+
+---
+
+## 📁 Struttura file
+
+```
+├── index.html              # Shell SPA
+├── css/
+│   └── styles.css          # Stili completi (mobile-first)
+└── js/
+    ├── app.js              # Orchestratore v13.5
+    ├── ui.js               # Render componenti v6.5
+    ├── config.js           # Costanti e feature flags v2.2
+    ├── utils.js            # Funzioni base
+    ├── auth.js             # Supabase auth v8
+    ├── natal.js            # Calcolo tema natale + SVG v6
+    ├── transits.js         # Transiti giornalieri
+    ├── voice.js            # ElevenLabs widget v6.3
+    ├── payments.js         # Regalo, abbonamento, pacchetti v3.0
+    ├── horoscope.js        # Tab oroscopo generico
+    └── profile.js          # Compatibilità/sinastria v3
+```
+
+---
+
+## 🚀 Deploy
+
+1. **Front-end:** Carica su GitHub → si sincronizza con Cloudflare Pages automaticamente
+2. **Back-end:** Repo `luna-astrologica-api-render` su Render (free tier = dorme dopo inattività)
+3. **Database:** Supabase con schema completo (19 tabelle)
+
+---
+
+## 💰 Modello di business
+
+| Servizio | Prezzo | Durata | Note |
+|---|---|---|---|
+| Regalo benvenuto | €0 | 3 mesi | Sblocca calcoli tema natale |
+| Abbonamento completo | €15 | 90 giorni | Tema, case, pianeti, aspetti, transiti |
+| Rinnovo gratuito | €0 | 90 giorni | Se spesa ≥ €49 nel trimestre |
+| Pacchetto voce | €45 | 18 min | Consulenza AI per categoria |
+| Chat AI | €25 | 12 min | Risposte limitate (non attiva) |
+
+---
+
+## ⚙️ Feature flags (config.js)
+
+```javascript
+STRIPE_PAYMENTS: false      // Attiva per pagamenti reali
+AI_CHAT: false               // Chat testuale disattivata
+TELEGRAM_BOT: false          // Notifiche Telegram disattivate
+VOICE_MODE: false            // Voce sempre attiva indipendentemente
+SUBSCRIPTION: true           // Abbonamenti attivi
+BLUR_UNSUBSCRIBED: true      // Offuscamento per non abbonati
+```
+
+---
+
+## 🗄️ Database (19 tabelle)
+
+**Tabelle attive (usate dal codice):**
+- `profiles` — Dati utente, abbonamento, regalo, crediti
+- `natal_charts` — Tema natale calcolato (JSONB)
+- `daily_transits` — Transiti giornalieri (JSONB)
+- `compatibility_reports` — Report sinastria
+
+**Tabelle esistenti ma non usate dal codice attuale:**
+- `credits` / `credit_transactions` — Sistema crediti dedicato
+- `consult_purchases` / `consult_sessions` — Pacchetti voce reali
+- `conversations` / `messages` — Chat AI
+- `astrological_events` — Eventi astrologici
+- `telegram_notifications` — Coda notifiche
+- `upcoming_events` — Eventi futuri
+- `user_preferences` — Preferenze utente
+- `user_reports` — Report generati
+- `personalization_unlocks` — Sblocchi pagamento
+- `crm_sync_log` — Log sincronizzazione
+
+---
+
+## 🐛 Bug noti
+
+| # | Bug | Stato |
+|---|---|---|
+| 1 | `startVoiceAbout()` non esiste in app.js | 🔴 Critico — errore JS in tendine |
+| 2 | Profilo non creato automaticamente dopo signup | 🔴 Critico — trigger mancante |
+| 3 | Crediti in `profiles.credits` vs tabella `credits` | 🟡 Medio — disallineamento |
+| 4 | Pacchetti voce in localStorage, non in DB | 🟡 Medio — non persistente |
+| 5 | Transazioni in localStorage, non in DB | 🟡 Medio — non persistente |
+| 6 | `<base target="_blank">` ×3 in index.html | 🟢 Basso — inutile |
+| 7 | `simulatePayment` non scala crediti | 🟢 Basso — test mode |
+
+---
+
+## 🔧 Fix in corso
+
+Vedi issue tracker o contatta lo sviluppatore per i prossimi step.
+
+---
+
+## 📜 Disclaimer
+
+> Le informazioni fornite da Luna Astrologica hanno solo scopo informativo e di intrattenimento. Non sostituiscono in alcun modo consulti medici, legali o professionali.
+
+---
+
+© 2024 Luna Astrologica
