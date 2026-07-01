@@ -1,9 +1,9 @@
 // ============================================================
 // APP.JS — Orchestratore principale
-// Flusso naturale: Supabase gestisce login/logout/conferma email
+// FIX: import geocodeProfileIfNeeded da auth.js (non natal.js)
 // ============================================================
 
-import { geocodeProfileIfNeeded, loadNatalChart } from './natal.js';
+import { loadNatalChart } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
@@ -15,7 +15,7 @@ import {
 import {
   initAuth, handleRegister, handleLogin, handleLogout,
   loadUserData, getCurrentUser, getCurrentProfile, getCredits,
-  updateCredits
+  updateCredits, geocodeProfileIfNeeded
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
@@ -44,16 +44,32 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderHomePage();
   renderChatPage();
 
-  // Inizializza autenticazione (ascolta eventi login/logout)
+  // FIX: rileva ritorno da conferma email
+  const urlParams = new URLSearchParams(window.location.search);
+  const isVerified = urlParams.get('verified') === 'true';
+
   await initAuth(onAuthStateChange);
 
-  // Dopo init: se utente già loggato, mostra pagina personalizzata
   const user = getCurrentUser();
   const profile = getCurrentProfile();
 
   if (user && profile?.id) {
     renderPersonalizedPage(profile, user);
     showPage("personalized");
+  } else if (user && isVerified) {
+    // Arrivo da conferma email: forza caricamento profilo
+    console.log('📧 Ritorno da conferma email, forzo caricamento profilo...');
+    await loadUserData();
+    const freshProfile = getCurrentProfile();
+    if (freshProfile?.id) {
+      renderPersonalizedPage(freshProfile, user);
+      showPage("personalized");
+      // Pulisci URL senza ricaricare la pagina
+      window.history.replaceState({}, document.title, window.location.pathname);
+      console.log('✅ Utente loggato e reindirizzato alla pagina personalizzata');
+    } else {
+      showPage("home");
+    }
   } else {
     showPage("home");
   }
@@ -61,21 +77,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   console.log("🌙 Luna Astrologica avviata");
 });
 
-// ============================================================
-// GESTORE CAMBIO STATO AUTENTICAZIONE
-// Chiamato da Supabase quando l'utente fa login, logout,
-// o conferma l'email (anche da link esterno)
-// ============================================================
 function onAuthStateChange(authState) {
   updateUI(authState);
 
-  // Primo login o ritorno da conferma email: mostra pagina personalizzata
   if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
     isFirstAuthCheck = false;
     renderPersonalizedPage(authState.profile, authState.user);
     showPage("personalized");
 
-    // Geocoding e calcolo tema natale in background
+    // Step B1: avvia geocoding e calcolo tema natale in background
     setTimeout(async () => {
       await geocodeProfileIfNeeded();
       await loadNatalChart();
@@ -83,9 +93,6 @@ function onAuthStateChange(authState) {
   }
 }
 
-// ============================================================
-// AGGIORNA UI (header, crediti, navigazione)
-// ============================================================
 function updateUI(authState) {
   const isLoggedIn = authState?.isLoggedIn || false;
   const profile = authState?.profile || null;
@@ -106,15 +113,13 @@ function updateUI(authState) {
   }
 }
 
-// ============================================================
-// NAVIGAZIONE PAGINE
-// ============================================================
 function showPage(pageId) {
   if (pageId !== "chat") state.lastPage = pageId;
   state.currentPage = pageId;
   uiShowPage(pageId, state.lastPage);
   renderNav(pageId);
 
+  // Forza aggiornamento header quando cambi pagina
   const user = getCurrentUser();
   const profile = getCurrentProfile();
   updateUI({
@@ -129,9 +134,6 @@ function goHome() {
   showPage("home");
 }
 
-// ============================================================
-// CONTROLLO ACCESSO (richiede login)
-// ============================================================
 function requireAuthOrModal() {
   const user = getCurrentUser();
   if (user) {
@@ -154,9 +156,6 @@ function requireAuthOrModalForChat(mode) {
   }
 }
 
-// ============================================================
-// MODALE AUTENTICAZIONE
-// ============================================================
 function openAuthModal() {
   const modal = $("authModal");
   if (modal) {
@@ -188,9 +187,6 @@ function switchAuthTab(tab) {
   hideAlerts();
 }
 
-// ============================================================
-// GESTORI PAGINE
-// ============================================================
 function handleShowHoroscopePage(signName) {
   renderHoroscopePage(signName);
   showPage("horoscope");
@@ -198,7 +194,10 @@ function handleShowHoroscopePage(signName) {
 
 function handleShowServiceChoice(category) {
   const user = getCurrentUser();
-  if (!user) { openAuthModal(); return; }
+  if (!user) {
+    openAuthModal();
+    return;
+  }
   showServiceChoice(category);
 }
 
@@ -221,7 +220,9 @@ function handleSendMessage() {
     getCurrentUser(),
     getCurrentProfile(),
     getCredits(),
-    async () => { await updateCredits(-CONFIG.CREDITS_PER_MESSAGE); }
+    async () => {
+      await updateCredits(-CONFIG.CREDITS_PER_MESSAGE);
+    }
   );
 }
 
@@ -245,9 +246,6 @@ function showPaymentsPage() {
   alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
 }
 
-// ============================================================
-// LINGUA
-// ============================================================
 function toggleLang() {
   const dropdown = $("langDropdown");
   if (dropdown) dropdown.classList.toggle("open");
@@ -273,9 +271,6 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// ============================================================
-// ESPOSIZIONE API GLOBALE
-// ============================================================
 window.app = {
   showPage,
   goHome,
