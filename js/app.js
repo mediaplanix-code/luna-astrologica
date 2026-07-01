@@ -1,622 +1,318 @@
 // ============================================================
-// APP.JS v13.5 — Fix: overlay UNICO sovrapposto, voce→carrello diretto, no badge prezzo
+// APP.JS — Orchestratore principale
+// Flusso naturale: Supabase gestisce login/logout/conferma email
 // ============================================================
 
-import { loadNatalChart, updateNatalChartUI } from './natal.js';
+import { geocodeProfileIfNeeded, loadNatalChart } from './natal.js';
 import { CONFIG } from './config.js';
 import { $, hideAlerts } from './utils.js';
 import {
- renderHeader, renderNav, renderHomePage, renderHoroscopePage,
- renderAuthModal,
- renderPersonalizedPage, renderVoicePage, showPage as uiShowPage,
- showServiceChoice, closeServiceChoice, getServiceChoiceCategory
+  renderHeader, renderNav, renderHomePage, renderHoroscopePage,
+  renderChatPage, renderAuthModal, renderCompatModal,
+  renderPersonalizedPage, showPage as uiShowPage,
+  showServiceChoice, closeServiceChoice, getServiceChoiceCategory
 } from './ui.js';
 import {
- initAuth, handleRegister, handleLogin, handleLogout,
- loadUserData, getCurrentUser, getCurrentProfile, getCredits,
- updateCredits, geocodeProfileIfNeeded
+  initAuth, handleRegister, handleLogin, handleLogout,
+  loadUserData, getCurrentUser, getCurrentProfile, getCredits,
+  updateCredits
 } from './auth.js';
 import { switchHoroTab } from './horoscope.js';
 import {
- openCompatModal, closeCompatModal, handleCompatSubmit,
- showCompat, openProfileEdit, toggleAccordion
+  openCompatModal, closeCompatModal, handleCompatSubmit,
+  showCompat, openProfileEdit, toggleAccordion
 } from './profile.js';
-import { loadTransits } from './transits.js';
 import {
- renderPaymentsPage,
- startStripeCheckout,
- getSubscriptionStatus,
- hasFullAccess,
- hasCalculationsAccess,
- hasVoiceAccess,
- updatePaymentsUI,
- shouldBlurPersonalized,
- activateWelcomeGift,
- shouldShowWelcomeGift,
- simulatePayment
-} from './payments.js';
-import {
- startVoiceSession as startRealVoiceSession,
- endSession as endRealVoiceSession,
- getStatus as getVoiceSessionStatus
-} from './voice.js';
+  setChatMode, startCategoryChat, startChatAbout, startVoiceAbout,
+  sendMessage, goBackFromChat
+} from './chat.js';
 
 let state = {
- currentPage: "home",
- lastPage: "home",
- voiceCategory: null
+  currentPage: "home",
+  lastPage: "home",
+  chatMode: "chat",
 };
 
-let cachedNatalChart = null;
-let isLoadingChart = false;
+let isFirstAuthCheck = true;
 
-const NATAL_CHART_KEY = 'luna_natal_chart';
-const NATAL_CHART_TIMESTAMP_KEY = 'luna_natal_chart_ts';
-const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
-
-function saveNatalChartToStorage(chartData) {
- if (!chartData) return;
- try {
- localStorage.setItem(NATAL_CHART_KEY, JSON.stringify(chartData));
- localStorage.setItem(NATAL_CHART_TIMESTAMP_KEY, Date.now().toString());
- } catch (err) {
- console.warn('Errore salvataggio chart:', err);
- }
-}
-
-function loadNatalChartFromStorage() {
- try {
- const saved = localStorage.getItem(NATAL_CHART_KEY);
- const timestamp = localStorage.getItem(NATAL_CHART_TIMESTAMP_KEY);
- if (!saved || !timestamp) return null;
- const age = Date.now() - parseInt(timestamp);
- if (age > CACHE_DURATION_MS) {
- localStorage.removeItem(NATAL_CHART_KEY);
- localStorage.removeItem(NATAL_CHART_TIMESTAMP_KEY);
- return null;
- }
- return JSON.parse(saved);
- } catch (err) {
- return null;
- }
-}
-
-// ===== INIT =====
+// ============================================================
+// AVVIO APPLICAZIONE
+// ============================================================
 document.addEventListener("DOMContentLoaded", async () => {
- renderAuthModal();
- renderHomePage();
- renderVoicePage();
+  renderAuthModal();
+  renderCompatModal();
+  renderHomePage();
+  renderChatPage();
 
- const urlParams = new URLSearchParams(window.location.search);
- const isVerified = urlParams.get("verified");
- if (isVerified === "true") {
- window.history.replaceState({}, document.title, window.location.pathname);
- }
+  // Inizializza autenticazione (ascolta eventi login/logout)
+  await initAuth(onAuthStateChange);
 
- const paymentStatus = urlParams.get("payment");
- if (paymentStatus === "success") {
- alert("✅ Pagamento completato con successo!");
- window.history.replaceState({}, document.title, window.location.pathname);
- } else if (paymentStatus === "cancel") {
- alert("❌ Pagamento annullato.");
- window.history.replaceState({}, document.title, window.location.pathname);
- }
+  // Dopo init: se utente già loggato, mostra pagina personalizzata
+  const user = getCurrentUser();
+  const profile = getCurrentProfile();
 
- await initAuth(onAuthStateChange);
+  if (user && profile?.id) {
+    renderPersonalizedPage(profile, user);
+    showPage("personalized");
+  } else {
+    showPage("home");
+  }
 
- let user = getCurrentUser();
- let profile = getCurrentProfile();
-
- let attempts = 0;
- while (user && !profile && attempts < 5) {
- console.log(`⏳ Profilo latente, tentativo ${attempts + 1}/5...`);
- await new Promise(r => setTimeout(r, 400));
- await loadUserData();
- user = getCurrentUser();
- profile = getCurrentProfile();
- attempts++;
- }
-
- if (user && profile?.id) {
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
-
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(profile, user, cachedNatalChart);
- console.log('🎨 DOM personalized costruito');
- } else if (cachedNatalChart) {
- updateNatalChartUI(cachedNatalChart);
- console.log('🎨 DOM personalized aggiornato da cache');
- }
-
- const creditsValue = getCredits() || profile?.credits || 0;
- console.log('💰 Crediti inizializzati:', creditsValue);
-
- updateUI({
- isLoggedIn: true,
- user: user,
- profile: profile,
- credits: creditsValue
- });
-
- showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(profile), 600);
- console.log("🌙 Sessione attiva — personalized caricata");
- } else {
- updateUI({ isLoggedIn: false, user: null, profile: null, credits: 0 });
- showPage("home");
- console.log("🌙 Nessuna sessione — home caricata");
- }
+  console.log("🌙 Luna Astrologica avviata");
 });
 
-// ===== AUTH STATE =====
+// ============================================================
+// GESTORE CAMBIO STATO AUTENTICAZIONE
+// Chiamato da Supabase quando l'utente fa login, logout,
+// o conferma l'email (anche da link esterno)
+// ============================================================
 function onAuthStateChange(authState) {
- updateUI(authState);
- updatePaymentsUI();
+  updateUI(authState);
 
- if (authState.isLoggedIn && authState.profile?.id && state.currentPage !== 'personalized') {
- if (!cachedNatalChart) cachedNatalChart = loadNatalChartFromStorage();
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(authState.profile, authState.user, cachedNatalChart);
- }
- showPage("personalized");
- setTimeout(() => ensureGeocodingAndChart(authState.profile), 600);
- }
+  // Primo login o ritorno da conferma email: mostra pagina personalizzata
+  if (isFirstAuthCheck && authState.isLoggedIn && authState.profile?.id) {
+    isFirstAuthCheck = false;
+    renderPersonalizedPage(authState.profile, authState.user);
+    showPage("personalized");
+
+    // Geocoding e calcolo tema natale in background
+    setTimeout(async () => {
+      await geocodeProfileIfNeeded();
+      await loadNatalChart();
+    }, 500);
+  }
 }
 
-// ===== GEO + CHART =====
-async function ensureGeocodingAndChart(profile) {
- if (isLoadingChart) {
- console.log('⏳ Calcolo tema già in corso, skip');
- return;
- }
- if (!profile) {
- console.warn('❌ ensureGeocodingAndChart: profilo non fornito');
- return;
- }
-
- isLoadingChart = true;
- try {
- if (!profile.birth_latitude && profile.birth_city && profile.birth_country) {
- console.log('🌍 Geocoding necessario per:', profile.birth_city);
- const geoOk = await geocodeProfileIfNeeded();
- if (!geoOk) {
- console.warn('❌ Geocoding fallito');
- return;
- }
- console.log('✅ Geocoding completato');
- profile = getCurrentProfile() || profile;
- }
-
- console.log('🔮 Avvio calcolo tema natale...');
- const chart = await loadNatalChart();
- if (chart) {
- cachedNatalChart = chart;
- saveNatalChartToStorage(chart);
- console.log('✅ Tema natale calcolato e salvato');
- } else {
- console.warn('❌ Tema natale non calcolato');
- }
-
- console.log('🌙 Avvio caricamento transiti...');
- await loadTransits();
- } catch (err) {
- console.error('❌ Errore ensureGeocodingAndChart:', err);
- } finally {
- isLoadingChart = false;
- }
-}
-
-// ===== UI =====
+// ============================================================
+// AGGIORNA UI (header, crediti, navigazione)
+// ============================================================
 function updateUI(authState) {
- const isLoggedIn = authState?.isLoggedIn || false;
- const profile = authState?.profile || null;
- const user = authState?.user || null;
+  const isLoggedIn = authState?.isLoggedIn || false;
+  const profile = authState?.profile || null;
+  const user = authState?.user || null;
+  const credits = authState?.credits || 0;
 
- renderHeader(isLoggedIn, profile || user || null);
- renderNav(state.currentPage);
+  renderHeader(isLoggedIn, profile || user);
+  renderNav(state.currentPage);
+
+  const creditsVal = $("creditsVal");
+  if (creditsVal) creditsVal.textContent = credits;
+
+  const creditsDot = $("creditsDot");
+  if (creditsDot) {
+    creditsDot.className = "credits-dot";
+    if (credits <= 0) creditsDot.classList.add("danger");
+    else if (credits <= 3) creditsDot.classList.add("warning");
+  }
 }
 
+// ============================================================
+// NAVIGAZIONE PAGINE
+// ============================================================
 function showPage(pageId) {
- if (pageId !== "voice") state.lastPage = pageId;
- state.currentPage = pageId;
- uiShowPage(pageId, state.lastPage);
- renderNav(pageId);
+  if (pageId !== "chat") state.lastPage = pageId;
+  state.currentPage = pageId;
+  uiShowPage(pageId, state.lastPage);
+  renderNav(pageId);
 
- const user = getCurrentUser();
- const profile = getCurrentProfile();
-
- updateUI({
- isLoggedIn: !!user,
- user: user,
- profile: profile,
- credits: getCredits()
- });
-
- if (pageId === "personalized") {
- if (cachedNatalChart) {
- updateNatalChartUI(cachedNatalChart);
- console.log('🎨 Dati natal ridisegnati su personalized');
- } else if (profile) {
- console.log('⏳ Dati natal mancanti, avvio caricamento...');
- setTimeout(() => ensureGeocodingAndChart(profile), 100);
- }
- applyPersonalizedBlur();
- }
-
- if (pageId === "payments") {
- renderPaymentsPage();
- updatePaymentsUI();
- }
-}
-
-// ===== OFFUSCAMENTO ZONA A — UN SOLO OVERLAY SOVRAPPOSTO A TUTTE LE TENDINE =====
-async function applyPersonalizedBlur() {
- const hasAccess = await hasCalculationsAccess();
- const showGift = await shouldShowWelcomeGift();
-
- const zoneAContainer = document.getElementById('zoneAContainer');
- if (!zoneAContainer) return;
-
- // Rimuovi vecchio overlay se presente
- const oldOverlay = zoneAContainer.querySelector('.zone-a-overlay');
- if (oldOverlay) oldOverlay.remove();
-
- if (!hasAccess) {
- // Crea UN SOLO overlay che copre tutta la Zona A
- const overlay = document.createElement('div');
- overlay.className = 'zone-a-overlay';
-
- if (showGift) {
- overlay.innerHTML = `
- <div class="zone-a-blur-bg"></div>
- <div class="zone-a-gift-box">
- <div class="zone-a-gift-icon">🎁</div>
- <div class="zone-a-gift-title">Regalo di benvenuto del valore di € 15</div>
- <div class="zone-a-gift-sub">Clicca per sbloccare 1 mese gratis</div>
- <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
- </div>
- `;
- } else {
- overlay.innerHTML = `
- <div class="zone-a-blur-bg"></div>
- <div class="zone-a-gift-box">
- <div class="zone-a-gift-icon">🔒</div>
- <div class="zone-a-gift-title">Accesso scaduto</div>
- <div class="zone-a-gift-sub">Rinnova per €15/trimestre</div>
- <button class="zone-a-gift-btn" onclick="window.app.showPaymentsPage()">💳 Vai ai pagamenti</button>
- </div>
- `;
- }
-
- zoneAContainer.appendChild(overlay);
- zoneAContainer.classList.add('zone-a-locked');
- } else {
- zoneAContainer.classList.remove('zone-a-locked');
- }
-
- // Zona B: voce — blocca se non ha pacchetto voce, SENZA badge prezzo
- const voiceBtn = document.querySelector('#page-personalized .banner-cta .btn-gold');
- if (voiceBtn && voiceBtn.textContent.includes('PARLA')) {
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- voiceBtn.onclick = (e) => {
- e.preventDefault();
- e.stopPropagation();
- window.app.showPaymentsPage();
- };
- }
- }
-
- // Blocca categorie sotto — diretto al carrello, no alert
- const catCards = document.querySelectorAll('#page-personalized .grid .card');
- for (const card of catCards) {
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- card.classList.add('voice-blocked');
- card.onclick = (e) => {
- e.preventDefault();
- e.stopPropagation();
- window.app.showPaymentsPage();
- };
- }
- }
+  const user = getCurrentUser();
+  const profile = getCurrentProfile();
+  updateUI({
+    isLoggedIn: !!user,
+    user: user,
+    profile: profile,
+    credits: getCredits()
+  });
 }
 
 function goHome() {
- showPage("home");
+  showPage("home");
 }
 
+// ============================================================
+// CONTROLLO ACCESSO (richiede login)
+// ============================================================
 function requireAuthOrModal() {
- const user = getCurrentUser();
- if (user) {
- const profile = getCurrentProfile();
- const page = document.getElementById('page-personalized');
- if (!page || page.innerHTML.trim() === '') {
- renderPersonalizedPage(profile, user, cachedNatalChart);
- }
- showPage("personalized");
- } else {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- }
+  const user = getCurrentUser();
+  if (user) {
+    const profile = getCurrentProfile();
+    renderPersonalizedPage(profile, user);
+    showPage("personalized");
+  } else {
+    openAuthModal();
+  }
 }
 
-// ===== SPAZIO VOCE DEDICATO =====
-async function startVoiceSession(category) {
- const user = getCurrentUser();
- if (!user) {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- return;
- }
-
- // BLOCCO ZONA B: se non ha pacchetto voce, VAI DIRETTO AL CARRELLO — no alert
- const hasVoice = await hasVoiceAccess();
- if (!hasVoice) {
- showPaymentsPage();
- return;
- }
-
- state.voiceCategory = category;
- showPage("voice");
-
- const started = await startRealVoiceSession(category);
- if (!started) {
- const statusEl = document.getElementById('voiceStatus');
- if (statusEl) {
- statusEl.textContent = '⚠️ Errore caricamento voce';
- statusEl.style.color = '#ef4444';
- }
- }
+function requireAuthOrModalForChat(mode) {
+  state.chatMode = mode;
+  setChatMode(mode);
+  const user = getCurrentUser();
+  if (user) {
+    showPage("chat");
+  } else {
+    openAuthModal();
+  }
 }
 
-function goBackFromVoice() {
- endRealVoiceSession();
- showPage(state.lastPage || "home");
-}
-
-function toggleVoiceListening() {
- console.log('🎤 toggleVoiceListening — gestito da ElevenLabs widget');
-}
-
+// ============================================================
+// MODALE AUTENTICAZIONE
+// ============================================================
 function openAuthModal() {
- const modal = $("authModal");
- if (modal) {
- modal.classList.add("active");
- document.body.style.overflow = "hidden";
- }
+  const modal = $("authModal");
+  if (modal) {
+    modal.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
 }
 
 function closeAuthModal() {
- const modal = $("authModal");
- if (modal) {
- modal.classList.remove("active");
- document.body.style.overflow = "";
- }
- hideAlerts();
+  const modal = $("authModal");
+  if (modal) {
+    modal.classList.remove("active");
+    document.body.style.overflow = "";
+  }
+  hideAlerts();
 }
 
 function switchAuthTab(tab) {
- const loginTab = $("tab-login");
- const regTab = $("tab-register");
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
+  const loginTab = $("tab-login");
+  const regTab = $("tab-register");
+  const loginForm = $("loginForm");
+  const regForm = $("registerForm");
 
- if (loginTab) loginTab.classList.toggle("active", tab === "login");
- if (regTab) regTab.classList.toggle("active", tab === "register");
- if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
- if (regForm) regForm.classList.toggle("hidden", tab !== "register");
+  if (loginTab) loginTab.classList.toggle("active", tab === "login");
+  if (regTab) regTab.classList.toggle("active", tab === "register");
+  if (loginForm) loginForm.classList.toggle("hidden", tab !== "login");
+  if (regForm) regForm.classList.toggle("hidden", tab !== "register");
 
- const title = $("authModalTitle");
- if (title) title.textContent = tab === "login" ? "Accedi" : "Registrati";
-
- hideAlerts();
+  hideAlerts();
 }
 
+// ============================================================
+// GESTORI PAGINE
+// ============================================================
 function handleShowHoroscopePage(signName) {
- renderHoroscopePage(signName);
- showPage("horoscope");
+  renderHoroscopePage(signName);
+  showPage("horoscope");
 }
 
 function handleShowServiceChoice(category) {
- const user = getCurrentUser();
- if (!user) {
- openAuthModal();
- setTimeout(() => {
- switchAuthTab('register');
- const loginForm = $("loginForm");
- const regForm = $("registerForm");
- if (loginForm) loginForm.classList.add("hidden");
- if (regForm) regForm.classList.remove("hidden");
- const title = $("authModalTitle");
- if (title) title.textContent = "Registrati";
- }, 50);
- return;
- }
- startVoiceSession(category);
+  const user = getCurrentUser();
+  if (!user) { openAuthModal(); return; }
+  showServiceChoice(category);
 }
 
 function handleChooseService(mode) {
- const category = getServiceChoiceCategory();
- closeServiceChoice();
- if (!category) return;
+  const category = getServiceChoiceCategory();
+  closeServiceChoice();
+  if (!category) return;
 
- if (mode === 'voice') {
- startVoiceSession(category);
- }
+  if (mode === 'chat') {
+    setChatMode("chat");
+    startCategoryChat(category);
+  } else {
+    setChatMode("voice");
+    startCategoryChat(category);
+  }
 }
 
-// ===== PAGINA PAGAMENTI =====
+function handleSendMessage() {
+  sendMessage(
+    getCurrentUser(),
+    getCurrentProfile(),
+    getCredits(),
+    async () => { await updateCredits(-CONFIG.CREDITS_PER_MESSAGE); }
+  );
+}
+
+function handleStartCategoryChat(topic) {
+  startCategoryChat(topic);
+}
+
+function handleStartChatAbout(topic) {
+  startChatAbout(topic);
+}
+
+function handleStartVoiceAbout(topic) {
+  startVoiceAbout(topic);
+}
+
+function handleGoBackFromChat() {
+  goBackFromChat(state.lastPage);
+}
+
 function showPaymentsPage() {
- const page = document.getElementById('page-payments');
- if (!page || page.innerHTML.trim() === '') {
- renderPaymentsPage();
- }
- showPage("payments");
+  alert("💳 Pagamenti — in arrivo nello step E (Stripe)");
 }
 
+// ============================================================
+// LINGUA
+// ============================================================
 function toggleLang() {
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.toggle("open");
+  const dropdown = $("langDropdown");
+  if (dropdown) dropdown.classList.toggle("open");
 }
 
 function setLang(lang) {
- const flags = { it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
- const flagEl = $("currentFlag");
- if (flagEl) flagEl.textContent = flags[lang] || "🇮🇹";
+  const flags = { it: "🇮🇹", en: "🇬🇧", fr: "🇫🇷", de: "🇩🇪", es: "🇪🇸" };
+  const flagEl = $("currentFlag");
+  if (flagEl) flagEl.textContent = flags[lang] || "🇮🇹";
 
- document.querySelectorAll(".lang-option").forEach(o => {
- o.classList.toggle("active", o.dataset.lang === lang);
- });
+  document.querySelectorAll(".lang-option").forEach(o => {
+    o.classList.toggle("active", o.dataset.lang === lang);
+  });
 
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.remove("open");
+  const dropdown = $("langDropdown");
+  if (dropdown) dropdown.classList.remove("open");
 }
 
 document.addEventListener("click", (e) => {
- if (!e.target.closest(".lang-dropdown")) {
- const dropdown = $("langDropdown");
- if (dropdown) dropdown.classList.remove("open");
- }
+  if (!e.target.closest(".lang-dropdown")) {
+    const dropdown = $("langDropdown");
+    if (dropdown) dropdown.classList.remove("open");
+  }
 });
 
-// ===== LOGOUT CORRETTO =====
-async function handleLogoutClick() {
- console.log('🚪 Logout richiesto...');
-
- try {
- endRealVoiceSession();
- await handleLogout();
-
- cachedNatalChart = null;
- isLoadingChart = false;
- state.currentPage = "home";
- state.lastPage = "home";
-
- const personalized = document.getElementById('page-personalized');
- if (personalized) personalized.innerHTML = '';
-
- const payments = document.getElementById('page-payments');
- if (payments) payments.innerHTML = '';
-
- renderHomePage();
- showPage("home");
-
- console.log('✅ Logout completato con successo');
- } catch (err) {
- console.error('❌ Errore durante logout:', err);
- }
-}
-
+// ============================================================
+// ESPOSIZIONE API GLOBALE
+// ============================================================
 window.app = {
- showPage,
- goHome,
- requireAuthOrModal,
- openAuthModal,
- closeAuthModal,
- switchAuthTab,
- handleRegister,
- handleLogin,
- handleLogout: handleLogoutClick,
- showHoroscopePage: handleShowHoroscopePage,
- switchHoroTab,
- openProfileEdit,
- showCompat,
- openCompatModal,
- closeCompatModal,
- handleCompatSubmit,
- toggleAccordion,
- showPaymentsPage,
- toggleLang,
- setLang,
- switchPersonalHoroTab: (tab) => {
- const tabs = ["day", "week", "month", "year"];
- tabs.forEach(t => {
- const tabBtn = document.getElementById("ph-tab-" + t);
- const textEl = document.getElementById("ph-text-" + t);
- if (tabBtn) tabBtn.classList.toggle("active", t === tab);
- if (textEl) textEl.classList.toggle("hidden", t !== tab);
- });
- },
- showServiceChoice: handleShowServiceChoice,
- closeServiceChoice,
- chooseService: handleChooseService,
- getCurrentProfile,
- getCurrentUser,
- loadNatalChart,
- geocodeProfileIfNeeded,
- startStripeCheckout,
- activateWelcomeGift: async () => {
- const ok = await activateWelcomeGift();
- if (ok) {
- // Rimuovi overlay senza ricaricare
- const zoneA = document.getElementById('zoneAContainer');
- if (zoneA) {
- zoneA.classList.remove('zone-a-locked');
- const overlay = zoneA.querySelector('.zone-a-overlay');
- if (overlay) overlay.remove();
- }
- } else {
- console.log('Regalo già attivo');
- }
- },
- // Voce reale
- startVoiceSession,
- endVoiceSession: () => {
- endRealVoiceSession();
- showPage(state.lastPage || "home");
- },
- goBackFromVoice,
- toggleVoiceListening,
- startVoiceRecording: () => {
- alert('🎙️ Registrazione avanzata in preparazione. Usa il microfono del browser per parlare con Luna.');
- },
- openLunaFromCompat: function(category) {
- window.app.closeCompatModal();
- window.app.startVoiceSession(category);
- },
- resetCompatForm: function() {
- var form = document.getElementById("compatForm");
- if (form) form.reset();
- var resultDiv = document.getElementById("compatResult");
- if (resultDiv) {
- resultDiv.style.display = "none";
- resultDiv.innerHTML = "";
- }
- },
- openTelegram: function() {
- window.open('https://t.me/LunaAstrologicaBot', '_blank');
- // Nascondi card Telegram dopo click
- const card = document.getElementById('telegramCard');
- if (card) card.style.display = 'none';
- },
- _resetState: function() {
- cachedNatalChart = null;
- isLoadingChart = false;
- state.currentPage = "home";
- state.lastPage = "home";
- const page = document.getElementById('page-personalized');
- if (page) page.innerHTML = '';
- const payPage = document.getElementById('page-payments');
- if (payPage) payPage.innerHTML = '';
- console.log('🔁 Stato app resettato');
- }
+  showPage,
+  goHome,
+  requireAuthOrModal,
+  requireAuthOrModalForChat,
+  openAuthModal,
+  closeAuthModal,
+  switchAuthTab,
+  handleRegister,
+  handleLogin,
+  handleLogout,
+  showHoroscopePage: handleShowHoroscopePage,
+  switchHoroTab,
+  openProfileEdit,
+  showCompat,
+  openCompatModal,
+  closeCompatModal,
+  handleCompatSubmit,
+  toggleAccordion,
+  sendMessage: handleSendMessage,
+  startCategoryChat: handleStartCategoryChat,
+  startChatAbout: handleStartChatAbout,
+  startVoiceAbout: handleStartVoiceAbout,
+  goBackFromChat: handleGoBackFromChat,
+  showPaymentsPage,
+  toggleLang,
+  setLang,
+  switchPersonalHoroTab: (tab) => {
+    const tabs = ["day", "week", "month", "year"];
+    tabs.forEach(t => {
+      const tabBtn = document.getElementById("ph-tab-" + t);
+      const textEl = document.getElementById("ph-text-" + t);
+      if (tabBtn) tabBtn.classList.toggle("active", t === tab);
+      if (textEl) textEl.classList.toggle("hidden", t !== tab);
+    });
+  },
+  showServiceChoice: handleShowServiceChoice,
+  closeServiceChoice,
+  chooseService: handleChooseService,
 };
