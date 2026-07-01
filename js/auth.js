@@ -1,8 +1,7 @@
 // ============================================================
 // AUTH.JS — Autenticazione Supabase
 // FIX v8: logout senza reload (pulizia manuale SPA), getCredits robusto,
-// triple fallback nome, backup profilo in localStorage
-// + FIX: creazione profilo al volo se manca dopo conferma email
+//         triple fallback nome, backup profilo in localStorage
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -66,7 +65,7 @@ export async function handleRegister(e) {
  const btn = document.getElementById("regSubmitBtn");
  const orig = btn?.innerHTML || "Crea account";
  if (btn) {
- btn.innerHTML = '';
+ btn.innerHTML = '<span class="spinner"></span>';
  btn.disabled = true;
  }
 
@@ -144,7 +143,7 @@ export async function handleLogin(e) {
  const btn = document.getElementById("loginSubmitBtn");
  const orig = btn?.innerHTML || "Accedi";
  if (btn) {
- btn.innerHTML = '';
+ btn.innerHTML = '<span class="spinner"></span>';
  btn.disabled = true;
  }
 
@@ -225,47 +224,7 @@ export async function handleLogout() {
 }
 
 // ============================================================
-// CREA PROFILO AL VOLO (FIX conferma email)
-// ============================================================
-async function createProfileFromUser(user) {
- if (!supabase || !user) return null;
-
- const meta = user.user_metadata || {};
- const profileData = {
- id: user.id,
- email: user.email,
- full_name: meta.full_name || meta.fullName || user.email?.split("@")[0] || "Utente",
- birth_date: meta.birth_date || meta.birthDate || null,
- birth_time: meta.birth_time || meta.birthTime || null,
- birth_city: meta.birth_city || meta.birthCity || null,
- birth_country: meta.birth_country || meta.birthCountry || null,
- gender: meta.gender || null,
- created_at: new Date().toISOString(),
- updated_at: new Date().toISOString(),
- credits: 10,
- welcome_gift_active: false,
- language: 'it'
- };
-
- console.log('🆕 [createProfileFromUser] Creazione profilo per:', user.id, profileData);
-
- const { data, error } = await supabase
- .from('profiles')
- .insert([profileData])
- .select()
- .single();
-
- if (error) {
- console.error('❌ [createProfileFromUser] Errore creazione:', error);
- return null;
- }
-
- console.log('✅ [createProfileFromUser] Profilo creato:', data?.id);
- return data;
-}
-
-// ============================================================
-// LOAD USER DATA — BACKUP CON CREDITI + FIX creazione profilo
+// LOAD USER DATA — BACKUP CON CREDITI
 // ============================================================
 export async function loadUserData() {
  if (!currentUser || !supabase) {
@@ -284,16 +243,6 @@ export async function loadUserData() {
  console.error("❌ [loadUserData] Errore:", error);
  if (error.code === "PGRST116") {
  console.warn("⚠️ Profilo non trovato per utente:", currentUser.id);
- // FIX: crea profilo al volo dai metadati utente
- const newProfile = await createProfileFromUser(currentUser);
- if (newProfile) {
- currentProfile = newProfile;
- credits = newProfile.credits || 0;
- saveProfileBackup(newProfile);
- notifyChange();
- console.log('✅ [loadUserData] Profilo creato al volo e caricato');
- return;
- }
  }
  // Prova a recuperare dal backup
  const backup = loadProfileBackup();
