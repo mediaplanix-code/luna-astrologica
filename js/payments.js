@@ -1,5 +1,6 @@
 // ============================================================
-// PAYMENTS.JS v3.0 — Regalo DB, Zona A vs Zona B, soglia €49
+// PAYMENTS.JS v3.1 — Regalo DB, Zona A vs Zona B, soglia €49
+// FIX A2: Abbonamento €15 spostato in fondo ai pacchetti
 // ============================================================
 
 import { CONFIG } from './config.js';
@@ -77,7 +78,7 @@ export async function getSubscriptionFromDB() {
 
     const now = new Date().toISOString();
 
-    // Priorità: regalo di benvenuto attivo
+    // Priorita: regalo di benvenuto attivo
     if (profile.welcome_gift_active && profile.welcome_gift_expires_at && profile.welcome_gift_expires_at > now) {
         return {
             active: true,
@@ -186,7 +187,7 @@ export async function activateWelcomeGift() {
         return activateWelcomeGiftLocal();
     }
 
-    // Verifica se già attivo su DB
+    // Verifica se gia attivo su DB
     if (profile?.welcome_gift_active && profile?.welcome_gift_expires_at > new Date().toISOString()) {
         return false;
     }
@@ -405,7 +406,7 @@ export async function startStripeCheckout(packageId, amount) {
     if (!CONFIG.FEATURES.STRIPE_PAYMENTS) {
         const name = getPackageName(packageId);
         const confirmed = confirm(
-            `💳 MODALITÀ TEST\n\n` +
+            `💳 MODALITA TEST\n\n` +
             `Stai per acquistare:\n` +
             `${name} — €${amount}\n\n` +
             `Confermi il pagamento simulato?`
@@ -460,6 +461,7 @@ function getPackageName(packageId) {
 }
 
 // ===== RENDER PAGINA PAGAMENTI =====
+// FIX A2: Abbonamento €15 spostato in fondo come ultima card
 export async function renderPaymentsPage() {
     const container = document.getElementById('page-payments');
     if (!container) return;
@@ -468,7 +470,8 @@ export async function renderPaymentsPage() {
     const txs = getTransactions().slice(0, 5);
     const user = getCurrentUser();
 
-    const subSection = status.active ? `
+    // Sezione stato abbonamento (info in cima, non cliccabile)
+    const subStatusSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
             <div class="sub-title">Abbonamento Completo</div>
@@ -501,9 +504,6 @@ export async function renderPaymentsPage() {
             <div style="font-size:0.8125rem;color:#f87171;margin-bottom:0.75rem;">
                 🔒 La tua pagina personale mostra solo l'oroscopo giornaliero
             </div>
-            <button class="sub-btn primary" onclick="window.app.startStripeCheckout('sub_trimestrale', 15)">
-                Sblocca ora per €15
-            </button>
         </div>
     `;
 
@@ -519,13 +519,14 @@ export async function renderPaymentsPage() {
             </div>
             <div class="spending-note ${status.spendingProgress >= 100 ? 'complete' : ''}">
                 ${status.spendingProgress >= 100 
-                    ? '🎉 Complimenti! Il prossimo trimestre è gratuito' 
+                    ? '🎉 Complimenti! Il prossimo trimestre e gratuito' 
                     : `Mancano €${status.spendingNeeded} per il rinnovo gratuito`
                 }
             </div>
         </div>
     ` : '';
 
+    // FIX A2: Pacchetti servizi PRIMA, abbonamento in fondo
     const packagesSection = `
         <div class="payments-header">
             <h2>🔮 Pacchetti Servizi Vocali</h2>
@@ -541,6 +542,17 @@ export async function renderPaymentsPage() {
                     <div class="package-duration">⏱️ ${pkg.duration}</div>
                 </div>
             `).join('')}
+
+            <!-- FIX A2: Abbonamento €15 in fondo come ultima card -->
+            <div class="package-card" 
+                 onclick="window.app.startStripeCheckout('${PACKAGES.subscription.id}', ${PACKAGES.subscription.price})"
+                 style="border-color: var(--gold); background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(139,92,246,0.05));">
+                <div class="package-icon">🔑</div>
+                <div class="package-name">${PACKAGES.subscription.name}</div>
+                <div class="package-price" style="font-size: 1.125rem;">€${PACKAGES.subscription.price}</div>
+                <div class="package-duration">⏱️ ${PACKAGES.subscription.periodDays} giorni</div>
+                <div style="font-size: 0.625rem; color: var(--gold); margin-top: 0.25rem; font-weight: 600;">SBLOCCA TUTTO</div>
+            </div>
         </div>
     `;
 
@@ -568,7 +580,7 @@ export async function renderPaymentsPage() {
                 <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
             </div>
 
-            ${subSection}
+            ${subStatusSection}
             ${spendingSection}
             ${packagesSection}
             ${historySection}
@@ -576,7 +588,7 @@ export async function renderPaymentsPage() {
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
                     ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
-                    Se spendi almeno €49 in servizi, il rinnovo è gratuito.
+                    Se spendi almeno €49 in servizi, il rinnovo e gratuito.
                 </p>
             </footer>
         </div>
