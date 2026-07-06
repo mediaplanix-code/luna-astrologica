@@ -117,8 +117,16 @@ export async function handleRegister(e) {
  console.log("✅ [handleRegister] Utente creato:", authData.user?.id);
  console.log("📦 [handleRegister] Metadati inviati:", authData.user?.user_metadata);
 
- showAlert("auth", "success",
- "🌙 Account creato! Controlla la tua email e clicca il link di conferma.");
+	// Salva email temporanea per facilitare il login dopo verifica
+	try {
+		sessionStorage.setItem('luna_pending_email', email);
+		sessionStorage.setItem('luna_pending_email_ts', Date.now().toString());
+	} catch (e) {
+		console.warn('sessionStorage non disponibile:', e);
+	}
+
+	showAlert("auth", "success",
+	"🌙 Account creato! Controlla la tua email e clicca il link di conferma. Dopo la verifica potrai accedere rapidamente.");
 
  const regForm = document.getElementById("registerForm");
  if (regForm) regForm.reset();
@@ -165,10 +173,16 @@ export async function handleLogin(e) {
  currentUser = data.user;
  await loadUserData();
 
- if (window.app) {
- window.app.closeAuthModal();
- window.app.showPage("personalized");
- }
+		// Rimuovi pending email dopo login riuscito
+		try {
+			sessionStorage.removeItem('luna_pending_email');
+			sessionStorage.removeItem('luna_pending_email_ts');
+		} catch (e) {}
+
+		if (window.app) {
+			window.app.closeAuthModal();
+			window.app.showPage("personalized");
+		}
 
  } catch (err) {
  console.error("❌ [handleLogin] Errore:", err);
@@ -185,13 +199,23 @@ export async function handleLogout() {
  console.log('🚪 Avvio logout...');
 
  // 1. SignOut da Supabase
- if (supabase) {
- try {
- await supabase.auth.signOut();
- console.log('✅ SignOut Supabase completato');
- } catch (e) {
- console.error("Logout Supabase error:", e);
+ // Fallback: crea client Supabase se la variabile locale non esiste
+ if (!supabase && window?.supabase && CONFIG?.SUPABASE_URL && CONFIG?.SUPABASE_ANON_KEY) {
+	 try {
+		 supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+		 console.log('ℹ️ Supabase client ricreato (fallback)');
+	 } catch (e) {
+		 console.warn('⚠️ Fallback creazione client Supabase fallita', e);
+	 }
  }
+
+ if (supabase) {
+	 try {
+		 await supabase.auth.signOut();
+		 console.log('✅ SignOut Supabase completato');
+	 } catch (e) {
+		 console.error("Logout Supabase error:", e);
+	 }
  }
 
  // 2. Reset variabili interne

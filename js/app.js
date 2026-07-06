@@ -87,11 +87,38 @@ document.addEventListener("DOMContentLoaded", async () => {
  renderHomePage();
  renderVoicePage();
 
- const urlParams = new URLSearchParams(window.location.search);
- const isVerified = urlParams.get("verified");
- if (isVerified === "true") {
- window.history.replaceState({}, document.title, window.location.pathname);
- }
+		const urlParams = new URLSearchParams(window.location.search);
+		const isVerified = urlParams.get("verified");
+		if (isVerified === "true") {
+			// Rimuovi parametro dall'URL
+			window.history.replaceState({}, document.title, window.location.pathname);
+
+			// Se abbiamo un'email pending salvata dopo la registrazione,
+			// apri il modal di login e precompila l'email mostrando un messaggio.
+			try {
+				const pendingEmail = sessionStorage.getItem('luna_pending_email');
+				if (pendingEmail) {
+					openAuthModal();
+					setTimeout(() => {
+						switchAuthTab('login');
+						const loginEmail = document.getElementById('loginEmail');
+						const loginPass = document.getElementById('loginPassword');
+						const authSuccess = document.getElementById('authSuccess');
+						if (loginEmail) { loginEmail.value = pendingEmail; }
+						if (authSuccess) {
+							authSuccess.textContent = "✅ Email verificata. Inserisci la password per accedere rapidamente.";
+							authSuccess.style.display = 'block';
+						}
+						if (loginPass) { loginPass.focus(); }
+					}, 150);
+				} else {
+					// fallback minimale
+					alert("✅ Email verificata. Ora puoi effettuare il login.");
+				}
+			} catch (e) {
+				console.warn('Errore gestione verified redirect:', e);
+			}
+		}
 
  const paymentStatus = urlParams.get("payment");
  if (paymentStatus === "success") {
@@ -501,6 +528,13 @@ document.addEventListener("click", (e) => {
 // ===== LOGOUT CORRETTO =====
 async function handleLogoutClick() {
  console.log('🚪 Logout richiesto...');
+ const logoutBtn = document.getElementById('logoutBtn');
+ let origText = null;
+ if (logoutBtn) {
+	 origText = logoutBtn.textContent;
+	 logoutBtn.disabled = true;
+	 logoutBtn.textContent = 'Uscita...';
+ }
 
  try {
  endRealVoiceSession();
@@ -522,7 +556,12 @@ async function handleLogoutClick() {
 
  console.log('✅ Logout completato con successo');
  } catch (err) {
- console.error('❌ Errore durante logout:', err);
+	console.error('❌ Errore durante logout:', err);
+ } finally {
+	if (logoutBtn) {
+		logoutBtn.disabled = false;
+		try { logoutBtn.textContent = origText || 'Esci'; } catch(e) {}
+	}
  }
 }
 
