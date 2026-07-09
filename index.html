@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luna Astrologica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+
+  <nav id="navbar" class="hidden">
+    <div class="nav-brand">
+      <span class="moon-icon">🌙</span>
+      <span class="brand-text">Luna Astrologica</span>
+    </div>
+    <div class="nav-links">
+      <a href="#home" data-section="home">Home</a>
+      <a href="#horoscope" data-section="horoscope">Oroscopo</a>
+      <a href="#personalized" data-section="personalized">Personale</a>
+      <a href="#chat" data-section="chat">Consulto</a>
+      <a href="#profile" data-section="profile">Profilo</a>
+      <a href="#payments" data-section="payments">Abbonamenti</a>
+    </div>
+    <div class="nav-actions">
+      <span id="credit-badge" class="credit-badge">💎 10</span>
+      <button id="btn-logout" class="btn-outline">Esci</button>
+    </div>
+  </nav>
+
+  <!-- AUTH -->
+  <section id="auth-section" class="section active">
+    <div class="auth-card">
+      <div class="auth-header">
+        <span class="moon-icon large">🌙</span>
+        <h1>Luna Astrologica</h1>
+        <p class="subtitle">Consultorio astrologico digitale</p>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Accedi</button>
+        <button class="auth-tab" data-tab="register">Registrati</button>
+      </div>
+      <form id="login-form" class="auth-form">
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" required placeholder="la.tua@email.it">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn-primary">Accedi</button>
+        <p class="form-footer"><a href="#" id="link-forgot">Password dimenticata?</a></p>
+      </form>
+      <form id="register-form" class="auth-form hidden">
+        <div class="form-group">
+          <label for="reg-name">Nome completo</label>
+          <input type="text" id="reg-name" required placeholder="Mario Rossi">
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" required placeholder="la.tua@email.it">
+        </div>
+        <div class="form-group">
+          <label for="reg-password">Password (min 8 caratteri)</label>
+          <input type="password" id="reg-password" required minlength="8" placeholder="••••••••">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg-birth-date">Data di nascita</label>
+            <input type="date" id="reg-birth-date" required>
+          </div>
+          <div class="form-group">
+            <label for="reg-birth-time">Ora di nascita</label>
+            <input type="time" id="reg-birth-time" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="reg-birth-place">Luogo di nascita</label>
+          <input type="text" id="reg-birth-place" required placeholder="Roma, Italia">
+        </div>
+        <div class="form-group">
+          <label for="reg-gender">Genere</label>
+          <select id="reg-gender" required>
+            <option value="">Seleziona...</option>
+            <option value="femmina">Femmina</option>
+            <option value="maschio">Maschio</option>
+            <option value="altro">Altro / Preferisco non dire</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary">Crea account</button>
+        <p class="form-note">Registrandoti accetti i <a href="#">Termini</a> e la <a href="#">Privacy</a>.</p>
+      </form>
+      <div id="verify-pending" class="auth-form hidden">
+        <div class="verify-box">
+          <span class="verify-icon">✉️</span>
+          <h3>Controlla la tua email</h3>
+          <p>Ti abbiamo inviato un link di verifica. Cliccalo per attivare il tuo account e accedere automaticamente all'area personale.</p>
+          <button id="btn-resend" class="btn-outline">Reinvia email</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="home" class="section">
+    <div class="hero">
+      <h2>Benvenuto, <span id="user-name">Stellare</span></h2>
+      <p class="hero-sub">Il tuo consultorio astrologico personale, attivo 24/7.</p>
+      <div class="hero-grid">
+        <div class="hero-card" data-section="personalized">
+          <span class="card-icon">🌟</span>
+          <h3>Tema Natale</h3>
+          <p>Il tuo diagramma astrologico completo, calcolato con precisione.</p>
+        </div>
+        <div class="hero-card" data-section="horoscope">
+          <span class="card-icon">🌙</span>
+          <h3>Oroscopo Giornaliero</h3>
+          <p>Le energie del giorno interpretate per il tuo segno.</p>
+        </div>
+        <div class="hero-card" data-section="chat">
+          <span class="card-icon">💬</span>
+          <h3>Consulto Astrologo</h3>
+          <p>Domanda rapida con l'astrologa. 1 credito a messaggio.</p>
+        </div>
+        <div class="hero-card" data-section="payments">
+          <span class="card-icon">💎</span>
+          <h3>Crediti & Abbonamenti</h3>
+          <p>Gestisci il tuo piano e i crediti residui.</p>
+        </div>
+      </div>
+      <div id="welcome-gift-banner" class="banner-gift hidden">
+        🎁 <strong>Regalo di benvenuto:</strong> hai ricevuto <strong>90 giorni</strong> di accesso gratuito ai calcoli astrologici!
+      </div>
+    </div>
+  </section>
+
+  <!-- HOROSCOPE -->
+  <section id="horoscope" class="section">
+    <h2>Oroscopo del Giorno</h2>
+    <div class="horoscope-grid" id="horoscope-grid"></div>
+    <div id="horoscope-detail" class="detail-panel hidden">
+      <h3 id="horoscope-sign-title"></h3>
+      <p id="horoscope-text"></p>
+      <div class="horoscope-meta">
+        <span>🔥 <span id="horoscope-love"></span></span>
+        <span>💼 <span id="horoscope-work"></span></span>
+        <span>💰 <span id="horoscope-money"></span></span>
+        <span>⚡ <span id="horoscope-energy"></span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PERSONALIZED -->
+  <section id="personalized" class="section">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="natal">Tema Natale</button>
+      <button class="tab-btn" data-tab="transits">Transiti</button>
+      <button class="tab-btn" data-tab="compatibility">Affinità</button>
+    </div>
+    <div id="tab-natal" class="tab-content active">
+      <div class="panel">
+        <h3>Il tuo Tema Natale</h3>
+        <div id="natal-loading" class="loading-state"><div class="spinner"></div><p>Calcolo in corso...</p></div>
+        <div id="natal-result" class="result-panel hidden">
+          <div class="natal-summary">
+            <div class="natal-item"><strong>Segno Solare:</strong> <span id="natal-sun">—</span></div>
+            <div class="natal-item"><strong>Segno Lunare:</strong> <span id="natal-moon">—</span></div>
+            <div class="natal-item"><strong>Ascendente:</strong> <span id="natal-asc">—</span></div>
+            <div class="natal-item"><strong>Mercurio:</strong> <span id="natal-mercury">—</span></div>
+            <div class="natal-item"><strong>Venere:</strong> <span id="natal-venus">—</span></div>
+            <div class="natal-item"><strong>Marte:</strong> <span id="natal-mars">—</span></div>
+            <div class="natal-item"><strong>Giove:</strong> <span id="natal-jupiter">—</span></div>
+            <div class="natal-item"><strong>Saturno:</strong> <span id="natal-saturn">—</span></div>
+          </div>
+          <div id="natal-chart-svg" class="chart-svg"></div>
+          <div id="natal-interpretation" class="interpretation"></div>
+        </div>
+        <div id="natal-error" class="error-panel hidden">
+          <p>Errore nel calcolo. Riprova più tardi.</p>
+          <button class="btn-primary" id="btn-retry-natal">Riprova</button>
+        </div>
+      </div>
+    </div>
+    <div id="tab-transits" class="tab-content">
+      <div class="panel">
+        <h3>Transiti del Giorno</h3>
+        <div id="transits-loading" class="loading-state"><div class="spinner"></div><p>Analisi dei transiti in corso...</p></div>
+        <div id="transits-result" class="result-panel hidden">
+          <div id="transits-list"></div>
+          <div id="transits-interpretation" class="interpretation"></div>
+        </div>
+      </div>
+    </div>
+    <div id="tab-compatibility" class="tab-content">
+      <div class="panel">
+        <h3>Affinità di Coppia</h3>
+        <div class="compat-form">
+          <div class="form-group"><label>Nome partner</label><input type="text" id="compat-name" placeholder="Nome del partner"></div>
+          <div class="form-row">
+            <div class="form-group"><label>Data di nascita partner</label><input type="date" id="compat-date"></div>
+            <div class="form-group"><label>Ora di nascita partner</label><input type="time" id="compat-time"></div>
+          </div>
+          <div class="form-group"><label>Luogo di nascita partner</label><input type="text" id="compat-place" placeholder="Città, Paese"></div>
+          <button id="btn-calc-compat" class="btn-primary">Calcola Affinità</button>
+        </div>
+        <div id="compat-loading" class="loading-state hidden"><div class="spinner"></div><p>Calcolo sinastria in corso...</p></div>
+        <div id="compat-result" class="result-panel hidden">
+          <div class="compat-score"><div class="score-circle"><span id="compat-percent">0%</span></div><p id="compat-label">Compatibilità</p></div>
+          <div id="compat-details"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="chat" class="section">
+    <div class="chat-container">
+      <div class="chat-sidebar">
+        <h3>Consulto Astrologo</h3>
+        <p class="chat-info">Scegli un tema o scrivi liberamente. Ogni messaggio costa <strong>1 credito</strong>.</p>
+        <div class="chat-templates">
+          <button class="template-btn" data-template="love">❤️ Amore</button>
+          <button class="template-btn" data-template="career">💼 Carriera</button>
+          <button class="template-btn" data-template="spirit">🧘 Crescita Personale</button>
+        </div>
+        <div class="chat-credits-info">
+          <span>Crediti disponibili: <strong id="chat-credits">10</strong></span>
+        </div>
+      </div>
+      <div class="chat-main">
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-area">
+          <input type="text" id="chat-input" placeholder="Scrivi la tua domanda astrologica..." maxlength="500">
+          <button id="btn-send" class="btn-primary">Invia</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section id="profile" class="section">
+    <div class="profile-card">
+      <h2>Il tuo Profilo</h2>
+      <div class="profile-grid">
+        <div class="profile-field"><label>Nome</label><span id="prof-name">—</span></div>
+        <div class="profile-field"><label>Email</label><span id="prof-email">—</span></div>
+        <div class="profile-field"><label>Data di nascita</label><span id="prof-birth-date">—</span></div>
+        <div class="profile-field"><label>Ora di nascita</label><span id="prof-birth-time">—</span></div>
+        <div class="profile-field"><label>Luogo di nascita</label><span id="prof-birth-place">—</span></div>
+        <div class="profile-field"><label>Genere</label><span id="prof-gender">—</span></div>
+        <div class="profile-field"><label>Crediti</label><span id="prof-credits">—</span></div>
+        <div class="profile-field"><label>Abbonamento</label><span id="prof-subscription">—</span></div>
+      </div>
+      <div class="profile-actions">
+        <button id="btn-edit-profile" class="btn-outline">Modifica dati</button>
+        <button id="btn-delete-account" class="btn-danger">Elimina account</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAYMENTS -->
+  <section id="payments" class="section">
+    <h2>Crediti & Abbonamenti</h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Accesso Calcoli</h3>
+        <div class="price">€15<span>/trimestre</span></div>
+        <ul>
+          <li>Tema natale completo</li>
+          <li>Transiti giornalieri</li>
+          <li>Affinità di coppia</li>
+          <li>Report dettagliati</li>
+        </ul>
+        <button class="btn-primary btn-subscribe" data-plan="quarterly">Scegli</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="badge">Consigliato</div>
+        <h3>Consulenza Vocale</h3>
+        <div class="price">€45<span>/18 min</span></div>
+        <ul>
+          <li>Sessione 1-to-1 con l'astrologa</li>
+          <li>Durata 18 minuti</li>
+          <li>Registrazione disponibile</li>
+          <li>Prenotazione flessibile</li>
+        </ul>
+        <button class="btn-primary btn-subscribe" data-plan="consultation">Prenota</button>
+      </div>
+      <div class="pricing-card">
+        <h3>Pacchetto Crediti</h3>
+        <div class="price">€10<span>/10 crediti</span></div>
+        <ul>
+          <li>10 messaggi consulto</li>
+          <li>Validità 12 mesi</li>
+          <li>Ricaricabile</li>
+          <li>Non scadono con abbonamento</li>
+        </ul>
+        <button class="btn-primary btn-subscribe" data-plan="credits">Acquista</button>
+      </div>
+    </div>
+    <div class="loyalty-banner">
+      <span>🏆</span>
+      <p><strong>Rinnovo gratuito:</strong> se spendi ≥€49 in un anno, il rinnovo trimestrale è in omaggio!</p>
+    </div>
+    <div class="payment-placeholder">
+      <p>💳 Pagamento gestito in modo sicuro. (Integrazione Stripe in corso)</p>
+    </div>
+  </section>
+
+  <div id="toast-container"></div>
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="modal-title">Attenzione</h3>
+      <p id="modal-message"></p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-outline">Annulla</button>
+        <button id="modal-confirm" class="btn-primary">Conferma</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/config.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/natal.js"></script>
+  <script type="module" src="js/transits.js"></script>
+  <script type="module" src="js/horoscope.js"></script>
+  <script type="module" src="js/chat.js"></script>
+  <script type="module" src="js/profile.js"></script>
+  <script type="module" src="js/payments.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
