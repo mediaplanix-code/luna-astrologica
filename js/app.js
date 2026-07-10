@@ -256,15 +256,16 @@ async function applyPersonalizedBlur() {
  const hasAccess = await hasCalculationsAccess();
  const showGift = await shouldShowWelcomeGift();
 
+ const lockedZone = document.getElementById('personalizedLockedZone');
  const zoneAContainer = document.getElementById('zoneAContainer');
- if (!zoneAContainer) return;
+ if (!lockedZone || !zoneAContainer) return;
 
  // Rimuovi vecchio overlay se presente
- const oldOverlay = zoneAContainer.querySelector('.zone-a-overlay');
+ const oldOverlay = lockedZone.querySelector('.zone-a-overlay');
  if (oldOverlay) oldOverlay.remove();
 
  if (!hasAccess) {
- // Crea UN SOLO overlay che copre tutta la Zona A
+ // Crea UN SOLO overlay che copre tutta la Zona A+B (tendine + pulsante + categorie)
  const overlay = document.createElement('div');
  overlay.className = 'zone-a-overlay';
 
@@ -274,7 +275,7 @@ async function applyPersonalizedBlur() {
  <div class="zone-a-gift-box">
  <div class="zone-a-gift-icon">🎁</div>
  <div class="zone-a-gift-title">Regalo di benvenuto del valore di € 15</div>
- <div class="zone-a-gift-sub">Clicca per sbloccare 1 mese gratis</div>
+ <div class="zone-a-gift-sub">Clicca per sbloccare 3 mesi gratis</div>
  <button class="zone-a-gift-btn" onclick="window.app.activateWelcomeGift()">🎁 Sblocca</button>
  </div>
  `;
@@ -290,10 +291,10 @@ async function applyPersonalizedBlur() {
  `;
  }
 
- zoneAContainer.appendChild(overlay);
- zoneAContainer.classList.add('zone-a-locked');
+ lockedZone.appendChild(overlay);
+ lockedZone.classList.add('zone-a-locked');
  } else {
- zoneAContainer.classList.remove('zone-a-locked');
+ lockedZone.classList.remove('zone-a-locked');
  }
 
  // Zona B: voce — blocca se non ha pacchetto voce, SENZA badge prezzo
@@ -603,11 +604,21 @@ window.app = {
  }
  },
  openTelegram: function() {
- window.open('https://t.me/LunaAstrologicaBot', '_blank');
- // Nascondi card Telegram dopo click
- const card = document.getElementById('telegramCard');
- if (card) card.style.display = 'none';
- },
+    const user = getCurrentUser();
+    const userId = user?.id || '';
+
+    // Deep link con user_id per identificazione automatica nel bot
+    const url = userId 
+        ? `https://t.me/LunastrologicaBot?start=${userId}`
+        : 'https://t.me/LunastrologicaBot';
+
+    window.open(url, '_blank');
+
+    // Segna come cliccato e nascondi float
+    localStorage.setItem('luna_telegram_clicked', 'true');
+    const floatBtn = document.getElementById('telegramFloatBtn');
+    if (floatBtn) floatBtn.style.display = 'none';
+},
  _resetState: function() {
  cachedNatalChart = null;
  isLoadingChart = false;
