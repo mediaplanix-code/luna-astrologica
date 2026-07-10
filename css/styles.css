@@ -2010,6 +2010,11 @@ html, body {
    ZONA A — Overlay UNICO sovrapposto a tutte le tendine
    ============================================================ */
 
+.personalized-locked-zone {
+    position: relative;
+    margin: 0;
+}
+
 .zone-a-container {
     position: relative;
     margin: 0 1rem;
@@ -2017,6 +2022,15 @@ html, body {
 
 .zone-a-locked {
     position: relative;
+}
+
+.zone-a-locked .zone-a-container .accordion,
+.zone-a-locked .banner-cta,
+.zone-a-locked .grid .card {
+    filter: blur(2px);
+    opacity: 0.6;
+    pointer-events: none;
+    user-select: none;
 }
 
 .zone-a-overlay {
@@ -2044,12 +2058,7 @@ html, body {
     -webkit-backdrop-filter: blur(4px);
 }
 
-.zone-a-locked .accordion {
-    filter: blur(2px);
-    opacity: 0.6;
-    pointer-events: none;
-    user-select: none;
-}
+
 
 .zone-a-gift-box {
     position: relative;
@@ -2152,4 +2161,41 @@ html, body {
 }
 .card.cat-telegram .card-icon {
     font-size: 1.75rem;
+}
+
+/* ===== TELEGRAM FLOAT BUTTON ===== */
+.telegram-float-btn {
+    position: fixed;
+    bottom: 90px;
+    right: 1rem;
+    width: 52px;
+    height: 52px;
+    z-index: 90;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.15);
+    border: 1.5px solid rgba(56, 189, 248, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.telegram-float-btn:hover {
+    transform: scale(1.12);
+    background: rgba(56, 189, 248, 0.25);
+    border-color: rgba(56, 189, 248, 0.55);
+}
+
+.telegram-float-btn svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 2px 6px rgba(56, 189, 248, 0.3));
+}
+
+.telegram-float-btn.hidden {
+    display: none !important;
 }
