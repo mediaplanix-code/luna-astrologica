@@ -566,23 +566,51 @@ window.app = {
  geocodeProfileIfNeeded,
  startStripeCheckout,
  activateWelcomeGift: async () => {
- const ok = await activateWelcomeGift();
- if (ok) {
- // Rimuovi overlay dal wrapper senza ricaricare
- const lockedZone = document.getElementById('personalizedLockedZone');
- if (lockedZone) {
- lockedZone.classList.remove('zone-a-locked');
- const overlay = lockedZone.querySelector('.zone-a-overlay');
- if (overlay) overlay.remove();
- // Forza reflow del browser per applicare subito il CSS
- lockedZone.style.display = 'none';
- lockedZone.offsetHeight; // trigger reflow
- lockedZone.style.display = '';
- }
- } else {
- console.log('Regalo già attivo');
- }
- },
+    // Forza attivazione bypassando controlli localStorage
+    const user = getCurrentUser();
+    const supabase = getSupabase();
+
+    if (user && supabase) {
+        try {
+            const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
+            await supabase.from('profiles').update({
+                welcome_gift_active: true,
+                welcome_gift_expires_at: expiresAt,
+                updated_at: new Date().toISOString()
+            }).eq('id', user.id);
+        } catch (e) {
+            console.warn('DB update fallito, uso localStorage');
+        }
+    }
+
+    // Fallback localStorage
+    localStorage.setItem('luna_welcome_gift_shown', JSON.stringify({
+        activatedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString()
+    }));
+    localStorage.setItem('luna_subscription', JSON.stringify({
+        startedAt: Date.now(),
+        expiresAt: Date.now() + (90 * 24 * 60 * 60 * 1000),
+        userId: user?.id,
+        isWelcomeGift: true
+    }));
+
+    // Rimuovi overlay e sblocca
+    const lockedZone = document.getElementById('personalizedLockedZone');
+    if (lockedZone) {
+        lockedZone.classList.remove('zone-a-locked');
+        const overlay = lockedZone.querySelector('.zone-a-overlay');
+        if (overlay) overlay.remove();
+    }
+
+    // Ricarica profilo e re-render
+    await loadUserData();
+    const profile = getCurrentProfile();
+    if (user && profile) {
+        renderPersonalizedPage(profile, user, null);
+        setTimeout(() => ensureGeocodingAndChart(profile), 600);
+    }
+},},
  // Voce reale
  startVoiceSession,
  endVoiceSession: () => {
