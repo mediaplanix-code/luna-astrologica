@@ -394,6 +394,14 @@ export async function simulatePayment(packageId, amount) {
         }
 
         alert(`✅ Acquisto completato!\nHai acquistato ${svc.name} per €${amount}\n\n⏱️ 18 minuti di consulenza vocale attivati.`);
+
+        // Avvia automaticamente la sessione voce con la categoria acquistata
+        setTimeout(() => {
+            if (typeof window !== 'undefined' && window.app && window.app.startVoiceSession) {
+                window.app.startVoiceSession(svc.category);
+            }
+        }, 800);
+
         return true;
     }
 
