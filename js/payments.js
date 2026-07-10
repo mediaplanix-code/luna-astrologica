@@ -8,7 +8,7 @@ import { getCurrentUser, getCurrentProfile, getSupabase } from './auth.js';
 const PACKAGES = {
     subscription: {
         id: 'sub_trimestrale',
-        name: 'Abbonamento Completo',
+        name: 'Accesso Completo',
         price: 15,
         periodDays: 90,
         description: 'Sblocca tema natale, case, pianeti, aspetti, transiti e dossier',
@@ -88,7 +88,7 @@ export async function getSubscriptionFromDB() {
         };
     }
 
-    // Altrimenti: abbonamento pagato
+    // Altrimenti: accesso pagato
     if (profile.subscription_expires_at && profile.subscription_expires_at > now) {
         return {
             active: true,
@@ -165,7 +165,7 @@ export async function hasFullAccess() {
     return status.active;
 }
 
-// ZONA A: accesso ai calcoli (regalo o abbonamento)
+// ZONA A: accesso ai calcoli (regalo o accesso pagato)
 export async function hasCalculationsAccess() {
     return await hasFullAccess();
 }
@@ -273,7 +273,7 @@ export async function shouldShowWelcomeGift() {
         return false;
     }
 
-    // Se ha abbonamento pagato, non mostrare
+    // Se ha accesso pagato, non mostrare
     if (profile?.subscription_expires_at && profile?.subscription_expires_at > new Date().toISOString()) {
         return false;
     }
@@ -318,7 +318,7 @@ export async function simulatePayment(packageId, amount) {
     const now = Date.now();
 
     if (packageId === 'sub_trimestrale') {
-        // Abbonamento trimestrale
+        // Accesso trimestrale
         const supabase = getSupabase();
         const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
 
@@ -330,7 +330,7 @@ export async function simulatePayment(packageId, amount) {
                     updated_at: new Date().toISOString()
                 }).eq('id', user.id);
             } catch (e) {
-                console.warn('Fallback localStorage per abbonamento');
+                console.warn('Fallback localStorage per accesso');
             }
         }
 
@@ -353,10 +353,10 @@ export async function simulatePayment(packageId, amount) {
             type: 'subscription',
             packageId,
             amount,
-            description: 'Abbonamento trimestrale'
+            description: 'Accesso trimestrale'
         });
 
-        alert(`✅ Abbonamento attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
+        alert(`✅ Accesso attivato!\nValido fino al ${new Date(lsExpiresAt).toLocaleDateString('it-IT')}`);
         return true;
     }
 
@@ -453,7 +453,7 @@ export async function startStripeCheckout(packageId, amount) {
 }
 
 function getPackageName(packageId) {
-    if (packageId === 'sub_trimestrale') return 'Abbonamento Trimestrale';
+    if (packageId === 'sub_trimestrale') return 'Accesso Trimestrale';
     const svc = PACKAGES.services.find(s => s.id === packageId);
     if (svc) return svc.name;
     return packageId;
@@ -471,7 +471,7 @@ export async function renderPaymentsPage() {
     const subSection = status.active ? `
         <div class="sub-card">
             <div class="sub-status active dot">Attivo</div>
-            <div class="sub-title">Abbonamento Completo</div>
+            <div class="sub-title">Accesso Completo</div>
             <div class="sub-price">€15 <span>/ trimestre</span></div>
             <ul class="sub-features">
                 ${PACKAGES.subscription.features.map(f => `<li>${f}</li>`).join('')}
@@ -493,7 +493,7 @@ export async function renderPaymentsPage() {
     ` : `
         <div class="sub-card" style="border-color:#ef4444;">
             <div class="sub-status expired">Offuscato</div>
-            <div class="sub-title">Abbonamento Completo</div>
+            <div class="sub-title">Accesso Completo</div>
             <div class="sub-price">€15 <span>/ trimestre</span></div>
             <ul class="sub-features">
                 ${PACKAGES.subscription.features.map(f => `<li class="locked">${f}</li>`).join('')}
@@ -564,18 +564,18 @@ export async function renderPaymentsPage() {
     container.innerHTML = `
         <div class="payments-page">
             <div class="payments-header">
-                <h2>💳 Crediti & Abbonamento</h2>
-                <p>Gestisci il tuo abbonamento e i servizi a pagamento</p>
+                <h2>💳 Crediti & Accesso</h2>
+                <p>Gestisci il tuo accesso e i servizi a pagamento</p>
             </div>
 
-            ${subSection}
-            ${spendingSection}
             ${packagesSection}
+            ${spendingSection}
             ${historySection}
+            ${subSection}
 
             <footer class="footer" style="margin-top:2rem;">
                 <p style="font-size:0.75rem;color:var(--text-dim);">
-                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'abbonamento si rinnova automaticamente ogni 90 giorni.
+                    ⚠️ I pagamenti sono gestiti in modo sicuro. L'accesso si rinnova automaticamente ogni 90 giorni.
                     Se spendi almeno €49 in servizi, il rinnovo è gratuito.
                 </p>
             </footer>
