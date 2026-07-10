@@ -568,12 +568,16 @@ window.app = {
  activateWelcomeGift: async () => {
  const ok = await activateWelcomeGift();
  if (ok) {
- // Rimuovi overlay senza ricaricare
- const zoneA = document.getElementById('zoneAContainer');
- if (zoneA) {
- zoneA.classList.remove('zone-a-locked');
- const overlay = zoneA.querySelector('.zone-a-overlay');
+ // Rimuovi overlay dal wrapper senza ricaricare
+ const lockedZone = document.getElementById('personalizedLockedZone');
+ if (lockedZone) {
+ lockedZone.classList.remove('zone-a-locked');
+ const overlay = lockedZone.querySelector('.zone-a-overlay');
  if (overlay) overlay.remove();
+ // Forza reflow del browser per applicare subito il CSS
+ lockedZone.style.display = 'none';
+ lockedZone.offsetHeight; // trigger reflow
+ lockedZone.style.display = '';
  }
  } else {
  console.log('Regalo già attivo');
