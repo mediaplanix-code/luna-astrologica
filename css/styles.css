@@ -2033,6 +2033,16 @@ html, body {
     user-select: none;
 }
 
+/* Forza rimozione blur quando overlay è assente */
+.personalized-locked-zone:not(.zone-a-locked) .accordion,
+.personalized-locked-zone:not(.zone-a-locked) .banner-cta,
+.personalized-locked-zone:not(.zone-a-locked) .grid .card {
+    filter: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    user-select: auto !important;
+}
+
 .zone-a-overlay {
     position: absolute;
     top: 0;
