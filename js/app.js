@@ -569,7 +569,7 @@ window.app = {
     // Forza attivazione bypassando controlli localStorage
     const user = getCurrentUser();
     const supabase = getSupabase();
-
+    
     if (user && supabase) {
         try {
             const expiresAt = new Date(Date.now() + (90 * 24 * 60 * 60 * 1000)).toISOString();
@@ -582,7 +582,7 @@ window.app = {
             console.warn('DB update fallito, uso localStorage');
         }
     }
-
+    
     // Fallback localStorage
     localStorage.setItem('luna_welcome_gift_shown', JSON.stringify({
         activatedAt: new Date().toISOString(),
@@ -594,7 +594,7 @@ window.app = {
         userId: user?.id,
         isWelcomeGift: true
     }));
-
+    
     // Rimuovi overlay e sblocca
     const lockedZone = document.getElementById('personalizedLockedZone');
     if (lockedZone) {
@@ -602,7 +602,7 @@ window.app = {
         const overlay = lockedZone.querySelector('.zone-a-overlay');
         if (overlay) overlay.remove();
     }
-
+    
     // Ricarica profilo e re-render
     await loadUserData();
     const profile = getCurrentProfile();
@@ -610,7 +610,7 @@ window.app = {
         renderPersonalizedPage(profile, user, null);
         setTimeout(() => ensureGeocodingAndChart(profile), 600);
     }
-},},
+ },
  // Voce reale
  startVoiceSession,
  endVoiceSession: () => {
@@ -638,19 +638,14 @@ window.app = {
  openTelegram: function() {
     const user = getCurrentUser();
     const userId = user?.id || '';
-
-    // Deep link con user_id per identificazione automatica nel bot
     const url = userId 
         ? `https://t.me/LunastrologicaBot?start=${userId}`
         : 'https://t.me/LunastrologicaBot';
-
     window.open(url, '_blank');
-
-    // Segna come cliccato e nascondi float
     localStorage.setItem('luna_telegram_clicked', 'true');
     const floatBtn = document.getElementById('telegramFloatBtn');
     if (floatBtn) floatBtn.style.display = 'none';
-},
+ },
  _resetState: function() {
  cachedNatalChart = null;
  isLoadingChart = false;
