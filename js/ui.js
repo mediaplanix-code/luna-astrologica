@@ -542,7 +542,8 @@ export function renderPersonalizedPage(profile, user, natalData) {
             </div>
         </div>
 
-        <!-- ZONA A: container con overlay regalo sovrapposto -->
+        <!-- ZONA A+B: wrapper per overlay regalo -->
+        <div class="personalized-locked-zone" id="personalizedLockedZone">
         <div class="zone-a-container" id="zoneAContainer">
             <div class="accordion" id="acc-wheel-wrap">
                 <div class="accordion-header" onclick="window.app.toggleAccordion(this,'acc-wheel')">
@@ -711,10 +712,11 @@ export function renderPersonalizedPage(profile, user, natalData) {
                 `).join("")}
             </div>
         </div>
+        </div>
 
-        <!-- Logo Telegram ufficiale — visibile solo se non ancora cliccato -->
+        <!-- Logo Telegram — visibile solo se non ancora cliccato -->
         ${!telegramClicked ? `
-        <div class="telegram-float-btn" id="telegramFloatBtn" onclick="window.app.openTelegram()">
+        <div class="telegram-float-btn" id="telegramFloatBtn" onclick="window.app.openTelegram()" title="Ricevi il tuo oroscopo su Telegram">
             ${TELEGRAM_LOGO_SVG}
         </div>
         ` : ''}
